@@ -4,7 +4,11 @@
       <div class="">
         <div class="card shadow">
           <div class="" style="overflow: auto; max-height: 15rem">
-            <table class="table table-hover small">
+            <MiniTable v-bind:columns="premium_table_columns">
+
+            </MiniTable>
+
+            <!-- <table class="table table-hover small">
               <thead>
                 <tr>
                   <th>交易对</th>
@@ -19,55 +23,58 @@
                   :key="item['symbol']"
                   @click="premiumClickAction(item['symbol'])"
                 >
-                  <td class="code-number">
+                  <td class="text-monospace">
                     {{ item["symbol"] }}
                   </td>
 
                   <td
-                    class="code-number"
+                    class="text-monospace"
                     style="color: #02c076"
                     v-if="parseFloat(item['rate']) > 0"
                   >
                     {{ item["rate"] }}%
                   </td>
                   <td
-                    class="code-number"
+                    class="text-monospace"
                     style="color: #f84960"
                     v-if="parseFloat(item['rate']) < 0"
                   >
                     {{ item["rate"] }}%
                   </td>
-                  <td class="code-number" v-if="parseFloat(item['rate']) == 0">
+                  <td
+                    class="text-monospace"
+                    v-if="parseFloat(item['rate']) == 0"
+                  >
                     {{ item["rate"] }}%
                   </td>
 
-                  <td class="code-number">
+                  <td class="text-monospace">
                     {{ item["price"] }}
                   </td>
 
                   <td
-                    class="code-number"
+                    class="text-monospace"
                     style="color: #02c076"
                     v-if="parseFloat(item['further_premium']) > 0"
                   >
                     {{ item["further_premium"] }}%
                   </td>
                   <td
-                    class="code-number"
+                    class="text-monospace"
                     style="color: #f84960"
                     v-if="parseFloat(item['further_premium']) < 0"
                   >
                     {{ item["further_premium"] }}%
                   </td>
                   <td
-                    class="code-number"
+                    class="text-monospace"
                     v-if="parseFloat(item['further_premium']) == 0"
                   >
                     {{ item["further_premium"] }}%
                   </td>
                 </tr>
               </tbody>
-            </table>
+            </table> -->
           </div>
         </div>
 
@@ -79,7 +86,7 @@
                   <div class="input-group">
                     <label class="input-group-text">双向交易对</label>
                     <input
-                      class="form-control text-end code-number"
+                      class="form-control text-right text-monospace"
                       placeholder="点击表格"
                       :value="pair_symbol"
                     />
@@ -87,7 +94,7 @@
                   <div class="mt-3 input-group">
                     <label class="input-group-text">双向总金额</label>
                     <input
-                      class="form-control text-end code-number"
+                      class="form-control text-right text-monospace"
                       type="number"
                       v-model="create_value"
                       @input="premiumValueChange"
@@ -97,7 +104,7 @@
                   <div class="mt-3 input-group">
                     <label class="input-group-text">合约杠杆率</label>
                     <input
-                      class="form-control text-end"
+                      class="form-control text-right"
                       type="number"
                       placeholder="1"
                       disabled
@@ -108,19 +115,21 @@
               <div class="mt-3">
                 <div class="d-flex justify-content-between">
                   <label>每边开仓</label>
-                  <label class="code-number text-primary"
+                  <label class="text-monospace text-primary"
                     >{{ quantity }} {{ symbol }}</label
                   >
                 </div>
                 <div class="d-flex justify-content-between">
                   <label>预计8小时收益</label>
-                  <label class="code-number text-primary"
+                  <label class="text-monospace text-primary"
                     >{{ benefit }} USDT</label
                   >
                 </div>
                 <div class="d-flex justify-content-between">
                   <label>预计开仓手续费(以0.075%)</label>
-                  <label class="code-number text-primary">{{ tax }} USDT</label>
+                  <label class="text-monospace text-primary"
+                    >{{ tax }} USDT</label
+                  >
                 </div>
                 <button
                   type="submit"
@@ -136,24 +145,24 @@
         </div>
       </div>
 
-      <div class="ms-3">
+      <div class="ml-3">
         <div class="card shadow">
           <div class="p-2">
             <div class="d-flex justify-content-between">
               <label>可用现货</label>
-              <label class="ms-2 text-primary code-number"
+              <label class="ml-2 text-primary text-monospace"
                 >{{ free_usdt }} USDT</label
               >
             </div>
             <div class="d-flex justify-content-between">
               <label>可用期货</label>
-              <label class="ms-2 text-primary code-number"
+              <label class="ml-2 text-primary text-monospace"
                 >{{ free_further_usdt }} USDT</label
               >
             </div>
             <div class="d-flex justify-content-between">
               <span>资金充足率</span>
-              <span class="ms-2 text-primary code-number"
+              <span class="ml-2 text-primary text-monospace"
                 >{{ free_further_usdt }}%</span
               >
             </div>
@@ -186,10 +195,10 @@
                   :key="item['symbol']"
                   @click="premiumClickAction(item[index])"
                 >
-                  <td class="code-number align-middle">
+                  <td class="text-monospace align-middle">
                     {{ item["symbol"] }}
                   </td>
-                  <td class="code-number align-middle">
+                  <td class="text-monospace align-middle">
                     {{ item["quantity"] }}
                   </td>
                   <td>
@@ -215,10 +224,12 @@
 </template>
 
 <script>
+import request from 'request'
+import MiniTable from '@/components/MiniTable.vue'
 
-async function request(func, args) {
+async function method_request(func, args) {
   return await new Promise(function (resolve, reject) {
-    const request = require("request");
+    // const request = require("request");
     request.post(
       {
         url: "http://us.pwp.today:11327",
@@ -236,31 +247,41 @@ async function request(func, args) {
           reject(httpResponse);
           return;
         }
-        res = JSON.parse(body);
+        let res = JSON.parse(body);
+        if (res['msg'] != 'success') {
+          reject(res)
+          return
+        }
         console.log(res);
-        resolve(res);
+        resolve(res['data']);
       }
     );
   });
 }
+
 export default {
-  name: 'premium',
-  data: {
-    items: [], // 资金费率表格
-    havingItems: [], // 套利持仓表格
+  name: "premium",
+  data: function () {
+    return {
+      // 资金费率表格
+      premium_table_columns: ['交易对', '资金费率', '现货币价', '期货溢价'],
+      premium_table_items: [],
 
-    free_usdt: "", // 现货剩余usdt
-    free_further_usdt: "", // 期货剩余usdt
+      havingItems: [], // 套利持仓表格
 
-    pair_symbol: "", // 想要套利的交易对
-    create_value: "", // 开仓的总价值
-    create_rate: "", // 开仓的合约杠杆率
+      free_usdt: "", // 现货剩余usdt
+      free_further_usdt: "", // 期货剩余usdt
 
-    benefit: 0, // 计算的收益
-    tax: 0, // 计算的手续费
-    quantity: "", // 开仓的币数(需要用于最终下单，所以是字符串)
-    symbol: "", // 开仓的货币符号(仅用于显示)
-    disabled_trade: true, // 是否将下单按钮无效化
+      pair_symbol: "", // 想要套利的交易对
+      create_value: "", // 开仓的总价值
+      create_rate: "", // 开仓的合约杠杆率
+
+      benefit: 0, // 计算的收益
+      tax: 0, // 计算的手续费
+      quantity: "", // 开仓的币数(需要用于最终下单，所以是字符串)
+      symbol: "", // 开仓的货币符号(仅用于显示)
+      disabled_trade: true, // 是否将下单按钮无效化
+    }
   },
   methods: {
     // 刷新账户余额
@@ -268,7 +289,7 @@ export default {
       this.free_usdt = "";
       this.free_further_usdt = "";
       // 获取账户余额
-      tools.request("wallet_money", []).then((res) => {
+      method_request("wallet_money", []).then((res) => {
         this.free_usdt = res[0];
         this.free_further_usdt = res[1];
       });
@@ -286,7 +307,7 @@ export default {
     premiumDestoryClick: function (pair_symbol, quantity) {
       console.log("平仓下单符号", pair_symbol);
       console.log("平仓下单数量", quantity);
-      tools.request("destroy_premium", [pair_symbol, quantity]);
+      method_request("destroy_premium", [pair_symbol, quantity]);
     },
 
     // 开仓下单
@@ -296,7 +317,7 @@ export default {
       // 取出要下单的数量
       let quantity = this.quantity;
       // 发送开仓指令
-      tools.request("create_premium", [pair_symbol, quantity]);
+      method_request("create_premium", [pair_symbol, quantity]);
     },
 
     // 自动计算收益
@@ -351,23 +372,28 @@ export default {
   },
   mounted: function () {
     // 获取货币对
-    tools.request("request_premium", []).then((res) => {
-      this.items = res;
-    });
+    method_request("request_premium", []).then((res) => {
+      this.items = res['data']
+    }).catch(error => {
+      this.$toast.open({
+        message: '成功获取溢价货币对',
+      })
+    })
 
-    tools.request("wallet_money", []).then((res) => {
+    method_request("wallet_money", []).then((res) => {
       this.free_usdt = res[0];
       this.free_further_usdt = res[1];
     });
 
     // 获取套利开仓情况
-    tools.request("analyze_premium", []).then((res) => {
+    method_request("analyze_premium", []).then((res) => {
       this.havingItems = res;
     });
   },
-}
-
-
+  components: {
+    MiniTable
+  }
+};
 </script>
 
 <style scoped>
