@@ -20,6 +20,11 @@ Vue.use(BootstrapVue)
 Vue.use(IconsPlugin)
 Vue.use(VueToast)
 
+import base from './base.js'
+
+Vue.use(base)
+
+
 new Vue({
   router,
   store,
