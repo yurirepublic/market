@@ -1,116 +1,23 @@
 <template>
-  <div class="d-flex justify-content-center">
+  <div class="d-flex justify-content-center p-1">
     <div class="d-flex justify-content-center">
       <div class="">
         <div class="">
-          <div class="" style="overflow: auto; max-height: 15rem">
-            <PremiumTable />
-          </div>
+          <PremiumTable />
         </div>
 
-        <div class=" mt-1">
-          <div class="p-3" style="background-color:#FAFAFA;">
-            <div class="">
-              <div class="">
-                <div>
-                  <div class="input-group">
-                    <label class="input-group-text">双向交易对</label>
-                    <input
-                      class="form-control text-right text-monospace"
-                      placeholder="点击表格"
-                      :value="pair_symbol"
-                    />
-                  </div>
-                  <div class="mt-3 input-group">
-                    <label class="input-group-text">双向总金额</label>
-                    <input
-                      class="form-control text-right text-monospace"
-                      type="number"
-                      v-model="create_value"
-                      @input="premiumValueChange"
-                    />
-                    <label class="input-group-text">USDT</label>
-                  </div>
-                  <div class="mt-3 input-group">
-                    <label class="input-group-text">合约杠杆率</label>
-                    <input
-                      class="form-control text-right"
-                      type="number"
-                      placeholder="1"
-                      disabled
-                    />
-                  </div>
-                </div>
-              </div>
-              <div class="mt-3">
-                <div class="d-flex justify-content-between">
-                  <label>每边开仓</label>
-                  <label class="text-monospace text-primary"
-                    >{{ quantity }} {{ symbol }}</label
-                  >
-                </div>
-                <div class="d-flex justify-content-between">
-                  <label>预计8小时收益</label>
-                  <label class="text-monospace text-primary"
-                    >{{ benefit }} USDT</label
-                  >
-                </div>
-                <div class="d-flex justify-content-between">
-                  <label>预计开仓手续费(以0.075%)</label>
-                  <label class="text-monospace text-primary"
-                    >{{ tax }} USDT</label
-                  >
-                </div>
-                <button
-                  type="submit"
-                  class="btn btn-primary mt-3"
-                  @click="primaryTradeClick"
-                  :disabled="disabled_trade"
-                >
-                  下单
-                </button>
-              </div>
-            </div>
-          </div>
+        <div class="mt-1">
+          <PremiumCreater />
         </div>
       </div>
 
-      <div class="ml-3">
-        <div class="">
-          <div class="p-2" style="background-color: #FAFAFA;">
-            <div class="d-flex justify-content-between">
-              <label>可用现货</label>
-              <label class="ml-2 text-primary text-monospace"
-                >{{ free_usdt }} USDT</label
-              >
-            </div>
-            <div class="d-flex justify-content-between">
-              <label>可用期货</label>
-              <label class="ml-2 text-primary text-monospace"
-                >{{ free_further_usdt }} USDT</label
-              >
-            </div>
-            <div class="d-flex justify-content-between">
-              <span>资金充足率</span>
-              <span class="ml-2 text-primary text-monospace"
-                >{{ free_further_usdt }}%</span
-              >
-            </div>
-            <div class="d-flex justify-content-end">
-              <button
-                class="btn btn-secondary"
-                type="button"
-                @click="refreshWallet"
-                @click.stop
-              >
-                刷新
-              </button>
-            </div>
-          </div>
+      <div class="ml-1">
+        <div>
+          <Wallet />
         </div>
 
-        <div class=" mt-3">
-          
+        <div class="mt-1">
+          <PremiumHaving />
         </div>
       </div>
     </div>
@@ -118,16 +25,18 @@
 </template>
 
 <script>
-document.body.style.backgroundColor="#f5f5f5"
+// 单独改变背景颜色
+document.body.style.backgroundColor = "#f5f5f5";
 
 import PremiumTable from "@/components/PremiumTable.vue";
-
+import PremiumHaving from "@/components/PremiumHaving.vue";
+import Wallet from "@/components/Wallet.vue";
+import PremiumCreater from "@/components/PremiumCreater.vue";
 
 export default {
   name: "premium",
   data: function () {
     return {
-
       havingItems: [], // 套利持仓表格
 
       free_usdt: "", // 现货剩余usdt
@@ -231,19 +140,12 @@ export default {
       }
     },
   },
-  mounted: function () {
-    // method_request("wallet_money", []).then((res) => {
-    //   this.free_usdt = res['data'][0];
-    //   this.free_further_usdt = res['data'][1];
-    // });
-
-    // // 获取套利开仓情况
-    // method_request("analyze_premium", []).then((res) => {
-    //   this.havingItems = res['data'];
-    // });
-  },
+  mounted: function () {},
   components: {
     PremiumTable,
+    PremiumHaving,
+    Wallet,
+    PremiumCreater,
   },
 };
 </script>

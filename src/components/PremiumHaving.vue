@@ -1,11 +1,14 @@
 <template>
-  <div style="overflow: auto; max-height: 20rem; background-color: #fafafa">
-    <table class="table table-hover small">
+  <div class="p-2" style="overflow: auto; max-height: 20rem; background-color: #fafafa">
+    <div class="mb-2">
+      <span class="font-weight-bold">双向持仓交易对</span>
+    </div>
+    <table class="table table-hover table-borderless table-sm small">
       <thead>
-        <tr>
-          <th>交易对</th>
-          <th>仓位</th>
-          <th>操作</th>
+        <tr class="text-muted">
+          <th class="font-weight-normal">交易对</th>
+          <th class="font-weight-normal">仓位</th>
+          <th class="font-weight-normal">操作</th>
         </tr>
       </thead>
       <tbody>
@@ -22,7 +25,7 @@
           </td>
           <td>
             <button
-              class="btn btn-secondary"
+              class="btn btn-secondary btn-sm"
               type="button"
               @click="premiumDestoryClick(item['symbol'], item['quantity'])"
               @click.stop
@@ -38,12 +41,29 @@
 
 <script>
 export default {
-  name: PremiumHaving,
+  name: "PremiumHaving",
   data: function () {
     return {
-
-    }
+      havingItems: [],
+    };
   },
-  
-}
+  mounted: function () {
+    // 获取套利开仓情况
+    this.method_request("analyze_premium", [])
+      .then((res) => {
+        this.havingItems = res["data"];
+
+        this.$toast.open({
+          message: "套利开仓情况获取成功",
+          type: "success",
+        });
+      })
+      .catch((err) => {
+        this.$toast.open({
+          message: "套利开仓情况获取失败",
+          type: "error",
+        });
+      });
+  },
+};
 </script>
