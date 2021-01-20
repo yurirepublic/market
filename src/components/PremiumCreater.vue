@@ -110,6 +110,11 @@ export default {
 
     // 交易对or开仓数改变时重新计算
     valueChanged: function () {
+      // 没有交易对的情况下直接返回
+      if (this.pair_item['symbol'] == null) {
+        return
+      }
+
       // 输入数字为空的情况下，清空计算结果
       if (this.want_money == "") {
         this.disabled_trade = true;
