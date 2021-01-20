@@ -1,10 +1,13 @@
 <template>
-  <div class="d-flex justify-content-between align-items-center">
-		<span class="text-muted small">{{ header }}</span>
-    
-    <div class="d-flex ml-3 align-items-center">
-      <span class="text-monospace">{{ content }}</span>
-      <span class="text-monospace small text-muted ml-2 align-text-bottom">{{ footer }}</span>
+  <div class="">
+    <div class="d-flex justify-content-between">
+      <div class="flex-shrink-0">
+        <span class="text-muted small">{{ header }}</span>
+      </div>
+      <div>
+        <span class="text-monospace ml-3">{{ content }}</span>
+        <span class="text-monospace small text-muted ml-2">{{ footer }}</span>
+      </div>
     </div>
   </div>
 </template>
@@ -17,10 +20,7 @@ export default {
       type: String,
       defalut: "",
     },
-    content: {
-      type: [String, Number],
-      defalut: "",
-    },
+    content: "",
     footer: {
       type: String,
       defalut: "",

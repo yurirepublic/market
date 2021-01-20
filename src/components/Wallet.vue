@@ -1,9 +1,13 @@
 <template>
-  <div class="p-2" style="background-color: #fafafa">
-    <div class="mb-2">
+  <div
+    class="p-2 d-flex flex-column"
+    style="background-color: #fafafa; min-width: 17rem"
+  >
+    <div class="mb-2 d-flex justify-content-between align-items-center">
       <span class="font-weight-bold">USDT资产</span>
+      <RefreshButton :anime="refresh_button_anime" @click="refresh" />
     </div>
-    
+
     <InfoItem header="可用现货" :content="usdt_free" footer="USDT" />
     <InfoItem header="可用期货" :content="usdt_further_free" footer="USDT" />
 
@@ -13,21 +17,22 @@
         >{{ free_further_usdt }}%</span
       >
     </div> -->
-    <div class="d-flex justify-content-end">
+    <!-- <div class="">
       <button
-        class="btn btn-secondary btn-sm"
+        class="btn btn-secondary btn-sm float-right"
         type="button"
         @click="refresh"
         @click.stop
       >
         刷新
       </button>
-    </div>
+    </div> -->
   </div>
 </template>
 
 <script>
-import InfoItem from "@/components/InfoItem.vue"
+import InfoItem from "@/components/InfoItem.vue";
+import RefreshButton from "@/components/RefreshButton.vue";
 
 export default {
   name: "Wallet",
@@ -35,6 +40,7 @@ export default {
     return {
       usdt_free: "",
       usdt_further_free: "",
+      refresh_button_anime: false,
     };
   },
   mounted: function () {
@@ -42,6 +48,8 @@ export default {
   },
   methods: {
     refresh() {
+      this.refresh_button_anime = true;
+
       this.method_request("wallet_money", [])
         .then((res) => {
           this.usdt_free = res["data"]["usdt_free"];
@@ -57,14 +65,19 @@ export default {
             message: "钱包金额获取失败",
             type: "error",
           });
+        })
+        .finally(() => {
+          this.refresh_button_anime = false;
         });
     },
   },
   components: {
-    InfoItem
-  }
+    InfoItem,
+    RefreshButton,
+  },
 };
 </script>
 
 <style scoped>
+  
 </style>

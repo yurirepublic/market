@@ -1,25 +1,26 @@
 <template>
   <div class="p-2" style="background-color: #fafafa">
-    <div class="mb-2">
+    <div class="mb-2 d-flex justify-content-between align-items-center">
       <span class="font-weight-bold">套利行情</span>
+      <RefreshButton :anime="refresh_button_anime" @click="refresh"/>
     </div>
     <div style="overflow: auto; max-height: 15rem">
       <table class="table table-hover table-borderless table-sm small">
         <thead>
           <tr class="text-muted">
-            <th class="font-weight-normal">交易对</th>
-            <th class="font-weight-normal">资金费率</th>
-            <th class="font-weight-normal">现货币价(U)</th>
-            <th class="font-weight-normal">期货溢价</th>
+            <th class="font-weight-normal" nowrap="nowrap">交易对</th>
+            <th class="font-weight-normal" nowrap="nowrap">资金费率</th>
+            <th class="font-weight-normal" nowrap="nowrap">现货币价(U)</th>
+            <th class="font-weight-normal" nowrap="nowrap">期货溢价</th>
           </tr>
         </thead>
         <tbody>
           <tr
             v-for="item in items"
             :key="item['symbol']"
-            @click="premiumClickAction(item['symbol'])"
+            @click="$emit('click', item)"
           >
-            <td class="text-monospace" style="">
+            <td class="text-monospace" style="" nowrap="nowrap">
               {{ item["symbol"] }}
             </td>
 
@@ -27,6 +28,7 @@
               class="text-monospace"
               style="color: #02c076"
               v-if="parseFloat(item['rate']) > 0"
+              nowrap="nowrap"
             >
               {{ item["rate"] }}%
             </td>
@@ -34,14 +36,19 @@
               class="text-monospace"
               style="color: #f84960"
               v-if="parseFloat(item['rate']) < 0"
+              nowrap="nowrap"
             >
               {{ item["rate"] }}%
             </td>
-            <td class="text-monospace" v-if="parseFloat(item['rate']) == 0">
+            <td
+              class="text-monospace"
+              v-if="parseFloat(item['rate']) == 0"
+              nowrap="nowrap"
+            >
               {{ item["rate"] }}%
             </td>
 
-            <td class="text-monospace">
+            <td class="text-monospace" nowrap="nowrap">
               {{ item["price"] }}
             </td>
 
@@ -49,6 +56,7 @@
               class="text-monospace"
               style="color: #02c076"
               v-if="parseFloat(item['further_premium']) > 0"
+              nowrap="nowrap"
             >
               {{ item["further_premium"] }}%
             </td>
@@ -56,12 +64,14 @@
               class="text-monospace"
               style="color: #f84960"
               v-if="parseFloat(item['further_premium']) < 0"
+              nowrap="nowrap"
             >
               {{ item["further_premium"] }}%
             </td>
             <td
               class="text-monospace"
               v-if="parseFloat(item['further_premium']) == 0"
+              nowrap="nowrap"
             >
               {{ item["further_premium"] }}%
             </td>
@@ -73,15 +83,19 @@
 </template>
 
 <script>
+import RefreshButton from "@/components/RefreshButton.vue";
+
 export default {
   name: "PremiumTable",
   data: function () {
     return {
       items: [],
+      refresh_button_anime: false,
     };
   },
   methods: {
     refresh: function () {
+      this.refresh_button_anime = true;
       this.method_request("request_premium", [])
         .then((res) => {
           this.items = res["data"];
@@ -95,11 +109,17 @@ export default {
             message: "资金费率表格加载失败",
             type: "error",
           });
+        })
+        .finally(() => {
+          this.refresh_button_anime = false;
         });
     },
   },
   mounted: function () {
     this.refresh();
+  },
+  components: {
+    RefreshButton,
   },
 };
 </script>

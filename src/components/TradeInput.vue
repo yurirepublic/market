@@ -8,8 +8,9 @@
         class="form-control text-right"
         :type="type"
         :placeholder="placeholder"
-        :value="content"
+        :value="value"
 				@input="$emit('input', $event.target.value)"
+        :disabled="disabled"
       />
       <span v-if="footer != ''" class="input-group-text text-muted">{{
         footer
@@ -38,10 +39,12 @@ export default {
       type: String,
       default: "text",
     },
+    disabled: false,
+    value: ''
   },
   data: function () {
 		return {
-			content: "",
+
 		}
   },
 };
@@ -68,6 +71,10 @@ export default {
   box-shadow: none;
   background-color: transparent;
   font-family: "JetBrainsMono";
+}
+
+.form-control:disabled {
+  background-color: transparent;
 }
 
 .form-control:focus {

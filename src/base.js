@@ -1,7 +1,7 @@
 
 import request from 'request'
 
-async function method_request (func, args) {
+async function method_request(func, args) {
   return await new Promise(function (resolve, reject) {
     request.post(
       {
@@ -32,8 +32,45 @@ async function method_request (func, args) {
   });
 }
 
-export default {
-    install(Vue, option) {
-        Vue.prototype.method_request = method_request
+function isNumber(value) {
+  if (undefined === value || null === value) {
+    return false;
+  }
+  if (typeof value == "number") {
+    return true;
+  }
+  return !isNaN(value - 0);
+}
+
+import Vue from 'vue'
+
+function showToast() {
+  return {
+    success: function (text) {
+      Vue.$toast.open({
+        message: text,
+        type: 'success'
+      })
+    },
+    error: function (text) {
+      Vue.$toast.open({
+        message: text,
+        type: 'error'
+      })
+    },
+    warning: function (text) {
+      Vue.$toast.open({
+        message: text,
+        type: 'warning'
+      })
     }
+  }
+}
+
+export default {
+  install(Vue, option) {
+    Vue.prototype.method_request = method_request
+    Vue.prototype.isNumber = isNumber
+    Vue.prototype.showToast = showToast
+  }
 }
