@@ -5,16 +5,16 @@
     @click="$emit('click', '$event')"
     :disabled="disabled"
   >
-    <b-icon icon="arrow-counterclockwise" :animation="animation"></b-icon>
+    <b-icon :icon="icon"></b-icon>
   </button>
 </template>
 
 <script>
 export default {
-  name: "RefreshButton",
+  name: "ClickableIcon",
 
   props: {
-    anime: false,
+    icon: "",
   },
 
   data: function () {
@@ -41,6 +41,10 @@ export default {
 
 <style scoped>
 button {
+  background-color: transparent;
+  border: none;
+}
+button:active {
   background-color: transparent;
   border: none;
 }
