@@ -77,7 +77,7 @@ export default {
     // 转账操作
     transfer_to_main(event) {
       this.disabled_transfer_button = true;
-
+      this.showToast().info("开始转账");
       this.method_request("transfer", [
         "UMFUTURE_MAIN",
         "BNB",
@@ -98,6 +98,8 @@ export default {
     },
 
     transfer_to_future(event) {
+      this.disabled_transfer_button = true;
+      this.showToast().info("开始转账");
       this.method_request("transfer", [
         "MAIN_UMFUTURE",
         "BNB",

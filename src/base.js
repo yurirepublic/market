@@ -63,6 +63,12 @@ function showToast() {
         message: text,
         type: 'warning'
       })
+    },
+    info: function (text) {
+      Vue.$toast.open({
+        message: text,
+        type: 'info'
+      })
     }
   }
 }
