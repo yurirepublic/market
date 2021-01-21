@@ -6,7 +6,7 @@
     </div>
     <router-view/>
   </div> -->
-  <premium />
+  <premium style="-webkit-app-region: drag" />
 </template>
 
 <script>

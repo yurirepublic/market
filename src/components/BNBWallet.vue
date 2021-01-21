@@ -40,8 +40,8 @@
       </TransferInput>
     </div>
 
-    <InfoItem header="期货账户" :content="bnb_further_free" footer="BNB" />
-    <span class="text-muted small align-self-end">{{ bnb_further_usdt }}</span>
+    <InfoItem header="期货账户" :content="bnb_future_free" footer="BNB" />
+    <span class="text-muted small align-self-end">{{ bnb_future_usdt }}</span>
   </div>
 </template>
 
@@ -56,10 +56,10 @@ export default {
   data: function () {
     return {
       bnb_free: "",
-      bnb_further_free: "",
+      bnb_future_free: "",
 
       bnb_usdt: "",
-      bnb_further_usdt: "",
+      bnb_future_usdt: "",
 
       show_transfer: false,
 
@@ -126,11 +126,11 @@ export default {
       this.method_request("bnb_asset", [])
         .then((res) => {
           this.bnb_free = res["data"]["asset"];
-          this.bnb_further_free = res["data"]["asset_further"];
+          this.bnb_future_free = res["data"]["asset_future"];
 
           this.bnb_usdt = "≈ " + res["data"]["asset_usdt"] + " USDT";
-          this.bnb_further_usdt =
-            "≈ " + res["data"]["asset_further_usdt"] + " USDT";
+          this.bnb_future_usdt =
+            "≈ " + res["data"]["asset_future_usdt"] + " USDT";
           this.showToast().success("成功获取BNB资产");
         })
         .catch((error) => {

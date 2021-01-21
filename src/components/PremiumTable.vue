@@ -55,25 +55,25 @@
             <td
               class="text-monospace"
               style="color: #02c076"
-              v-if="parseFloat(item['further_premium']) > 0"
+              v-if="parseFloat(item['future_premium']) > 0"
               nowrap="nowrap"
             >
-              {{ item["further_premium"] }}%
+              {{ item["future_premium"] }}%
             </td>
             <td
               class="text-monospace"
               style="color: #f84960"
-              v-if="parseFloat(item['further_premium']) < 0"
+              v-if="parseFloat(item['future_premium']) < 0"
               nowrap="nowrap"
             >
-              {{ item["further_premium"] }}%
+              {{ item["future_premium"] }}%
             </td>
             <td
               class="text-monospace"
-              v-if="parseFloat(item['further_premium']) == 0"
+              v-if="parseFloat(item['future_premium']) == 0"
               nowrap="nowrap"
             >
-              {{ item["further_premium"] }}%
+              {{ item["future_premium"] }}%
             </td>
           </tr>
         </tbody>

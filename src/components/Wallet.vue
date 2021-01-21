@@ -36,7 +36,7 @@
         <b-icon icon="box-arrow-down"></b-icon>
       </TransferInput>
     </div>
-    <InfoItem header="可用期货" :content="usdt_further_free" footer="USDT" />
+    <InfoItem header="可用期货" :content="usdt_future_free" footer="USDT" />
   </div>
 </template>
 
@@ -51,7 +51,7 @@ export default {
   data: function () {
     return {
       usdt_free: "",
-      usdt_further_free: "",
+      usdt_future_free: "",
       refresh_button_anime: false,
 
       disabled_transfer_button: false,
@@ -116,7 +116,7 @@ export default {
       this.method_request("wallet_money", [])
         .then((res) => {
           this.usdt_free = res["data"]["usdt_free"];
-          this.usdt_further_free = res["data"]["usdt_further_free"];
+          this.usdt_future_free = res["data"]["usdt_future_free"];
 
           this.$toast.open({
             message: "成功获取钱包金额",

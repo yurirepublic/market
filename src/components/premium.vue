@@ -46,7 +46,7 @@ export default {
       // havingItems: [], // 套利持仓表格
 
       // free_usdt: "", // 现货剩余usdt
-      // free_further_usdt: "", // 期货剩余usdt
+      // free_future_usdt: "", // 期货剩余usdt
 
       // pair_symbol: "", // 想要套利的交易对
       // create_value: "", // 开仓的总价值
@@ -67,11 +67,11 @@ export default {
     // // 刷新账户余额
     // refreshWallet: function () {
     //   this.free_usdt = "";
-    //   this.free_further_usdt = "";
+    //   this.free_future_usdt = "";
     //   // 获取账户余额
     //   method_request("wallet_money", []).then((res) => {
     //     this.free_usdt = res[0];
-    //     this.free_further_usdt = res[1];
+    //     this.free_future_usdt = res[1];
     //   });
     // },
 
