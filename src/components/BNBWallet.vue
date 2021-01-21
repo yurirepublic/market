@@ -6,13 +6,13 @@
     <div class="mb-2 d-flex justify-content-between align-items-center">
       <span class="font-weight-bold">BNB资产</span>
 
-      <div class="flex">
-        <RefreshButton :anime="refresh_button_anime" @click="refresh" />
+      <div class="d-flex">
         <ClickableIcon
           class=""
           icon="arrow-left-right"
           @click="show_transfer = show_transfer ? false : true"
         />
+        <RefreshButton :anime="refresh_button_anime" @click="refresh" />
       </div>
     </div>
 
