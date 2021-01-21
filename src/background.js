@@ -15,8 +15,9 @@ protocol.registerSchemesAsPrivileged([
 async function createWindow() {
   // Create the browser window.
   const win = new BrowserWindow({
-    width: 1366,
-    height: 768,
+    // 这里针对开发环境弄大一点宽度
+    width: app.isPackaged ? 1024 : 1366,
+    height: app.isPackaged ? 480 : 768,
     webPreferences: {
       // Use pluginOptions.nodeIntegration, leave this alone
       // See nklayman.github.io/vue-cli-plugin-electron-builder/guide/security.html#node-integration for more info
@@ -30,6 +31,11 @@ async function createWindow() {
     e.preventDefault()
     win.destroy()
   })
+
+  // 开发者模式把窗口弄宽一点方便开发
+  if (!app.isPackaged) {
+    win.setSize(1366, 768)
+  }
 
   if (process.env.WEBPACK_DEV_SERVER_URL) {
     // Load the url of the dev server if in development mode
