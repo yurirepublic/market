@@ -13,15 +13,18 @@ async function method_request(func, args) {
       },
       function (err, httpResponse, body) {
         if (err) {
+          console.error(err)
           reject(err);
           return;
         }
         if (httpResponse.statusCode != 200) {
+          console.error(httpResponse)
           reject(httpResponse);
           return;
         }
         let res = JSON.parse(body);
         if (res["msg"] != "success") {
+          console.error(res)
           reject(res);
           return;
         }

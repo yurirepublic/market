@@ -33,6 +33,7 @@
               type="button"
               @click="CloseOut(item)"
               @click.stop
+              :disabled="button_disabled"
             >
               平仓
             </button>
@@ -52,6 +53,8 @@ export default {
     return {
       havingItems: [],
       refresh_button_anime: false,
+
+      button_disabled: false,
     };
   },
   mounted: function () {
@@ -87,10 +90,21 @@ export default {
     // 平仓
     CloseOut(item) {
       console.log(item);
+      this.button_disabled = true;
       // 平仓下单
-      console.log("平仓下单符号", item['symbol']);
-      console.log("平仓下单数量", item['quantity']);
-      this.method_request("destroy_premium", item['symbol'], item['quantity']);
+      console.log("平仓下单符号", item["symbol"]);
+      console.log("平仓下单数量", item["quantity"]);
+      this.showToast().info("开始平仓" + item["symbol"]);
+      this.method_request("destroy_premium", [item["symbol"], item["quantity"]])
+        .then((res) => {
+          this.showToast().success(item["symbol"] + "成功平仓");
+        })
+        .catch((err) => {
+          this.showToast().error("平仓失败");
+        })
+        .finally(() => {
+          this.button_disabled = false;
+        });
     },
   },
 
