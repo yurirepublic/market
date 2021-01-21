@@ -6,18 +6,22 @@
     </div>
     <router-view/>
   </div> -->
-  <premium style="-webkit-app-region: drag" />
+  <div class="d-flex flex-column">
+    <TitleBar style="-webkit-app-region: drag" />
+    <premium />
+  </div>
 </template>
 
 <script>
-
-import premium from '@/components/premium.vue'
+import premium from "@/components/premium.vue";
+import TitleBar from "@/components/TitleBar.vue";
 
 export default {
   components: {
-    premium
-  }
-}
+    premium,
+    TitleBar,
+  },
+};
 </script>
 
 <style lang="less">

@@ -5,6 +5,8 @@ import { createProtocol } from 'vue-cli-plugin-electron-builder/lib'
 import installExtension, { VUEJS_DEVTOOLS } from 'electron-devtools-installer'
 const isDevelopment = process.env.NODE_ENV !== 'production'
 
+
+
 // Scheme must be registered before the app is ready
 protocol.registerSchemesAsPrivileged([
   { scheme: 'app', privileges: { secure: true, standard: true } }
@@ -18,11 +20,16 @@ async function createWindow() {
     webPreferences: {
       // Use pluginOptions.nodeIntegration, leave this alone
       // See nklayman.github.io/vue-cli-plugin-electron-builder/guide/security.html#node-integration for more info
-      nodeIntegration: process.env.ELECTRON_NODE_INTEGRATION
+      nodeIntegration: process.env.ELECTRON_NODE_INTEGRATION,
     },
     frame: false,
   })
   win.setMenu(null)
+
+  win.on('close', function (e) {
+    e.preventDefault()
+    win.destroy()
+  })
 
   if (process.env.WEBPACK_DEV_SERVER_URL) {
     // Load the url of the dev server if in development mode
@@ -33,6 +40,23 @@ async function createWindow() {
     // Load the index.html when not in development
     win.loadURL('app://./index.html')
   }
+
+  // 定义一下IPC事件
+  const ipcMain = require('electron').ipcMain
+  ipcMain.on("window-minimize", function () {
+    win.minimize()
+  })
+  ipcMain.on("window-maximize", function () {
+    win.maximize()
+  })
+  ipcMain.on('window-restore', function () {
+    win.restore()
+  })
+  ipcMain.on("window-close", function () {
+    console.log('window-close')
+    win.close()
+  })
+
 }
 
 // Quit when all windows are closed.

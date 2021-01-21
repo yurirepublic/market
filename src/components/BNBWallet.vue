@@ -9,7 +9,7 @@
       <div class="d-flex">
         <ClickableIcon
           class=""
-          icon="arrow-left-right"
+          name="ri-arrow-left-right-line"
           @click="show_transfer = show_transfer ? false : true"
         />
         <RefreshButton :anime="refresh_button_anime" @click="refresh" />

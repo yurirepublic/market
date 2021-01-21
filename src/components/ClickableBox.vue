@@ -5,13 +5,13 @@
     @click="$emit('click', '$event')"
     :disabled="disabled"
   >
-    <v-icon :name="name"></v-icon>
+    <slot></slot>
   </button>
 </template>
 
 <script>
 export default {
-  name: "ClickableIcon",
+  name: "ClickableBox",
 
   props: {
     name: "",
