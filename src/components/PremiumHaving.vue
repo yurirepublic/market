@@ -59,7 +59,7 @@
         </tr>
       </thead>
       <tbody>
-        <tr v-for="(item, index) in havingItemsSingle" :key="item['symbol']">
+        <tr v-for="item in havingItemsSingle" :key="item['symbol']">
           <td class="text-monospace align-middle">
             {{ item["symbol"] }}
           </td>

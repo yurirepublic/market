@@ -26,7 +26,7 @@
       </div>
 
       <div class="ml-1">
-        <div class="mt-1">
+        <div>
           <PremiumHaving />
         </div>
       </div>
