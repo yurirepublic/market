@@ -38,15 +38,6 @@
           >
             双向开仓
           </button>
-          <!-- <button
-            type="submit"
-            class="btn btn-primary mt-3 ml-2 px-2"
-            @click="primaryTradeClick"
-            :disabled="disabled_trade"
-            style="background-color: #f84960; border-color: transparent"
-          >
-            双向负溢价开仓
-          </button> -->
         </div>
       </div>
     </div>
@@ -93,26 +84,29 @@ export default {
     // 开仓下单
     OpenPosition: function () {
       // 取出要下单的交易对
-      let pair_symbol = this.pair_symbol;
+      let pair_symbol = this.pair_item["symbol"];
       // 取出要下单的数量
       let quantity = this.quantity;
       // 发送开仓指令
-      this.disabled_trade = true
-      this.method_request("create_premium", [pair_symbol, quantity]).then((res) => {
-        this.showToast().success('开仓成功')
-      }).catch(err => {
-        console.log(this.showToast)
-        this.showToast().error('开仓失败')
-      }).finally(() => {
-        this.disabled_trade = false
-      })
+      this.disabled_trade = true;
+      this.method_request("create_premium", [pair_symbol, quantity])
+        .then((res) => {
+          this.showToast().success("开仓成功");
+        })
+        .catch((err) => {
+          console.log(this.showToast);
+          this.showToast().error("开仓失败");
+        })
+        .finally(() => {
+          this.disabled_trade = false;
+        });
     },
 
     // 交易对or开仓数改变时重新计算
     valueChanged: function () {
       // 没有交易对的情况下直接返回
-      if (this.pair_item['symbol'] == null) {
-        return
+      if (this.pair_item["symbol"] == null) {
+        return;
       }
 
       // 输入数字为空的情况下，清空计算结果
