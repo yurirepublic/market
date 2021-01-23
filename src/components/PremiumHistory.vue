@@ -1,7 +1,7 @@
 <template>
   <div class="p-2" style="background-color: #fafafa">
     <div class="mb-2 d-flex justify-content-between">
-      <span class="font-weight-bold">100次资金费率表</span>
+      <span class="font-weight-bold">100次资金费率图表</span>
       <span>{{ pair_item["symbol"] }}</span>
     </div>
     <TrendChart

@@ -2,14 +2,15 @@
   <div class="p-2" style="background-color: #fafafa">
     <div class="mb-2 d-flex justify-content-between align-items-center">
       <span class="font-weight-bold">套利行情</span>
-      <RefreshButton :anime="refresh_button_anime" @click="refresh"/>
+      <RefreshButton :anime="refresh_button_anime" @click="refresh" />
     </div>
     <div style="overflow: auto; max-height: 15rem">
       <table class="table table-hover table-borderless table-sm small">
         <thead>
           <tr class="text-muted">
             <th class="font-weight-normal" nowrap="nowrap">交易对</th>
-            <th class="font-weight-normal" nowrap="nowrap">资金费率</th>
+            <th class="font-weight-normal" nowrap="nowrap">当前费率</th>
+            <th class="font-weight-normal" nowrap="nowrap">平均费率</th>
             <th class="font-weight-normal" nowrap="nowrap">现货币价(U)</th>
             <th class="font-weight-normal" nowrap="nowrap">期货溢价</th>
           </tr>
@@ -46,6 +47,30 @@
               nowrap="nowrap"
             >
               {{ item["rate"] }}%
+            </td>
+
+            <td
+              class="text-monospace"
+              style="color: #02c076"
+              v-if="parseFloat(item['avg_rate']) > 0"
+              nowrap="nowrap"
+            >
+              {{ item["avg_rate"] }}%
+            </td>
+            <td
+              class="text-monospace"
+              style="color: #f84960"
+              v-if="parseFloat(item['avg_rate']) < 0"
+              nowrap="nowrap"
+            >
+              {{ item["avg_rate"] }}%
+            </td>
+            <td
+              class="text-monospace"
+              v-if="parseFloat(item['avg_rate']) == 0"
+              nowrap="nowrap"
+            >
+              {{ item["avg_rate"] }}%
             </td>
 
             <td class="text-monospace" nowrap="nowrap">

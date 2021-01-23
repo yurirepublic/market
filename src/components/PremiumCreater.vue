@@ -7,7 +7,7 @@
       <div class="">
         <div>
           <TradeInput
-            header="双向交易对"
+            header="交易对"
             placeholder="点击表格"
             disabled="true"
             :value="pair_item['symbol']"
@@ -88,7 +88,6 @@ export default {
       // wallet_future_bnb_value: 0, // 可用的期货bnb价值
 
       want_money: "", // 想要开仓的总价值
-      want_rate: "", // 开仓的合约杠杆率
 
       benefit: 0, // 计算的收益
       tax: 0, // 计算的手续费

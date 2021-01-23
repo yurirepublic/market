@@ -13,6 +13,10 @@
 
       <div class="ml-1">
         <div>
+          <PremiumHistory :pair_item="pair_item" />
+        </div>
+
+        <div class="mt-1">
           <Wallet />
         </div>
 
@@ -22,10 +26,6 @@
 
         <div class="mt-1">
           <PremiumHaving />
-        </div>
-
-        <div class="mt-1">
-          <PremiumHistory :pair_item="pair_item" />
         </div>
       </div>
     </div>
