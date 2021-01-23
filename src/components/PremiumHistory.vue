@@ -51,19 +51,21 @@ export default {
 
   watch: {
     pair_item() {
-      this.method_request("premium_history", [this.pair_item["symbol"]]).then(
-        (res) => {
-          this.price_list = res["data"]["rate"];
-          let temp = [];
-          res["data"]["time"].forEach((e) => {
-            let date = new Date(e);
-            if (date.getHours() == 0) {
-              temp.push(date.getDate());
-            }
-          });
-          this.times = temp;
-        }
-      );
+      this.price_list = this.pair_item["premium_history"]["rate"];
+      this.times = this.pair_item["premium_history"]["time"];
+      // this.method_request("premium_history", [this.pair_item["symbol"]]).then(
+      //   (res) => {
+      //     this.price_list = res["data"]["rate"];
+      //     let temp = [];
+      //     res["data"]["time"].forEach((e) => {
+      //       let date = new Date(e);
+      //       if (date.getHours() == 0) {
+      //         temp.push(date.getDate());
+      //       }
+      //     });
+      //     this.times = temp;
+      //   }
+      // );
     },
   },
 
