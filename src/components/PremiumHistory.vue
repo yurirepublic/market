@@ -1,6 +1,6 @@
 <template>
   <div class="p-2" style="background-color: #fafafa">
-    <div class="mb-2">
+    <div class="mb-2 d-flex justify-content-between">
       <span class="font-weight-bold">100次资金费率表</span>
       <span>{{ pair_item["symbol"] }}</span>
     </div>
@@ -15,6 +15,12 @@
       :labels="{
         yLabels: 5,
         yLabelsTextFormatter: (val) => Math.round(val * 10000) / 100 + '%',
+      }"
+      :grid="{
+        horizontalLines: true,
+        horizontalLinesNumber: 5,
+        verticalLines: true,
+        verticalLinesNumber: 1,
       }"
     >
     </TrendChart>

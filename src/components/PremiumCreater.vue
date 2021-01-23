@@ -14,20 +14,32 @@
           />
           <TradeInput
             class="mt-2"
-            header="双向总金额"
+            header="单方开仓金额"
             footer="USDT"
             v-model="want_money"
           />
         </div>
       </div>
-      <div class="mt-3">
+      <div class="mt-3 d-flex flex-column">
         <InfoItem header="每边开仓" :content="quantity" :footer="symbol" />
         <InfoItem header="预计8小时收益" :content="benefit" footer="USDT" />
-        <InfoItem
-          header="预计开仓手续费(以0.075%)"
+        <!-- <InfoItem
+          header="现货开仓手续费(以0.075%)"
           :content="tax"
           footer="USDT"
         />
+        <InfoItem
+          header="期货开仓手续费(以0.04%)"
+          :content="tax_future"
+          footer="USDT"
+        /> -->
+        <InfoItem header="总开仓手续费" :content="total_tax" footer="USDT" />
+        <span class="text-muted small align-self-end"
+          >期货手续费(以0.075%) {{ tax }} USDT</span
+        >
+        <span class="text-muted small align-self-end float-right"
+          >现货手续费(以0.040%) {{ tax_future }} USDT</span
+        >
         <div class="d-flex">
           <button
             type="submit"
@@ -36,8 +48,17 @@
             :disabled="disabled_trade"
             style="background-color: #02c076; border-color: transparent"
           >
-            双向开仓
+            多现货 空期货
           </button>
+          <!-- <button
+            type="submit"
+            class="btn btn-primary mt-3 px-2 ml-5"
+            @click="OpenPosition"
+            :disabled="disabled_trade"
+            style="background-color: #f84960; border-color: transparent"
+          >
+            多期货 空现货
+          </button> -->
         </div>
       </div>
     </div>
@@ -60,11 +81,19 @@ export default {
 
   data: function () {
     return {
+      // wallet_usdt: 0, // 可用的usdt数量
+      // wallet_future_usdt: 0, // 可用的期货usdt数量
+
+      // wallet_bnb_value: 0, // 可用的bnb价值
+      // wallet_future_bnb_value: 0, // 可用的期货bnb价值
+
       want_money: "", // 想要开仓的总价值
       want_rate: "", // 开仓的合约杠杆率
 
       benefit: 0, // 计算的收益
       tax: 0, // 计算的手续费
+      tax_future: 0,
+      total_tax: 0, // 总开仓手续费
       quantity: 0, // 开仓的币数(需要用于最终下单，所以是字符串)
       symbol: "", // 开仓的货币符号(仅用于显示)
       disabled_trade: true, // 是否将下单按钮无效化
@@ -109,13 +138,19 @@ export default {
         return;
       }
 
-      // 输入数字为空的情况下，清空计算结果
-      if (this.want_money == "") {
+      var clear_output = () => {
         this.disabled_trade = true;
         this.benefit = 0;
         this.tax = 0;
+        this.tax_future = 0;
+        this.total_tax = 0;
         this.quantity = 0;
         this.symbol = "";
+      };
+
+      // 输入数字为空的情况下，清空计算结果
+      if (this.want_money == "") {
+        clear_output();
         return;
       }
 
@@ -123,18 +158,14 @@ export default {
       if (
         !(this.isNumber(this.want_money) && parseFloat(this.want_money) >= 0)
       ) {
-        this.disabled_trade = true;
-        this.benefit = 0;
-        this.tax = 0;
-        this.quantity = 0;
-        this.symbol = "";
+        clear_output();
         return;
       }
 
-      let side_money = parseFloat(this.want_money) / 2; // 单边开仓价值
-      let price = parseFloat(this.pair_item["price"]);
-      let percision = this.pair_item["percision"];
-      let rate = parseFloat(this.pair_item["rate"]);
+      let side_money = parseFloat(this.want_money); // 单边开仓价值
+      let price = parseFloat(this.pair_item["price"]); // 交易对单价
+      let percision = this.pair_item["percision"]; // 交易对精度
+      let rate = parseFloat(this.pair_item["rate"]); // 交易对资金费率
 
       let quantity = side_money / price;
       // 将数字乘以精度
@@ -148,14 +179,18 @@ export default {
       this.quantity = quantity.toString();
 
       // 计算收益和手续费
-      let benefit = (side_money * 2 * rate) / 100;
-      let tax = (side_money * 2 * 0.075) / 100;
+      let benefit = (side_money * rate) / 100;
+      let tax = (side_money * 0.075) / 100;
+      let tax_future = (side_money * 0.04) / 100;
+      let total_tax = tax + tax_future;
 
       benefit = Math.round(benefit * 1000) / 1000;
       tax = Math.round(tax * 1000) / 1000;
 
       this.benefit = benefit;
       this.tax = tax;
+      this.tax_future = tax_future;
+      this.total_tax = total_tax;
 
       this.symbol = this.pair_item["symbol"].replace("USDT", "");
       this.disabled_trade = false;
