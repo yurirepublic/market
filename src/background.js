@@ -4,6 +4,7 @@ import { app, protocol, BrowserWindow } from 'electron'
 import { createProtocol } from 'vue-cli-plugin-electron-builder/lib'
 import installExtension, { VUEJS_DEVTOOLS } from 'electron-devtools-installer'
 const isDevelopment = process.env.NODE_ENV !== 'production'
+import fs from 'fs'
 
 
 
@@ -16,8 +17,8 @@ async function createWindow() {
   // Create the browser window.
   const win = new BrowserWindow({
     // 这里针对开发环境弄大一点宽度
-    width: app.isPackaged ? 996 : 1366,
-    height: app.isPackaged ? 635 : 768,
+    width: isDevelopment ? 996 : 1366,
+    height: isDevelopment ? 635 : 768,
     webPreferences: {
       // Use pluginOptions.nodeIntegration, leave this alone
       // See nklayman.github.io/vue-cli-plugin-electron-builder/guide/security.html#node-integration for more info
@@ -47,6 +48,20 @@ async function createWindow() {
     win.loadURL('app://./index.html')
   }
 
+  // 使用fs读取配置文件
+  const local_config = {}
+  fs.readFile('config.json', 'utf-8', function (err, data) {
+    if (err.code === 'ENOENT') {
+      // 没有配置文件就写入默认设置
+      local_config['server_ip'] = ''
+      local_config['server_port'] = ''
+      local_config['password'] = ''
+      return;
+    }
+    // 有配置文件就读成json
+    local_config = JSON.parse(data)
+  })
+
   // 定义一下IPC事件
   const ipcMain = require('electron').ipcMain
   ipcMain.on("window-minimize", function () {
@@ -61,6 +76,9 @@ async function createWindow() {
   ipcMain.on("window-close", function () {
     console.log('window-close')
     win.close()
+  })
+  ipcMain.on("read-config", function (event, arg) {
+    event.sender.send("read-config-reply", local_config)
   })
 
 }

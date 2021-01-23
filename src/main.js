@@ -34,12 +34,16 @@ import { FaRegularWindowMaximize } from 'oh-vue-icons/icons'
 import { FaRegularWindowMinimize } from 'oh-vue-icons/icons'
 import { RiArrowLeftRightLine } from 'oh-vue-icons/icons'
 import { FaRegularWindowRestore } from 'oh-vue-icons/icons'
+import { RiCoinsLine } from 'oh-vue-icons/icons'
+import { RiSettings4Line } from 'oh-vue-icons/icons'
 OhVueIcon.add([
   RiCloseLine,
   FaRegularWindowMinimize,
   FaRegularWindowMaximize,
   RiArrowLeftRightLine,
-  FaRegularWindowRestore
+  FaRegularWindowRestore,
+  RiCoinsLine,
+  RiSettings4Line
 ])
 
 Vue.component('v-icon', OhVueIcon)

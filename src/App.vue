@@ -1,4 +1,11 @@
 <template>
+  <div class="d-flex flex-column">
+    <TitleBar style="-webkit-app-region: drag" />
+    <div class="d-flex flex">
+      <FuncSwitchBar />
+      <premium />
+    </div>
+  </div>
   <!-- <div id="app">
     <div id="nav">
       <router-link to="/">Home</router-link> |
@@ -6,20 +13,18 @@
     </div>
     <router-view/>
   </div> -->
-  <div class="d-flex flex-column">
-    <TitleBar style="-webkit-app-region: drag" />
-    <premium />
-  </div>
 </template>
 
 <script>
 import premium from "@/components/premium.vue";
 import TitleBar from "@/components/TitleBar.vue";
+import FuncSwitchBar from "@/components/FuncSwitchBar.vue";
 
 export default {
   components: {
     premium,
     TitleBar,
+    FuncSwitchBar,
   },
 };
 </script>
