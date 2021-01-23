@@ -16,7 +16,7 @@ async function createWindow() {
   // Create the browser window.
   const win = new BrowserWindow({
     // 这里针对开发环境弄大一点宽度
-    width: app.isPackaged ? 727 : 1366,
+    width: app.isPackaged ? 996 : 1366,
     height: app.isPackaged ? 635 : 768,
     webPreferences: {
       // Use pluginOptions.nodeIntegration, leave this alone

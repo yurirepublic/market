@@ -11,7 +11,7 @@
         </div>
       </div>
 
-      <div class="ml-1">
+      <div class="ml-1" style="max-width: 20rem">
         <div>
           <PremiumHistory :pair_item="pair_item" />
         </div>
@@ -23,7 +23,9 @@
         <div class="mt-1">
           <BNBWallet />
         </div>
+      </div>
 
+      <div class="ml-1">
         <div class="mt-1">
           <PremiumHaving />
         </div>
