@@ -35,9 +35,6 @@
 </template>
 
 <script>
-// 单独改变背景颜色
-document.body.style.backgroundColor = "#f5f5f5";
-
 import PremiumTable from "@/components/PremiumTable.vue";
 import PremiumHaving from "@/components/PremiumHaving.vue";
 import Wallet from "@/components/Wallet.vue";

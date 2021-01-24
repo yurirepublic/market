@@ -56,6 +56,7 @@ async function createWindow() {
       local_config['server_ip'] = ''
       local_config['server_port'] = ''
       local_config['password'] = ''
+      local_config['proxy_url'] = ''
       return;
     }
     // 有配置文件就读成json

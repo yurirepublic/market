@@ -1,7 +1,7 @@
 <template>
-  <div class="d-flex flex-column">
+  <div class="d-flex flex-column" style="height: 100%">
     <TitleBar style="-webkit-app-region: drag" />
-    <div class="d-flex flex">
+    <div class="d-flex" style="height: 100%">
       <FuncSwitchBar />
       <premium />
     </div>
@@ -16,6 +16,10 @@
 </template>
 
 <script>
+// 单独改变背景颜色
+// document.body.style.backgroundColor = "#f5f5f5";
+// document.body.style.height = "100%";
+
 import premium from "@/components/premium.vue";
 import TitleBar from "@/components/TitleBar.vue";
 import FuncSwitchBar from "@/components/FuncSwitchBar.vue";
@@ -29,7 +33,15 @@ export default {
 };
 </script>
 
-<style lang="less">
+
+<style>
+html,
+body {
+  height: 100%;
+  background-color: #f5f5f5;
+}
+
+/* 
 #app {
   font-family: Avenir, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -49,5 +61,5 @@ export default {
       color: #42b983;
     }
   }
-}
+} */
 </style>
