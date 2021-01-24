@@ -1,6 +1,6 @@
 <template>
   <div class="d-flex flex-column" style="background-color: #e1e1e1">
-    <div class="d-flex" @click="switchPage('premium')">
+    <div class="d-flex" @click="$emit('click', 'premium')">
       <div
         class="pl-1"
         :class="focus_page == 'premium' ? 'focus-line' : 'normal-line'"
@@ -14,7 +14,7 @@
       </div>
     </div>
 
-    <div class="d-flex" @click="switchPage('setting')">
+    <div class="d-flex" @click="$emit('click', 'setting')">
       <div
         class="pl-1"
         :class="focus_page == 'setting' ? 'focus-line' : 'normal-line'"
@@ -41,17 +41,11 @@ export default {
   },
   data: function () {
     return {
-      focus_page: "premium",
-
       focus_color: "#505050",
       normal_color: "#808080",
     };
   },
-  methods: {
-    switchPage(name) {
-      this.focus_page = name;
-    },
-  },
+  methods: {},
 };
 </script>
 

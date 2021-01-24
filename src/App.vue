@@ -2,7 +2,7 @@
   <div class="d-flex flex-column" style="height: 100%">
     <TitleBar style="-webkit-app-region: drag" />
     <div class="d-flex" style="height: 100%">
-      <FuncSwitchBar />
+      <FuncSwitchBar :focus_page="focus_page" @click="switchPage" />
       <premium />
     </div>
   </div>
@@ -25,6 +25,16 @@ import TitleBar from "@/components/TitleBar.vue";
 import FuncSwitchBar from "@/components/FuncSwitchBar.vue";
 
 export default {
+  data: function () {
+    return {
+      focus_page: "premium",
+    };
+  },
+  methods: {
+    switchPage(name) {
+      this.focus_page = name;
+    },
+  },
   components: {
     premium,
     TitleBar,
