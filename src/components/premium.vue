@@ -54,6 +54,9 @@ export default {
       this.pair_item = event;
     },
   },
+  created: function () {
+    this.reload_config();
+  },
   mounted: function () {},
   components: {
     PremiumTable,

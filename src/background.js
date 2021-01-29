@@ -8,6 +8,7 @@ import fs from 'fs'
 
 
 
+
 // Scheme must be registered before the app is ready
 protocol.registerSchemesAsPrivileged([
   { scheme: 'app', privileges: { secure: true, standard: true } }
@@ -26,6 +27,54 @@ async function createWindow() {
     },
     frame: false,
   })
+
+
+  // 使用fs读取配置文件
+  let local_config = {}
+  fs.readFile('config.json', 'utf-8', function (err, data) {
+    // 没错误的的话，err是null
+    if (err && err.code === 'ENOENT') {
+      // 没有配置文件就写入默认设置
+      local_config['server_url'] = ''
+      local_config['password'] = ''
+      return;
+    }
+    // 有配置文件就读成json
+    local_config = JSON.parse(data)
+  })
+
+  // 定义一下IPC事件
+  let ipcMain = require('electron').ipcMain
+  ipcMain.on("window-minimize", function () {
+    win.minimize()
+  })
+  ipcMain.on("window-maximize", function () {
+    win.maximize()
+  })
+  ipcMain.on('window-restore', function () {
+    win.restore()
+  })
+  ipcMain.on("window-close", function () {
+    console.log('window-close')
+    win.close()
+  })
+  ipcMain.on("read-config", function (event, arg) {
+    console.log('收到读取配置文件请求')
+    event.sender.send("read-config-reply", local_config)
+  })
+  ipcMain.on("save-config", function (event, arg) {
+    // 将配置写入配置文件
+    fs.writeFile('config.json', JSON.stringify(arg), 'utf-8', err => {
+      if (err) {
+        event.sender.send('save-config-reply', 'fail')
+      }
+      else {
+        event.sender.send('save-config-reply', 'success')
+      }
+    })
+  })
+
+
   win.setMenu(null)
 
   win.on('close', function (e) {
@@ -48,39 +97,6 @@ async function createWindow() {
     win.loadURL('app://./index.html')
   }
 
-  // 使用fs读取配置文件
-  const local_config = {}
-  fs.readFile('config.json', 'utf-8', function (err, data) {
-    if (err.code === 'ENOENT') {
-      // 没有配置文件就写入默认设置
-      local_config['server_ip'] = ''
-      local_config['server_port'] = ''
-      local_config['password'] = ''
-      local_config['proxy_url'] = ''
-      return;
-    }
-    // 有配置文件就读成json
-    local_config = JSON.parse(data)
-  })
-
-  // 定义一下IPC事件
-  const ipcMain = require('electron').ipcMain
-  ipcMain.on("window-minimize", function () {
-    win.minimize()
-  })
-  ipcMain.on("window-maximize", function () {
-    win.maximize()
-  })
-  ipcMain.on('window-restore', function () {
-    win.restore()
-  })
-  ipcMain.on("window-close", function () {
-    console.log('window-close')
-    win.close()
-  })
-  ipcMain.on("read-config", function (event, arg) {
-    event.sender.send("read-config-reply", local_config)
-  })
 
 }
 

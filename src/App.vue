@@ -3,7 +3,8 @@
     <TitleBar style="-webkit-app-region: drag" />
     <div class="d-flex" style="height: 100%">
       <FuncSwitchBar :focus_page="focus_page" @click="switchPage" />
-      <premium />
+      <premium v-if="focus_page == 'premium'" />
+      <Setting v-if="focus_page == 'setting'" />
     </div>
   </div>
   <!-- <div id="app">
@@ -23,6 +24,7 @@
 import premium from "@/components/premium.vue";
 import TitleBar from "@/components/TitleBar.vue";
 import FuncSwitchBar from "@/components/FuncSwitchBar.vue";
+import Setting from "@/components/Setting.vue";
 
 export default {
   data: function () {
@@ -39,6 +41,7 @@ export default {
     premium,
     TitleBar,
     FuncSwitchBar,
+    Setting,
   },
 };
 </script>

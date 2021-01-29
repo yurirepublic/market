@@ -3,58 +3,69 @@ import { ipcRenderer } from 'electron'
 
 // 读取服务器配置
 let configReady = false;      // 配置文件是否已准备好
-const local_config = {}
-ipcRenderer.send('read-config')
-ipcRenderer.on('read-config-reply', function (event, arg) {
-  local_config = arg
-  configReady = true
-})
+let local_config = {}
+async function reload_config() {
+  await new Promise(resolve => {
+    ipcRenderer.on('read-config-reply', function (event, arg) {
+      local_config = arg
+      configReady = true
+      console.log('配置文件读取完毕')
+      console.log(local_config)
+      resolve()
+    })
+    ipcRenderer.send('read-config')
+  })
+  return
+}
 
 async function method_request(func, args) {
   // 等待配置文件准备好
   while (true) {
     if (!configReady) {
-      await new Promise((resolve, reject) => {
+      await new Promise(resolve => {
         setTimeout(() => {
           resolve()
-        }, 100)
+        }, 1000)
       })
+      if (configReady) {
+        console.log('配置文件已读取完毕')
+      }
+
     }
     else {
       break;
     }
   }
-
-  request.post(
-    {
-      url: "https://" + local_config['server_ip'] + ':' + local_config['server_port'],
-      form: {
-        function: func,
-        args: JSON.stringify(args),
-        password: local_config['password']
+  return await new Promise((resolve, reject) => {
+    request.post(
+      {
+        url: local_config['server_url'],
+        form: {
+          function: func,
+          args: JSON.stringify(args),
+          password: local_config['password'],
+        },
       },
-    },
-    function (err, httpResponse, body) {
-      if (err) {
-        console.error(err)
-        reject(err);
-        return;
+      function (err, httpResponse, body) {
+        if (err) {
+          console.error(err)
+          reject(err)
+
+        }
+        if (httpResponse.statusCode != 200) {
+          console.error(httpResponse)
+          reject(httpResponse)
+        }
+        let res = JSON.parse(body);
+        if (res["msg"] != "success") {
+          console.error(res)
+          reject(res)
+        }
+        resolve(res)
       }
-      if (httpResponse.statusCode != 200) {
-        console.error(httpResponse)
-        reject(httpResponse);
-        return;
-      }
-      let res = JSON.parse(body);
-      if (res["msg"] != "success") {
-        console.error(res)
-        reject(res);
-        return;
-      }
-      console.log(res);
-      resolve(res);
-    }
-  );
+    );
+  })
+
 }
 
 function isNumber(value) {
@@ -103,5 +114,6 @@ export default {
     Vue.prototype.method_request = method_request
     Vue.prototype.isNumber = isNumber
     Vue.prototype.showToast = showToast
+    Vue.prototype.reload_config = reload_config
   }
 }

@@ -17,7 +17,6 @@
     "bootstrap": "^4.5.3",
     "bootstrap-vue": "^2.21.2",
     "core-js": "^3.6.5",
-    "moment": "^2.29.1",
     "node-loader": "^1.0.2",
     "node-sass": "^5.0.0",
     "oh-vue-icons": "^0.1.7",
