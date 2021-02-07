@@ -16,12 +16,12 @@
           placeholder="在服务端设置的字符串"
           v-model="password"
         ></TradeInput>
-        <!-- <TradeInput
+        <TradeInput
           class="mt-1"
           header="HTTP代理地址"
-          placeholder="留空则不走代理"
+          placeholder="通过代理连接到自己的服务器"
           v-model="proxy_url"
-        ></TradeInput> -->
+        ></TradeInput>
         <button
           class="btn btn-primary mt-3 px-2"
           @click="saveConfig"
@@ -44,7 +44,7 @@ ipcRenderer.on("save-config-reply", (event, args) => {
   if (args == "success") {
     Vue.$toast.open({
       type: "success",
-      message: "保存成功，重启软件可生效",
+      message: "保存成功",
     });
   }
   if (args == "fail") {
@@ -61,13 +61,14 @@ export default {
     return {
       server_url: "",
       password: "",
-      // proxy_url: "",
+      proxy_url: "",
     };
   },
   mounted: function () {
     ipcRenderer.on("read-config-reply", (event, arg) => {
       this.server_url = arg["server_url"];
       this.password = arg["password"];
+      this.proxy_url = arg["proxy_url"];
     });
     ipcRenderer.send("read-config");
   },
@@ -76,7 +77,7 @@ export default {
       ipcRenderer.send("save-config", {
         server_url: this.server_url,
         password: this.password,
-        // proxy_url: this.proxy_url,
+        proxy_url: this.proxy_url,
       });
     },
   },

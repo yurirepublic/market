@@ -17,9 +17,8 @@ protocol.registerSchemesAsPrivileged([
 async function createWindow() {
   // Create the browser window.
   const win = new BrowserWindow({
-    // 这里针对开发环境弄大一点宽度
-    width: isDevelopment ? 996 : 1366,
-    height: isDevelopment ? 635 : 768,
+    width: 1366,
+    height: 768,
     webPreferences: {
       // Use pluginOptions.nodeIntegration, leave this alone
       // See nklayman.github.io/vue-cli-plugin-electron-builder/guide/security.html#node-integration for more info
@@ -30,18 +29,13 @@ async function createWindow() {
 
 
   // 使用fs读取配置文件
-  let local_config = {}
-  fs.readFile('config.json', 'utf-8', function (err, data) {
-    // 没错误的的话，err是null
-    if (err && err.code === 'ENOENT') {
-      // 没有配置文件就写入默认设置
-      local_config['server_url'] = ''
-      local_config['password'] = ''
-      return;
-    }
-    // 有配置文件就读成json
-    local_config = JSON.parse(data)
-  })
+  var readConfig = function () {
+    return new Promise(resolve => {
+
+    })
+  }
+
+
 
   // 定义一下IPC事件
   let ipcMain = require('electron').ipcMain
@@ -60,7 +54,20 @@ async function createWindow() {
   })
   ipcMain.on("read-config", function (event, arg) {
     console.log('收到读取配置文件请求')
-    event.sender.send("read-config-reply", local_config)
+    fs.readFile('config.json', 'utf-8', function (err, data) {
+      // 没错误的的话，err是null
+      let local_config = {}
+      if (err && err.code === 'ENOENT') {
+        // 没有配置文件就写入默认设置
+        local_config['server_url'] = ''
+        local_config['password'] = ''
+        local_config['proxy_url'] = ''
+        return;
+      }
+      // 有配置文件就读成json
+      local_config = JSON.parse(data)
+      event.sender.send("read-config-reply", local_config)
+    })
   })
   ipcMain.on("save-config", function (event, arg) {
     // 将配置写入配置文件

@@ -36,10 +36,12 @@ async function method_request(func, args) {
       break;
     }
   }
+  // 发送请求
   return await new Promise((resolve, reject) => {
     request.post(
       {
         url: local_config['server_url'],
+        proxy: local_config['proxy_url'] == '' ? null : local_config['proxy_url'],
         form: {
           function: func,
           args: JSON.stringify(args),
@@ -50,24 +52,28 @@ async function method_request(func, args) {
         if (err) {
           console.error(err)
           reject(err)
-
+          return
         }
         if (httpResponse.statusCode != 200) {
           console.error(httpResponse)
           reject(httpResponse)
+          return
         }
         let res = JSON.parse(body);
         if (res["msg"] != "success") {
           console.error(res)
           reject(res)
+          return
         }
         resolve(res)
+        return
       }
     );
   })
 
 }
 
+// 用来方便判断是不是数字
 function isNumber(value) {
   if (undefined === value || null === value) {
     return false;
@@ -80,6 +86,7 @@ function isNumber(value) {
 
 import Vue from 'vue'
 
+// 用来快速显示toast
 function showToast() {
   return {
     success: function (text) {

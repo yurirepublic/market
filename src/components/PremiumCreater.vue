@@ -35,10 +35,10 @@
         /> -->
         <InfoItem header="总开仓手续费" :content="total_tax" footer="USDT" />
         <span class="text-muted small align-self-end"
-          >期货手续费(以0.075%) {{ tax }} USDT</span
+          >现货手续费(以0.075%) {{ tax }} USDT</span
         >
         <span class="text-muted small align-self-end float-right"
-          >现货手续费(以0.040%) {{ tax_future }} USDT</span
+          >期货手续费(以0.040%) {{ tax_future }} USDT</span
         >
         <div class="d-flex">
           <button
