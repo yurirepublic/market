@@ -27,6 +27,34 @@
         ></v-icon>
       </div>
     </div>
+
+    <div class="d-flex" @click="$emit('click', 'running_script')">
+      <div
+        class="pl-1"
+        :class="focus_page == 'running_script' ? 'focus-line' : 'normal-line'"
+      ></div>
+      <div class="py-3 pl-2 pr-3">
+        <v-icon
+          name="ri-settings-4-line"
+          scale="2"
+          :fill="focus_page == 'running_script' ? focus_color : normal_color"
+        ></v-icon>
+      </div>
+    </div>
+
+    <div class="d-flex" @click="$emit('click', 'script_manage')">
+      <div
+        class="pl-1"
+        :class="focus_page == 'script_manage' ? 'focus-line' : 'normal-line'"
+      ></div>
+      <div class="py-3 pl-2 pr-3">
+        <v-icon
+          name="ri-settings-4-line"
+          scale="2"
+          :fill="focus_page == 'script_manage' ? focus_color : normal_color"
+        ></v-icon>
+      </div>
+    </div>
   </div>
 </template>
 

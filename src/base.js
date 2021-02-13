@@ -65,6 +65,7 @@ async function method_request(func, args) {
           reject(res)
           return
         }
+        console.log(res)
         resolve(res)
         return
       }

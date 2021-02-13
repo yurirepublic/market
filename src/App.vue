@@ -5,6 +5,8 @@
       <FuncSwitchBar :focus_page="focus_page" @click="switchPage" />
       <premium v-if="focus_page == 'premium'" />
       <Setting v-if="focus_page == 'setting'" />
+      <RunningScript v-if="focus_page == 'running_script'" />
+      <ScriptManage v-if="focus_page == 'script_manage'" />
     </div>
   </div>
   <!-- <div id="app">
@@ -25,6 +27,8 @@ import premium from "@/components/premium.vue";
 import TitleBar from "@/components/TitleBar.vue";
 import FuncSwitchBar from "@/components/FuncSwitchBar.vue";
 import Setting from "@/components/Setting.vue";
+import RunningScript from "@/components/RunningScript.vue";
+import ScriptManage from "@/components/ScriptManage.vue";
 
 export default {
   data: function () {
@@ -42,6 +46,8 @@ export default {
     TitleBar,
     FuncSwitchBar,
     Setting,
+    RunningScript,
+    ScriptManage,
   },
 };
 </script>
