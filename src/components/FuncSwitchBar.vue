@@ -14,16 +14,16 @@
       </div>
     </div>
 
-    <div class="d-flex" @click="$emit('click', 'setting')">
+    <div class="d-flex" @click="$emit('click', 'history')">
       <div
         class="pl-1"
-        :class="focus_page == 'setting' ? 'focus-line' : 'normal-line'"
+        :class="focus_page == 'history' ? 'focus-line' : 'normal-line'"
       ></div>
       <div class="py-3 pl-2 pr-3">
         <v-icon
-          name="ri-settings-4-line"
+          name="ri-history-line"
           scale="2"
-          :fill="focus_page == 'setting' ? focus_color : normal_color"
+          :fill="focus_page == 'history' ? focus_color : normal_color"
         ></v-icon>
       </div>
     </div>
@@ -35,7 +35,7 @@
       ></div>
       <div class="py-3 pl-2 pr-3">
         <v-icon
-          name="ri-settings-4-line"
+          name="bi-file-earmark-play"
           scale="2"
           :fill="focus_page == 'running_script' ? focus_color : normal_color"
         ></v-icon>
@@ -49,9 +49,23 @@
       ></div>
       <div class="py-3 pl-2 pr-3">
         <v-icon
-          name="ri-settings-4-line"
+          name="bi-file-earmark-code"
           scale="2"
           :fill="focus_page == 'script_manage' ? focus_color : normal_color"
+        ></v-icon>
+      </div>
+    </div>
+
+    <div class="d-flex" @click="$emit('click', 'setting')">
+      <div
+        class="pl-1"
+        :class="focus_page == 'setting' ? 'focus-line' : 'normal-line'"
+      ></div>
+      <div class="py-3 pl-2 pr-3">
+        <v-icon
+          name="ri-settings-4-line"
+          scale="2"
+          :fill="focus_page == 'setting' ? focus_color : normal_color"
         ></v-icon>
       </div>
     </div>

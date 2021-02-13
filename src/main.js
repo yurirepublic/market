@@ -39,6 +39,9 @@ import { RiArrowLeftRightLine } from 'oh-vue-icons/icons'
 import { FaRegularWindowRestore } from 'oh-vue-icons/icons'
 import { RiCoinsLine } from 'oh-vue-icons/icons'
 import { RiSettings4Line } from 'oh-vue-icons/icons'
+import { BiFileEarmarkCode } from 'oh-vue-icons/icons'
+import { BiFileEarmarkPlay } from 'oh-vue-icons/icons'
+import { RiHistoryLine } from 'oh-vue-icons/icons'
 OhVueIcon.add([
   RiCloseLine,
   FaRegularWindowMinimize,
@@ -46,7 +49,10 @@ OhVueIcon.add([
   RiArrowLeftRightLine,
   FaRegularWindowRestore,
   RiCoinsLine,
-  RiSettings4Line
+  RiSettings4Line,
+  BiFileEarmarkCode,
+  BiFileEarmarkPlay,
+  RiHistoryLine,
 ])
 
 Vue.component('v-icon', OhVueIcon)

@@ -1,8 +1,11 @@
 <template>
-  <div>
-    <div class="p-1">
+  <div class="d-flex justify-content-center p-1">
+    <div class="">
       <CardFrame>
-        <div>运行中的脚本</div>
+        <div class="mb-2 d-flex justify-content-between align-items-center">
+          <span class="font-weight-bold">运行中的脚本</span>
+          <RefreshButton :anime="refresh_button_anime" @click="Refresh" />
+        </div>
         <div>
           <table class="table table-hover table-borderless table-sm small">
             <thead>
@@ -53,6 +56,7 @@
 
 <script>
 import CardFrame from "@/components/CardFrame.vue";
+import RefreshButton from "@/components/RefreshButton.vue";
 
 export default {
   name: "RunningScript",
@@ -60,21 +64,29 @@ export default {
     return {
       running_script_list: [],
       button_disabled: false,
+      refresh_button_anime: false,
 
       focus_log: "", // 选中脚本的log
     };
   },
   mounted: function () {
-    this.method_request("running_script", [])
-      .then((res) => {
-        this.running_script_list = res.data;
-        this.showToast().success("运行中的脚本列表获取成功");
-      })
-      .catch((err) => {
-        this.showToast().error("运行中的脚本列表获取失败");
-      });
+    this.Refresh();
   },
   methods: {
+    Refresh: function () {
+      this.refresh_button_anime = true;
+      this.method_request("running_script", [])
+        .then((res) => {
+          this.running_script_list = res.data;
+          this.showToast().success("运行中的脚本列表获取成功");
+        })
+        .catch((err) => {
+          this.showToast().error("运行中的脚本列表获取失败");
+        })
+        .finally(() => {
+          this.refresh_button_anime = false;
+        });
+    },
     StopScript: function (item) {
       this.button_disabled = true;
       this.method_request("stop_script", [item.thread_id])
@@ -102,6 +114,7 @@ export default {
   },
   components: {
     CardFrame,
+    RefreshButton,
   },
 };
 </script>
