@@ -4,6 +4,8 @@ import time
 import requests
 import _thread
 import websocket
+import math
+import threading
 from hashlib import sha256
 
 """
@@ -18,8 +20,34 @@ request_trace = True  # 是否追踪请求，开启会打印出每次请求的ur
 
 
 def get_timestamp():
-    # 获取币安常用的毫秒级timestamp
+    """
+    获取币安常用的毫秒级timestamp
+    """
     return str(round(time.time() * 1000))
+
+
+def float_to_str_floor(amount: float, precision: int = 8) -> str:
+    """
+    将float转为指定精度的str格式，一般用于对高精度计算结果下单，会向下取整避免多下
+    如不指定精度，则默认为币安最大精度8
+    """
+    return str(math.floor(amount * (10 ** precision)) / (10 ** precision))
+
+
+def float_to_str_ceil(amount: float, precision: int = 8) -> str:
+    """
+    将float转为指定精度的str格式，一般用于对高精度计算结果下单，会向上取整避免少下
+    如不指定精度，则默认币安最大精度8
+    """
+    return str(math.ceil(amount * (10 ** precision)) / (10 ** precision))
+
+
+def float_to_str_round(amount: float, precision: int = 8) -> str:
+    """
+    将float转为指定精度的str格式，一般用于消除0.000000000001和0.9999999999
+    会对指定精度四舍五入，如不指定精度，则默认币安最大精度8
+    """
+    return str(round(amount * (10 ** precision)) / (10 ** precision))
 
 
 def make_query_string(**kwargs):
@@ -47,10 +75,25 @@ class BaseOperator(object):
         # 读取配置文件
         with open('config.json', 'r', encoding='utf-8') as f:
             jsons = json.loads(f.read())
+
             self.public_key = jsons['binance_public_key']
             self.private_key = jsons['binance_private_key']
+
             self.subscribe_id = 1  # 订阅时要发送的id，每次+1（似乎每次发一样的也行）
+            self.subscribe_id_lock = threading.Lock()       # 订阅id线程锁
+
             self.price = {}  # 当前已订阅交易对的最新价格
+
+    def get_subscribe_id(self) -> int:
+        """
+        返回订阅时要发送的id
+        该函数是线程安全的
+        """
+        self.subscribe_id_lock.acquire()
+        res = self.subscribe_id
+        self.subscribe_id += 1
+        self.subscribe_id_lock.release()
+        return res
 
     def request(self, area_url: str, path_url, method: str, data: dict, test=False, send_signature=True):
         """
@@ -80,7 +123,7 @@ class BaseOperator(object):
         else:
             url = 'https://{}.{}{}{}?{}'.format(
                 area_url, base_url, path_url, test_path, data)
-        if method == 'GET':
+        if method.upper() == 'GET':
             r = requests.get(url, headers=headers)
         else:
             r = requests.post(url, headers=headers)
@@ -110,6 +153,12 @@ class Operator(BaseOperator):
 
     def __init__(self):
         super(Operator, self).__init__()
+        self.ws = None
+
+    def connect_websocket(self):
+        """
+        调用此函数连接到websocket，以启用websocket相关api
+        """
         self.ws = websocket.WebSocketApp(
             'wss://stream.' + base_url + ':9443/ws')
         self.ws.connect_completed = False  # 自己加的一个成员，用来外部等待连接成功再放行
@@ -132,6 +181,7 @@ class Operator(BaseOperator):
         self.ws_handle = _thread.start_new_thread(
             lambda: self.ws.run_forever(ping_interval=300), ())
 
+        # 等待直到websocket连接成功
         while not self.ws.connect_completed:
             time.sleep(0.1)
 
@@ -167,10 +217,12 @@ class Operatorfuture(BaseOperator):
     """
     期货API操作
     """
-    
 
     def __init__(self):
         super(Operatorfuture, self).__init__()
+        self.ws = None
+
+    def connect_websocket(self):
         self.ws = websocket.WebSocketApp('wss://fstream.' + base_url + '/ws')
         self.ws.connect_completed = False  # 自己加的一个成员，用来外部等待连接成功再放行
 
@@ -255,12 +307,34 @@ class Operatorfuture(BaseOperator):
             self.trade(symbol, position_amt.replace('-', ''), 'BUY')
 
 
-# 通用的操作者，会自动创建期货和现货的操作者，可用于对冲下单等操作
-class NormalOperator():
+class SmartOperator():
+    """
+    智能操作者，不仅整合了期货、现货、杠杆等等所有的操作
+    还增加了很多自动化的选项，例如下单前自动获取货币精度并向下取整
+    相当于高度封装版本
+    缺点在于需要获取额外信息，速度、灵活性不如传统api
+    """
+
     def __init__(self) -> None:
         super().__init__()
         self.operator = Operator()
         self.operator_future = Operatorfuture()
 
-    def multi_trade():
+    def connect_websocket_both(self):
+        """
+        连接期货和现货的websocket
+        已经连接的话，会覆盖掉以前的连接
+        """
+        pass
+
+    def connect_websocket_base(self):
+        """
+        连接现货的websocket
+        """
+        pass
+
+    def connect_websocket_future(self):
+        """
+        连接期货的websocket
+        """
         pass

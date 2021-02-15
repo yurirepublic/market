@@ -1,14 +1,17 @@
 from flask import Flask, request
 from flask_cors import CORS
-import json
-
 from flask.wrappers import Response
+
 import binance_api
+import tools
+
 import json
 import time
 import multiprocessing
 import traceback
 import numpy as np
+import sys
+import os
 
 app = Flask(__name__)
 CORS(app, supports_credentials=True)    # 允许跨域
@@ -45,6 +48,64 @@ def root():
         })
 
 
+def running_script():
+    """
+    获取运行中的脚本列表
+    """
+    # 开启调用脚本管理器的客户端进行操作
+    client = tools.Client()
+    return {
+        'msg': 'success',
+        'data': client.status()
+    }
+
+
+def script_list():
+    """
+    获取本地的脚本列表
+    """
+    client = tools.Client()
+    return {
+        'msg': 'success',
+        'data': client.ls()
+    }
+
+
+def script_log(pid):
+    """
+    获取运行中脚本的log信息
+    """
+    pid = int(pid)
+    client = tools.Client()
+    return {
+        'msg': 'success',
+        'data': client.get_log(pid)
+    }
+
+
+def run_script(path):
+    """
+    运行服务器上某个脚本
+    """
+    client = tools.Client()
+    client.exec(path)
+    return {
+        'msg': 'success'
+    }
+
+
+def stop_script(pid):
+    """
+    终止运行服务器上某个脚本
+    """
+    pid = int(pid)
+    client = tools.Client()
+    client.kill(pid)
+    return {
+        'msg': 'success'
+    }
+
+
 def premium_history(symbol):
     """
     查询资金费率历史
@@ -72,6 +133,31 @@ def transfer(trans_type, symbol, quantity):
     :param trans_type:  划转类型，看币安API
     :param symbol:  划转的资产符号
     :param quantity:  划转的资产数量
+
+    目前支持的type划转类型:
+    MAIN_C2C 现货钱包转向C2C钱包
+    MAIN_UMFUTURE 现货钱包转向U本位合约钱包
+    MAIN_CMFUTURE 现货钱包转向币本位合约钱包
+    MAIN_MARGIN 现货钱包转向杠杆全仓钱包
+    MAIN_MINING 现货钱包转向矿池钱包
+    C2C_MAIN C2C钱包转向现货钱包
+    C2C_UMFUTURE C2C钱包转向U本位合约钱包
+    C2C_MINING C2C钱包转向矿池钱包
+    UMFUTURE_MAIN U本位合约钱包转向现货钱包
+    UMFUTURE_C2C U本位合约钱包转向C2C钱包
+    UMFUTURE_MARGIN U本位合约钱包转向杠杆全仓钱包
+    CMFUTURE_MAIN 币本位合约钱包转向现货钱包
+    MARGIN_MAIN 杠杆全仓钱包转向现货钱包
+    MARGIN_UMFUTURE 杠杆全仓钱包转向U本位合约钱包
+    MINING_MAIN 矿池钱包转向现货钱包
+    MINING_UMFUTURE 矿池钱包转向U本位合约钱包
+    MINING_C2C 矿池钱包转向C2C钱包
+    MARGIN_CMFUTURE 杠杆全仓钱包转向币本位合约钱包
+    CMFUTURE_MARGIN 币本位合约钱包转向杠杆全仓钱包
+    MARGIN_C2C 杠杆全仓钱包转向C2C钱包
+    C2C_MARGIN C2C钱包转向杠杆全仓钱包
+    MARGIN_MINING 杠杆全仓钱包转向矿池钱包
+    MINING_MARGIN 矿池钱包转向杠杆全仓钱包
     """
     operator.request('api', '/sapi/v1/asset/transfer', 'POST', {
         'type': trans_type,
@@ -222,7 +308,8 @@ def analyze_premium():
         # 两边有不对等的则算入孤立仓位
             single.append({
                 'symbol': e + 'USDT',
-                'quantity': str(money[e] + money_future[e]),
+                # 仅保留10位小数消除浮点精度误差
+                'quantity': str(round((money[e] + money_future[e]) * 10000000000) / 10000000000),
                 'type': '现货' if money[e] + money_future[e] > 0 else '期货'
             })
 
@@ -368,6 +455,17 @@ def request_premium():
 
 
 if __name__ == '__main__':
+    # 创建脚本目录
+    if not os.path.exists('scripts'):
+        os.mkdir('scripts')
+
+    # 将脚本目录加入path
+    sys.path.append('scripts')
+
+    # 运行脚本管理器
+    script_server = tools.Server()
+
+    # 在此主进程运行http服务器
     if config['use_ssl']:
         app.run(config['listen_ip'], config['listen_port'],
                 ssl_context=(config['ssl_pem'], config['ssl_key']))
