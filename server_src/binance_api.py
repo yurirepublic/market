@@ -83,7 +83,7 @@ class BaseOperator(object):
             self.subscribe_id = 1  # 订阅时要发送的id，每次+1（似乎每次发一样的也行）
             self.subscribe_id_lock = threading.Lock()       # 订阅id线程锁
 
-            self.price = {}  # 当前已订阅交易对的最新价格
+            # self.price = {}  # 当前已订阅交易对的最新价格
 
     def get_subscribe_id(self) -> int:
         """
@@ -134,181 +134,181 @@ class BaseOperator(object):
             print(r.text)
         return r.text
 
-    def subscribe_price(self, name: str):
-        # 订阅最新交易价格
-        data = {
-            'method': 'SUBSCRIBE',
-            'params': [
-                name.lower() + "@aggTrade",
-            ],
-            'id': self.subscribe_id
-        }
-        self.ws.send(json.dumps(data))
-        self.subscribe_id += 1
+    # def subscribe_price(self, name: str):
+    #     # 订阅最新交易价格
+    #     data = {
+    #         'method': 'SUBSCRIBE',
+    #         'params': [
+    #             name.lower() + "@aggTrade",
+    #         ],
+    #         'id': self.subscribe_id
+    #     }
+    #     self.ws.send(json.dumps(data))
+    #     self.subscribe_id += 1
 
 
-class Operator(BaseOperator):
-    """
-    现货API操作
-    """
+# class Operator(BaseOperator):
+#     """
+#     现货API操作
+#     """
 
-    def __init__(self):
-        super(Operator, self).__init__()
-        self.ws = None
+#     def __init__(self):
+#         super(Operator, self).__init__()
+#         self.ws = None
 
-    def connect_websocket(self):
-        """
-        调用此函数连接到websocket，以启用websocket相关api
-        """
-        self.ws = websocket.WebSocketApp(
-            'wss://stream.' + base_url + ':9443/ws')
-        self.ws.connect_completed = False  # 自己加的一个成员，用来外部等待连接成功再放行
+#     def connect_websocket(self):
+#         """
+#         调用此函数连接到websocket，以启用websocket相关api
+#         """
+#         self.ws = websocket.WebSocketApp(
+#             'wss://stream.' + base_url + ':9443/ws')
+#         self.ws.connect_completed = False  # 自己加的一个成员，用来外部等待连接成功再放行
 
-        def on_open(ws):
-            print('成功建立现货websocket连接')
-            ws.connect_completed = True
+#         def on_open(ws):
+#             print('成功建立现货websocket连接')
+#             ws.connect_completed = True
 
-        def on_message(ws, data):
-            # 收到websocket时使用的处理函数
-            data = json.loads(data)
-            if 'e' in data.keys() and data['e'] == 'aggTrade':
-                self.price[data['s']] = float(data['p'])
-            else:
-                print(data)
+#         def on_message(ws, data):
+#             # 收到websocket时使用的处理函数
+#             data = json.loads(data)
+#             if 'e' in data.keys() and data['e'] == 'aggTrade':
+#                 self.price[data['s']] = float(data['p'])
+#             else:
+#                 print(data)
 
-        self.ws.on_message = on_message
-        self.ws.on_open = on_open
-        # 额外开一个线程用来运行此websocket
-        self.ws_handle = _thread.start_new_thread(
-            lambda: self.ws.run_forever(ping_interval=300), ())
+#         self.ws.on_message = on_message
+#         self.ws.on_open = on_open
+#         # 额外开一个线程用来运行此websocket
+#         self.ws_handle = _thread.start_new_thread(
+#             lambda: self.ws.run_forever(ping_interval=300), ())
 
-        # 等待直到websocket连接成功
-        while not self.ws.connect_completed:
-            time.sleep(0.1)
+#         # 等待直到websocket连接成功
+#         while not self.ws.connect_completed:
+#             time.sleep(0.1)
 
-    def trade(self, symbol: str, quantity, side, test=False):
-        """
-        在现货下单
-        """
-        if test:
-            test_trade = '/test'
-        else:
-            test_trade = ''
-        headers = {
-            'X-MBX-APIKEY': self.public_key
-        }
-        data = make_query_string(
-            symbol=symbol.upper(),
-            side=side,
-            type='MARKET',
-            quantity=quantity,
-            timestamp=str(round(time.time() * 1000))
-        )
-        signature = hmac.new(self.private_key.encode('ascii'),
-                             data.encode('ascii'), digestmod=sha256).hexdigest()
-        url = 'https://api.' + base_url + '/api/v3/order' + \
-            test_trade + '?' + data + '&signature=' + signature
-        print(url)
-        r = requests.post(url, headers=headers)
-        print(r.status_code)
-        print(r.text)
-
-
-class Operatorfuture(BaseOperator):
-    """
-    期货API操作
-    """
-
-    def __init__(self):
-        super(Operatorfuture, self).__init__()
-        self.ws = None
-
-    def connect_websocket(self):
-        self.ws = websocket.WebSocketApp('wss://fstream.' + base_url + '/ws')
-        self.ws.connect_completed = False  # 自己加的一个成员，用来外部等待连接成功再放行
-
-        def on_open(ws):
-            print('成功建立USDT期货websocket连接')
-            ws.connect_completed = True
-
-        def on_message(ws, data):
-            # 收到websocket时使用的处理函数
-            data = json.loads(data)
-            if 'e' in data.keys() and data['e'] == 'aggTrade':
-                self.price[data['s']] = float(data['p'])
-            else:
-                print(data)
-
-        self.ws.on_message = on_message
-        self.ws.on_open = on_open
-        # 额外开一个线程用来运行此websocket
-        self.ws_handle = _thread.start_new_thread(
-            lambda: self.ws.run_forever(ping_interval=300), ())
-
-        while not self.ws.connect_completed:
-            time.sleep(0.1)
-
-    def trade(self, symbol: str, quantity, side, test=True):
-        headers = {
-            'X-MBX-APIKEY': self.public_key
-        }
-        data = make_query_string(
-            symbol=symbol.upper(),
-            side=side,
-            type='MARKET',
-            quantity=quantity,
-            timestamp=str(round(time.time() * 1000))
-        )
-        if test:
-            test_trade = '/test'
-        else:
-            test_trade = ''
-        signature = hmac.new(self.private_key.encode('ascii'),
-                             data.encode('ascii'), digestmod=sha256).hexdigest()
-        url = 'https://fapi.' + base_url + '/fapi/v1/order' + \
-            test_trade + '?' + data + '&signature=' + signature
-        print(url)
-        r = requests.post(url, headers=headers)
-        print(r.status_code)
-        print(r.text)
-
-    def close_out(self, symbol: str):
-        """
-        将某个货币对平仓
-        """
-        # 先获取货币对的持仓和方向
-        headers = {
-            'X-MBX-APIKEY': self.public_key
-        }
-        data = make_query_string(
-            timestamp=str(round(time.time() * 1000))
-        )
-        signature = hmac.new(self.private_key.encode('ascii'),
-                             data.encode('ascii'), digestmod=sha256).hexdigest()
-        url = 'https://fapi.' + base_url + '/fapi/v2/account' + \
-            '?' + data + '&signature=' + signature
-        print(url)
-        r = requests.get(url, headers=headers)
-        print(r.status_code)
-        print(r.text)
-        if r.status_code != 200:
-            raise Exception('获取持仓数量错误')
-        # 遍历找到需要的货币对
-        for x in json.loads(r.text)['positions']:
-            if x['symbol'] == symbol.upper():
-                position_amt = x['positionAmt']
-                break
-        else:
-            raise Exception('未在返回的数据中找到持仓')
-        # 下市价单平仓
-        if float(position_amt) > 0:
-            self.trade(symbol, position_amt, 'SELL')
-        else:
-            # 这里不转为float，怕有精度问题留个0.0000001没平仓，直接使用原始的字符串
-            self.trade(symbol, position_amt.replace('-', ''), 'BUY')
+#     def trade(self, symbol: str, quantity, side, test=False):
+#         """
+#         在现货下单
+#         """
+#         if test:
+#             test_trade = '/test'
+#         else:
+#             test_trade = ''
+#         headers = {
+#             'X-MBX-APIKEY': self.public_key
+#         }
+#         data = make_query_string(
+#             symbol=symbol.upper(),
+#             side=side,
+#             type='MARKET',
+#             quantity=quantity,
+#             timestamp=str(round(time.time() * 1000))
+#         )
+#         signature = hmac.new(self.private_key.encode('ascii'),
+#                              data.encode('ascii'), digestmod=sha256).hexdigest()
+#         url = 'https://api.' + base_url + '/api/v3/order' + \
+#             test_trade + '?' + data + '&signature=' + signature
+#         print(url)
+#         r = requests.post(url, headers=headers)
+#         print(r.status_code)
+#         print(r.text)
 
 
-class SmartOperator():
+# class OperatorFuture(BaseOperator):
+#     """
+#     期货API操作
+#     """
+
+#     def __init__(self):
+#         super(OperatorFuture, self).__init__()
+#         self.ws = None
+
+#     def connect_websocket(self):
+#         self.ws = websocket.WebSocketApp('wss://fstream.' + base_url + '/ws')
+#         self.ws.connect_completed = False  # 自己加的一个成员，用来外部等待连接成功再放行
+
+#         def on_open(ws):
+#             print('成功建立USDT期货websocket连接')
+#             ws.connect_completed = True
+
+#         def on_message(ws, data):
+#             # 收到websocket时使用的处理函数
+#             data = json.loads(data)
+#             if 'e' in data.keys() and data['e'] == 'aggTrade':
+#                 self.price[data['s']] = float(data['p'])
+#             else:
+#                 print(data)
+
+#         self.ws.on_message = on_message
+#         self.ws.on_open = on_open
+#         # 额外开一个线程用来运行此websocket
+#         self.ws_handle = _thread.start_new_thread(
+#             lambda: self.ws.run_forever(ping_interval=300), ())
+
+#         while not self.ws.connect_completed:
+#             time.sleep(0.1)
+
+#     def trade(self, symbol: str, quantity, side, test=True):
+#         headers = {
+#             'X-MBX-APIKEY': self.public_key
+#         }
+#         data = make_query_string(
+#             symbol=symbol.upper(),
+#             side=side,
+#             type='MARKET',
+#             quantity=quantity,
+#             timestamp=str(round(time.time() * 1000))
+#         )
+#         if test:
+#             test_trade = '/test'
+#         else:
+#             test_trade = ''
+#         signature = hmac.new(self.private_key.encode('ascii'),
+#                              data.encode('ascii'), digestmod=sha256).hexdigest()
+#         url = 'https://fapi.' + base_url + '/fapi/v1/order' + \
+#             test_trade + '?' + data + '&signature=' + signature
+#         print(url)
+#         r = requests.post(url, headers=headers)
+#         print(r.status_code)
+#         print(r.text)
+
+#     def close_out(self, symbol: str):
+#         """
+#         将某个货币对平仓
+#         """
+#         # 先获取货币对的持仓和方向
+#         headers = {
+#             'X-MBX-APIKEY': self.public_key
+#         }
+#         data = make_query_string(
+#             timestamp=str(round(time.time() * 1000))
+#         )
+#         signature = hmac.new(self.private_key.encode('ascii'),
+#                              data.encode('ascii'), digestmod=sha256).hexdigest()
+#         url = 'https://fapi.' + base_url + '/fapi/v2/account' + \
+#             '?' + data + '&signature=' + signature
+#         print(url)
+#         r = requests.get(url, headers=headers)
+#         print(r.status_code)
+#         print(r.text)
+#         if r.status_code != 200:
+#             raise Exception('获取持仓数量错误')
+#         # 遍历找到需要的货币对
+#         for x in json.loads(r.text)['positions']:
+#             if x['symbol'] == symbol.upper():
+#                 position_amt = x['positionAmt']
+#                 break
+#         else:
+#             raise Exception('未在返回的数据中找到持仓')
+#         # 下市价单平仓
+#         if float(position_amt) > 0:
+#             self.trade(symbol, position_amt, 'SELL')
+#         else:
+#             # 这里不转为float，怕有精度问题留个0.0000001没平仓，直接使用原始的字符串
+#             self.trade(symbol, position_amt.replace('-', ''), 'BUY')
+
+
+class SmartOperator(BaseOperator):
     """
     智能操作者，不仅整合了期货、现货、杠杆等等所有的操作
     还增加了很多自动化的选项，例如下单前自动获取货币精度并向下取整
@@ -322,36 +322,7 @@ class SmartOperator():
         # 实例化一个基本操作者，用来发出request
         self.operator = BaseOperator()
 
-        """
-        注，暂不支持websocket，反正用不上
-        """
-    #     # 实例化期货和现货的api，注意这里并不会连接websocket
-    #     self.operator = Operator()
-    #     self.operator_future = Operatorfuture()
-
-    # def connect_websocket_both(self):
-    #     """
-    #     连接期货和现货的websocket
-    #     已经连接的话，会覆盖掉以前的连接
-    #     """
-    #     self.operator.connect_websocket()
-    #     self.operator_future.connect_websocket()
-
-    # def connect_websocket_base(self):
-    #     """
-    #     连接现货的websocket
-    #     已经连接的话，会覆盖掉以前的连接
-    #     """
-    #     self.operator.connect_websocket()
-
-    # def connect_websocket_future(self):
-    #     """
-    #     连接期货的websocket
-    #     已经连接的话，会覆盖掉以前的连接
-    #     """
-    #     self.operator_future.connect_websocket()
-
-    def get_symbol_precision(self, symbol: str, asset: str, mode: str) -> int:
+    def get_symbol_precision(self, symbol: str, mode: str) -> int:
         """
         获取交易对的报价精度，用于按照数量下单时，得知最大货币下单精度
         :param symbol: 要查询的交易对名字
@@ -388,13 +359,16 @@ class SmartOperator():
             else:
                 raise Exception('没有找到欲查询的精度信息')
 
-    def trade_main_market(self, symbol: str, amount: Union[str, float], side: str, test=False, volume_mode=False):
+    def trade_market(self, symbol: str, mode: str, amount: Union[str, float], side: str, test=False, volume_mode=False):
         """
-        在现货下市价单
+        下市价单
         需要注意的是，amount可以传入float和str
         传入str会直接使用此str的数字进行下单
         传入float会自动获取要下单货币对的精度，并向下取整转为str再下单
+        以成交额方式交易可能会有误差导致下单失败，建议确保有足够资产才使用成交额方式下单
+        此外，期货不能以成交额方式下单
         :param symbol: 要下单的交易对符号，会自动转大写
+        :param mode: 要下单的模式，只能为MAIN或者FUTURE，对应现货和期货
         :param amount: 要下单的货币数量，默认是货币数量，如果开启成交额模式，则为成交额
         :param side: 下单方向，字符串格式，只能为SELL或者BUY
         :param test: 是否为测试下单，默认False。测试下单不会提交到撮合引擎，用于测试
@@ -403,6 +377,7 @@ class SmartOperator():
         """
         # 转化字符串
         symbol = symbol.upper()
+        mode = mode.upper()
         side = side.upper()
 
         # 判断是否加入test链接
@@ -411,23 +386,48 @@ class SmartOperator():
         else:
             test_trade = ''
 
+        # 判断mode是否填写正确
+        if mode != 'MAIN' and mode != 'FUTURE':
+            raise Exception('交易mode填写错误，只能为MAIN或者FUTURE')
+
         # 判断side是否填写正确
-        side = side.upper()
         if side != 'BUY' and side != 'SELL':
             raise Exception('交易side填写错误，只能为SELL或者BUY')
 
+        # 判断是否期货却用了成交额模式下单
+        if mode == 'FUTURE' and volume_mode:
+            raise Exception('期货不可使用成交额模式下单')
+
         # 如果amount是float格式则根据精度转换一下
         if isinstance(amount, float):
-            pass
+            # 以币数量下单则获取精度转换，成交额下单则直接转为最高精度
+            if not volume_mode:
+                if mode == 'MAIN':
+                    percision = self.get_symbol_precision(symbol, 'MAIN')
+                else:
+                    percision = self.get_symbol_precision(symbol, 'FUTURE')
+                amount = float_to_str_floor(amount, percision)
+            else:
+                amount = float_to_str_floor(amount)
 
         # 判断是否成交额模式填写不同的参数
-        data = make_query_string(
-            symbol=symbol.upper(),
-            side=side,
-            type='MARKET',
-            quantity=amount,
-            timestamp=str(round(time.time() * 1000))
-        )
+        if not volume_mode:
+            data = make_query_string(
+                symbol=symbol,
+                side=side,
+                type='MARKET',
+                quantity=amount,
+                timestamp=get_timestamp()
+            )
+        else:
+            data = make_query_string(
+                symbol=symbol,
+                side=side,
+                type='MARKET',
+                quoteOrderQty=amount,
+                timestamp=get_timestamp()
+            )
+
         headers = {
             'X-MBX-APIKEY': self.public_key
         }
@@ -435,7 +435,12 @@ class SmartOperator():
                              data.encode('ascii'), digestmod=sha256).hexdigest()
         url = 'https://api.' + base_url + '/api/v3/order' + \
             test_trade + '?' + data + '&signature=' + signature
-        print(url)
+
         r = requests.post(url, headers=headers)
-        print(r.status_code)
-        print(r.text)
+
+        if request_trace:
+            print(url)
+            print(r.status_code)
+            print(r.text)
+
+        return r.text
