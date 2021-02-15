@@ -10,10 +10,8 @@ import threading
 from hashlib import sha256
 
 """
-随着脚本的增多，需要抽取一些常用的币安api，以及常用如对冲操作在此文件
-备注：尽量不要给两边单独写API，维护两套API很烦，最好只写最常用的例如trade
-    其他API尽量使用request自行访问
-    可以写高层的API，跨期货现货的，例如对冲下单这种
+此脚本用于放置对币安API的封装\n
+封装的最终目的是，不在外调用一次request
 """
 
 base_url = 'binance.com'  # 基本网址，用于快速切换国内地址和国地址，国际地址是binance.com，国内地址是binancezh.pro
@@ -29,7 +27,7 @@ def get_timestamp():
 
 def float_to_str_floor(amount: float, precision: int = 8) -> str:
     """
-    将float转为指定精度的str格式，一般用于对高精度计算结果下单，会向下取整避免多下
+    将float转为指定精度的str格式，一般用于对高精度计算结果下单，会向下取整避免多下\n
     如不指定精度，则默认为币安最大精度8
     """
     return str(math.floor(amount * (10 ** precision)) / (10 ** precision))
@@ -37,7 +35,7 @@ def float_to_str_floor(amount: float, precision: int = 8) -> str:
 
 def float_to_str_ceil(amount: float, precision: int = 8) -> str:
     """
-    将float转为指定精度的str格式，一般用于对高精度计算结果下单，会向上取整避免少下
+    将float转为指定精度的str格式，一般用于对高精度计算结果下单，会向上取整避免少下\n
     如不指定精度，则默认币安最大精度8
     """
     return str(math.ceil(amount * (10 ** precision)) / (10 ** precision))
@@ -45,16 +43,17 @@ def float_to_str_ceil(amount: float, precision: int = 8) -> str:
 
 def float_to_str_round(amount: float, precision: int = 8) -> str:
     """
-    将float转为指定精度的str格式，一般用于消除0.000000000001和0.9999999999
+    将float转为指定精度的str格式，一般用于消除0.000000000001和0.9999999999\n
     会对指定精度四舍五入，如不指定精度，则默认币安最大精度8
     """
     return str(round(amount * (10 ** precision)) / (10 ** precision))
 
 
-def make_query_string(**kwargs):
+def make_query_string(**kwargs) -> str:
     """
     这个函数会接收任意个参数，并返回对应的GET STRING
-    返回格式为aaa=xxx&bbb=xxx&ccc=xxx
+    :return: 返回格式为aaa=xxx&bbb=xxx&ccc=xxx
+
     """
     res = ''
     if len(kwargs.keys()) != 0:
@@ -87,7 +86,7 @@ class BaseOperator(object):
 
     def get_subscribe_id(self) -> int:
         """
-        返回订阅时要发送的id
+        返回订阅时要发送的id\n
         该函数是线程安全的
         """
         self.subscribe_id_lock.acquire()
@@ -96,7 +95,7 @@ class BaseOperator(object):
         self.subscribe_id_lock.release()
         return res
 
-    def request(self, area_url: str, path_url, method: str, data: dict, test=False, send_signature=True):
+    def request(self, area_url: str, path_url, method: str, data: dict, test=False, send_signature=True) -> str:
         """
         用于发出请求的内部API
         :param test: 是否添加/test路径，用于测试下单，默认False
@@ -104,7 +103,7 @@ class BaseOperator(object):
         :param path_url: 路径地址，例如/fapi/v2/account
         :param method: 请求方法，仅限POST和GET
         :param data: 发送的数据
-        :return:
+        :return: 返回的数据文本格式
         """
         if method.upper() != 'POST' and method.upper() != 'GET':
             raise Exception('请求方法必须为POST或者GET，大小写不限')
@@ -310,17 +309,17 @@ class BaseOperator(object):
 
 class SmartOperator(BaseOperator):
     """
-    智能操作者，不仅整合了期货、现货、杠杆等等所有的操作
-    还增加了很多自动化的选项，例如下单前自动获取货币精度并向下取整
-    相当于高度封装版本
-    缺点在于需要获取额外信息，速度、灵活性不如传统api
+    智能操作者，不仅整合了期货、现货、杠杆等等所有的操作\n
+    还增加了很多自动化的选项，例如下单前自动获取货币精度并向下取整\n
+    相当于高度封装版本\n
+    缺点在于需要获取额外信息，速度、灵活性不如直接用request
     """
 
     def __init__(self) -> None:
-        super().__init__()
+        super().__init__(self)
 
-        # 实例化一个基本操作者，用来发出request
-        self.operator = BaseOperator()
+        # # 实例化一个基本操作者，用来发出request
+        # self.operator = BaseOperator()
 
     def get_symbol_precision(self, symbol: str, mode: str) -> int:
         """
@@ -359,14 +358,14 @@ class SmartOperator(BaseOperator):
             else:
                 raise Exception('没有找到欲查询的精度信息')
 
-    def trade_market(self, symbol: str, mode: str, amount: Union[str, float], side: str, test=False, volume_mode=False):
+    def trade_market(self, symbol: str, mode: str, amount: Union[str, float], side: str, test=False, volume_mode=False) -> str:
         """
-        下市价单
-        需要注意的是，amount可以传入float和str
-        传入str会直接使用此str的数字进行下单
-        传入float会自动获取要下单货币对的精度，并向下取整转为str再下单
-        以成交额方式交易可能会有误差导致下单失败，建议确保有足够资产才使用成交额方式下单
-        此外，期货不能以成交额方式下单
+        下市价单\n
+        需要注意的是，amount可以传入float和str\n
+        传入str会直接使用此str的数字进行下单\n
+        传入float会自动获取要下单货币对的精度，并向下取整转为str再下单\n
+        以成交额方式交易可能会有误差导致下单失败，建议确保有足够资产才使用成交额方式下单\n
+        此外，期货不能以成交额方式下单\n
         :param symbol: 要下单的交易对符号，会自动转大写
         :param mode: 要下单的模式，只能为MAIN或者FUTURE，对应现货和期货
         :param amount: 要下单的货币数量，默认是货币数量，如果开启成交额模式，则为成交额
@@ -444,3 +443,56 @@ class SmartOperator(BaseOperator):
             print(r.text)
 
         return r.text
+
+    def get_asset_amount(self, symbol: str, mode: str) -> float:
+        """
+        获取可用资产数量，已冻结的资产不会在里面\n
+        期货使用此函数无法查询仓位，只能查询诸如USDT、BNB之类的资产\n
+        :param symbol: 要查询的资产符号
+        :param mode: MAIN或者FUTURE，代表现货和期货
+        """
+        symbol = symbol.upper()
+        mode = mode.upper()
+
+        if mode != 'MAIN' and mode != 'FUTURE':
+            raise Exception('mode只能为MAIN或者FUTURE')
+
+        # 根据mode调用不同API查询
+        if mode == 'MAIN':
+            # 获取当前所有现货资产
+            res = json.loads(self.request('api', '/api/v3/account', 'GET', {
+                'timestamp': get_timestamp()
+            }))['balances']
+            # 遍历查找查询的symbol
+            for e in res:
+                if e['asset'] == symbol:
+                    return float(e['free'])
+            else:
+                raise Exception('没有找到查询的symbol资产')
+        if mode == 'FUTURE':
+            # 获取当前所有期货资产
+            res = json.loads(self.request('fapi', '/fapi/v2/balance', 'GET', {
+                'timestamp': get_timestamp()
+            }))
+            # 遍历查找查询的symbol
+            for e in res:
+                if e['asset'] == symbol:
+                    return float(e['availableBalance'])
+            else:
+                raise Exception('没有找到查询的symbol资产')
+
+    def get_future_position(self, symbol: str) -> float:
+        """
+        获取期货仓位情况
+        :param symbol: 要查询的交易对
+        :return: 返回持仓数量，多空使用正负表示
+        """
+        # 获取当前所有的期货仓位（不是资产）
+        res = json.loads(self.request('fapi', '/fapi/v2/account', 'GET', {
+            'timestamp': get_timestamp()
+        }))['positions']
+        for e in res:
+            if e['symbol'] == symbol:
+                return float(e['positionAmt'])
+        else:
+            raise Exception('没有找到查询的交易对仓位')

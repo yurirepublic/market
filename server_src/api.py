@@ -285,7 +285,7 @@ def analyze_premium():
     for e in res:
         money[e['asset']] = float(e['free'])
 
-    # 获取当前所有的期货资产
+    # 获取当前所有的期货仓位（不是资产）
     res = json.loads(operator_future.request('fapi', '/fapi/v2/account', 'GET', {
         'timestamp': binance_api.get_timestamp()
     }))['positions']
