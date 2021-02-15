@@ -1,6 +1,7 @@
 import json
 import hmac
 import time
+from typing import Union
 import requests
 import _thread
 import websocket
@@ -317,24 +318,124 @@ class SmartOperator():
 
     def __init__(self) -> None:
         super().__init__()
-        self.operator = Operator()
-        self.operator_future = Operatorfuture()
 
-    def connect_websocket_both(self):
-        """
-        连接期货和现货的websocket
-        已经连接的话，会覆盖掉以前的连接
-        """
-        pass
+        # 实例化一个基本操作者，用来发出request
+        self.operator = BaseOperator()
 
-    def connect_websocket_base(self):
         """
-        连接现货的websocket
+        注，暂不支持websocket，反正用不上
         """
-        pass
+    #     # 实例化期货和现货的api，注意这里并不会连接websocket
+    #     self.operator = Operator()
+    #     self.operator_future = Operatorfuture()
 
-    def connect_websocket_future(self):
+    # def connect_websocket_both(self):
+    #     """
+    #     连接期货和现货的websocket
+    #     已经连接的话，会覆盖掉以前的连接
+    #     """
+    #     self.operator.connect_websocket()
+    #     self.operator_future.connect_websocket()
+
+    # def connect_websocket_base(self):
+    #     """
+    #     连接现货的websocket
+    #     已经连接的话，会覆盖掉以前的连接
+    #     """
+    #     self.operator.connect_websocket()
+
+    # def connect_websocket_future(self):
+    #     """
+    #     连接期货的websocket
+    #     已经连接的话，会覆盖掉以前的连接
+    #     """
+    #     self.operator_future.connect_websocket()
+
+    def get_symbol_precision(self, symbol: str, asset: str, mode: str) -> int:
         """
-        连接期货的websocket
+        获取交易对的报价精度，用于按照数量下单时，得知最大货币下单精度
+        :param symbol: 要查询的交易对名字
+        :param mode: 要查询的模式，仅可查询MAIN，FUTURE。代表现货和期货
+        :return: 查询的小数位数量
         """
-        pass
+        # 转换符号到大写
+        symbol = symbol.upper()
+        mode = mode.upper()
+
+        # 判断mode有没有输入正确
+        if mode != 'MAIN' and mode != 'FUTURE':
+            raise Exception('mode输入错误，仅可输入MAIN或者FUTURE')
+
+        # 根据mode获取对应的交易对精度
+        if mode == 'MAIN':
+            # 获取每个 现货 交易对的规则（下单精度）
+            info = json.loads(self.operator.request(
+                'api', '/api/v3/exchangeInfo', 'GET', {}, send_signature=False))['symbols']
+            # 在获取的结果里面找到需要的精度信息
+            for e in info:
+                # 找到对应交易对
+                if e['symbol'] == symbol:
+                    # 根据asset返回对应的精度
+                    return int(e['baseAssetPrecision'])
+            else:
+                raise Exception('没有找到欲查询的精度信息')
+        if mode == 'FUTURE':
+            info = json.loads(self.operator.request(
+                'fapi', '/fapi/v1/exchangeInfo', 'GET', {}, send_signature=False))['symbols']
+            for e in info:
+                if e['symbol'] == symbol:
+                    return int(e['quantityPrecision'])
+            else:
+                raise Exception('没有找到欲查询的精度信息')
+
+    def trade_main_market(self, symbol: str, amount: Union[str, float], side: str, test=False, volume_mode=False):
+        """
+        在现货下市价单
+        需要注意的是，amount可以传入float和str
+        传入str会直接使用此str的数字进行下单
+        传入float会自动获取要下单货币对的精度，并向下取整转为str再下单
+        :param symbol: 要下单的交易对符号，会自动转大写
+        :param amount: 要下单的货币数量，默认是货币数量，如果开启成交额模式，则为成交额
+        :param side: 下单方向，字符串格式，只能为SELL或者BUY
+        :param test: 是否为测试下单，默认False。测试下单不会提交到撮合引擎，用于测试
+        :volume_mode: 是否用成交额模式下单，默认False，开启后amount代表成交额而不是货币数量
+        :return: 下单请求提交后，币安返回的结果
+        """
+        # 转化字符串
+        symbol = symbol.upper()
+        side = side.upper()
+
+        # 判断是否加入test链接
+        if test:
+            test_trade = '/test'
+        else:
+            test_trade = ''
+
+        # 判断side是否填写正确
+        side = side.upper()
+        if side != 'BUY' and side != 'SELL':
+            raise Exception('交易side填写错误，只能为SELL或者BUY')
+
+        # 如果amount是float格式则根据精度转换一下
+        if isinstance(amount, float):
+            pass
+
+        # 判断是否成交额模式填写不同的参数
+        data = make_query_string(
+            symbol=symbol.upper(),
+            side=side,
+            type='MARKET',
+            quantity=amount,
+            timestamp=str(round(time.time() * 1000))
+        )
+        headers = {
+            'X-MBX-APIKEY': self.public_key
+        }
+        signature = hmac.new(self.private_key.encode('ascii'),
+                             data.encode('ascii'), digestmod=sha256).hexdigest()
+        url = 'https://api.' + base_url + '/api/v3/order' + \
+            test_trade + '?' + data + '&signature=' + signature
+        print(url)
+        r = requests.post(url, headers=headers)
+        print(r.status_code)
+        print(r.text)

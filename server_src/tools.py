@@ -16,7 +16,7 @@ import socket
 import _thread
 from typing import Tuple, Union, List
 import traceback
-from multiprocessing import Process, Manager
+from multiprocessing import Process, Manager, Lock
 import queue
 import zipfile
 import os
@@ -78,9 +78,10 @@ class Script():
         text = str(text)
         time_str = "[" + \
             time.strftime("%m-%d %H:%M:%S", time.localtime()) + "] "
-        self.manager_dict['log'] = self.manager_dict['log'] + text + '\n'
+        self.manager_dict['log'] = self.manager_dict['log'] + \
+            time_str + text + '\n'
         if self.log_to_print:
-            print(text)
+            print(time_str, text)
 
 
 class BaseHeader():
@@ -230,6 +231,7 @@ class Server(Base):
         self.sock: socket.socket = None     # 服务器用于侦听的socket
         self.running_scripts: List[ScriptListItem] = []     # 正在运行的脚本列表
         self._thread_id = 0      # 线程计数器，用于生成不重复的线程id，和threading的ident或者pid不是一回事
+        self._thread_id_lock = Lock()   # 线程计数器的多进程锁
         """
         注：脚本的启动实现方式多样化，最开始是threading，现在是Process，以后会什么样子不知道
             所以_thread_id变量的取名仅仅是作为工作的 线程/进程 编号，并不是thread就代表多线程
@@ -242,8 +244,11 @@ class Server(Base):
         """
         生成不重复的线程识别id
         """
+        self._thread_id_lock.acquire()
+        res = self._thread_id
         self._thread_id += 1
-        return self._thread_id
+        self._thread_id_lock.release()
+        return res
 
     def _accept_handler(self, sock: socket.socket, addr: Tuple[int, int]) -> None:
         pid = random.randint(1, 999)
