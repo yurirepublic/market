@@ -110,7 +110,7 @@ def premium_history(symbol):
     查询资金费率历史
     :param symbol:  要查询的交易对
     """
-    res = json.loads(operator_future.request('fapi', '/fapi/v1/fundingRate', 'GET', {
+    res = json.loads(operator.request('fapi', '/fapi/v1/fundingRate', 'GET', {
         'symbol': symbol
     }))
     # 清洗一下数据再发回去
@@ -174,15 +174,16 @@ def bnb_asset():
     """
     获取账户内BNB资产
     """
-    # 获取现货资产
-    asset = json.loads(operator.request('api', '/api/v3/account', 'GET', {
-        'timestamp': binance_api.get_timestamp()
-    }))['balances']
-    asset = list(filter(lambda x: x['asset'] == 'BNB', asset))
-    asset = asset[0]['free']
+    asset = operator.get_asset_amount('BNB', 'MAIN')
+    # # 获取现货资产
+    # asset = json.loads(operator.request('api', '/api/v3/account', 'GET', {
+    #     'timestamp': binance_api.get_timestamp()
+    # }))['balances']
+    # asset = list(filter(lambda x: x['asset'] == 'BNB', asset))
+    # asset = asset[0]['free']
 
     # 获取期货资产
-    asset_future = json.loads(operator_future.request('fapi', '/fapi/v2/balance', 'GET', {
+    asset_future = json.loads(operator.request('fapi', '/fapi/v2/balance', 'GET', {
         'timestamp': binance_api.get_timestamp()
     }))
     asset_future = list(filter(lambda x: x['asset'] == 'BNB', asset_future))

@@ -10,8 +10,7 @@ import threading
 from hashlib import sha256
 
 """
-此脚本用于放置对币安API的封装\n
-封装的最终目的是，不在外调用一次request
+此脚本用于放置对币安API的封装
 """
 
 base_url = 'binance.com'  # 基本网址，用于快速切换国内地址和国地址，国际地址是binance.com，国内地址是binancezh.pro
@@ -358,7 +357,7 @@ class SmartOperator(BaseOperator):
             else:
                 raise Exception('没有找到欲查询的精度信息')
 
-    def trade_market(self, symbol: str, mode: str, amount: Union[str, float], side: str, test=False, volume_mode=False) -> str:
+    def trade_market(self, symbol: str, mode: str, amount: Union[str, float, int], side: str, test=False, volume_mode=False) -> str:
         """
         下市价单\n
         需要注意的是，amount可以传入float和str\n
@@ -408,6 +407,12 @@ class SmartOperator(BaseOperator):
                 amount = float_to_str_floor(amount, percision)
             else:
                 amount = float_to_str_floor(amount)
+        elif isinstance(amount, int):
+            amount = str(amount)
+        elif isinstance(amount, str):
+            pass
+        else:
+            raise Exception('传入amount类型不可识别', type(amount))
 
         # 判断是否成交额模式填写不同的参数
         if not volume_mode:
@@ -497,7 +502,7 @@ class SmartOperator(BaseOperator):
         else:
             raise Exception('没有找到查询的交易对仓位')
 
-    def transfer_asset(self, mode: str, asset_symbol: str, amount: Union[str, float]):
+    def transfer_asset(self, mode: str, asset_symbol: str, amount: Union[str, float, int]):
         """
         划转指定资产，需要开通万向划转权限\n
         可用的模式如下\n
@@ -532,9 +537,41 @@ class SmartOperator(BaseOperator):
         mode = mode.upper()
         asset_symbol = asset_symbol.upper()
 
+        if isinstance(amount, float):
+            amount = float_to_str_round(amount)
+        elif isinstance(amount, int):
+            amount = str(amount)
+        elif isinstance(amount, str):
+            pass
+        else:
+            raise Exception('传入amount类型不可识别', type(amount))
+
         self.request('api', '/sapi/v1/asset/transfer', 'POST', {
             'type': mode,
             'asset': asset_symbol,
             'amount': amount,
             'timestamp': get_timestamp()
         })
+
+    def get_latest_price(self, symbol: str, mode: str) -> float:
+        """
+        获取某个货币对的最新价格
+        """
+        symbol = symbol.upper()
+        mode = mode.upper()
+
+        # 判断mode是否填写正确
+        if mode != 'MAIN' and mode != 'FUTURE':
+            raise Exception('交易mode填写错误，只能为MAIN或者FUTURE')
+
+        if mode == 'MAIN':
+            price = json.loads(self.request('api', '/api/v3/ticker/price', 'GET', {
+                'symbol': symbol
+            }, send_signature=False))['price']
+        else:
+            price = json.loads(self.request('fapi', '/fapi/v1/ticker/price', 'GET', {
+                'symbol': symbol
+            }, send_signature=False))
+
+        price = float(price)
+        return price
