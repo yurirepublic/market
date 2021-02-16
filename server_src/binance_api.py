@@ -365,7 +365,7 @@ class SmartOperator(BaseOperator):
         传入str会直接使用此str的数字进行下单\n
         传入float会自动获取要下单货币对的精度，并向下取整转为str再下单\n
         以成交额方式交易可能会有误差导致下单失败，建议确保有足够资产才使用成交额方式下单\n
-        此外，期货不能以成交额方式下单\n
+        此外，期货不能以成交额方式下单
         :param symbol: 要下单的交易对符号，会自动转大写
         :param mode: 要下单的模式，只能为MAIN或者FUTURE，对应现货和期货
         :param amount: 要下单的货币数量，默认是货币数量，如果开启成交额模式，则为成交额
@@ -496,3 +496,45 @@ class SmartOperator(BaseOperator):
                 return float(e['positionAmt'])
         else:
             raise Exception('没有找到查询的交易对仓位')
+
+    def transfer_asset(self, mode: str, asset_symbol: str, amount: Union[str, float]):
+        """
+        划转指定资产，需要开通万向划转权限\n
+        可用的模式如下\n
+        MAIN_C2C 现货钱包转向C2C钱包\n
+        MAIN_UMFUTURE 现货钱包转向U本位合约钱包\n
+        MAIN_CMFUTURE 现货钱包转向币本位合约钱包\n
+        MAIN_MARGIN 现货钱包转向杠杆全仓钱包\n
+        MAIN_MINING 现货钱包转向矿池钱包\n
+        C2C_MAIN C2C钱包转向现货钱包\n
+        C2C_UMFUTURE C2C钱包转向U本位合约钱包\n
+        C2C_MINING C2C钱包转向矿池钱包\n
+        UMFUTURE_MAIN U本位合约钱包转向现货钱包\n
+        UMFUTURE_C2C U本位合约钱包转向C2C钱包\n
+        UMFUTURE_MARGIN U本位合约钱包转向杠杆全仓钱包\n
+        CMFUTURE_MAIN 币本位合约钱包转向现货钱包\n
+        MARGIN_MAIN 杠杆全仓钱包转向现货钱包\n
+        MARGIN_UMFUTURE 杠杆全仓钱包转向U本位合约钱包\n
+        MINING_MAIN 矿池钱包转向现货钱包\n
+        MINING_UMFUTURE 矿池钱包转向U本位合约钱包\n
+        MINING_C2C 矿池钱包转向C2C钱包\n
+        MARGIN_CMFUTURE 杠杆全仓钱包转向币本位合约钱包\n
+        CMFUTURE_MARGIN 币本位合约钱包转向杠杆全仓钱包\n
+        MARGIN_C2C 杠杆全仓钱包转向C2C钱包\n
+        C2C_MARGIN C2C钱包转向杠杆全仓钱包\n
+        MARGIN_MINING 杠杆全仓钱包转向矿池钱包\n
+        MINING_MARGIN 矿池钱包转向杠杆全仓钱包
+        :param mode: 划转模式
+        :param asset_symbol: 欲划转资产
+        :param amount: 划转数目，str格式则直接使用，float则转换为最高精度
+        """
+        # 将资产和模式转为大写
+        mode = mode.upper()
+        asset_symbol = asset_symbol.upper()
+
+        self.request('api', '/sapi/v1/asset/transfer', 'POST', {
+            'type': mode,
+            'asset': asset_symbol,
+            'amount': amount,
+            'timestamp': get_timestamp()
+        })

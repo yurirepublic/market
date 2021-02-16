@@ -17,9 +17,8 @@ app = Flask(__name__)
 CORS(app, supports_credentials=True)    # 允许跨域
 
 
-# 连接api
-operator = binance_api.Operator()
-operator_future = binance_api.Operatorfuture()
+# 创建公用币安api对象
+operator = binance_api.SmartOperator()
 
 # 读取配置文件
 with open('config.json', 'r', encoding='utf-8') as f:
