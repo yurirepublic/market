@@ -17,9 +17,8 @@ app = Flask(__name__)
 CORS(app, supports_credentials=True)    # 允许跨域
 
 
-# 连接api
-operator = binance_api.Operator()
-operator_future = binance_api.Operatorfuture()
+# 创建公用币安api对象
+operator = binance_api.SmartOperator()
 
 # 读取配置文件
 with open('config.json', 'r', encoding='utf-8') as f:
@@ -111,7 +110,7 @@ def premium_history(symbol):
     查询资金费率历史
     :param symbol:  要查询的交易对
     """
-    res = json.loads(operator_future.request('fapi', '/fapi/v1/fundingRate', 'GET', {
+    res = json.loads(operator.request('fapi', '/fapi/v1/fundingRate', 'GET', {
         'symbol': symbol
     }))
     # 清洗一下数据再发回去
@@ -175,15 +174,16 @@ def bnb_asset():
     """
     获取账户内BNB资产
     """
-    # 获取现货资产
-    asset = json.loads(operator.request('api', '/api/v3/account', 'GET', {
-        'timestamp': binance_api.get_timestamp()
-    }))['balances']
-    asset = list(filter(lambda x: x['asset'] == 'BNB', asset))
-    asset = asset[0]['free']
+    asset = operator.get_asset_amount('BNB', 'MAIN')
+    # # 获取现货资产
+    # asset = json.loads(operator.request('api', '/api/v3/account', 'GET', {
+    #     'timestamp': binance_api.get_timestamp()
+    # }))['balances']
+    # asset = list(filter(lambda x: x['asset'] == 'BNB', asset))
+    # asset = asset[0]['free']
 
     # 获取期货资产
-    asset_future = json.loads(operator_future.request('fapi', '/fapi/v2/balance', 'GET', {
+    asset_future = json.loads(operator.request('fapi', '/fapi/v2/balance', 'GET', {
         'timestamp': binance_api.get_timestamp()
     }))
     asset_future = list(filter(lambda x: x['asset'] == 'BNB', asset_future))
@@ -216,7 +216,7 @@ def wallet_money():
     }))['balances']
     usdt_free = float(
         list(filter(lambda x: x['asset'] == 'USDT', usdt_free))[0]['free'])
-    usdt_future_free = json.loads(operator_future.request('fapi', '/fapi/v2/balance', 'GET', {
+    usdt_future_free = json.loads(operator.request('fapi', '/fapi/v2/balance', 'GET', {
         'timestamp': binance_api.get_timestamp()
     }))
     usdt_future_free = float(
@@ -235,10 +235,10 @@ def create_premium(symbol: str, quantity: float):
     创建套利交易
     """
     def a():
-        operator.trade(symbol, quantity, 'BUY', test=False)
+        operator.trade_market(symbol, 'MAIN', quantity, 'BUY')
 
     def b():
-        operator_future.trade(symbol, quantity, 'SELL', test=False)
+        operator.trade_market(symbol, 'FUTURE', quantity, 'SELL')
     handle_a = multiprocessing.Process(target=a, args=())
     handle_b = multiprocessing.Process(target=b, args=())
     handle_a.start()
@@ -256,10 +256,10 @@ def destroy_premium(symbol: str, quantity: float):
     平仓一个套利交易
     """
     def a():
-        operator.trade(symbol, quantity, 'SELL', test=False)
+        operator.trade_market(symbol, 'MAIN', quantity, 'SELL')
 
     def b():
-        operator_future.trade(symbol, quantity, 'BUY', test=False)
+        operator.trade_market(symbol, 'FUTURE', quantity, 'BUY')
     handle_a = multiprocessing.Process(target=a, args=())
     handle_b = multiprocessing.Process(target=b, args=())
     handle_a.start()
@@ -286,7 +286,7 @@ def analyze_premium():
         money[e['asset']] = float(e['free'])
 
     # 获取当前所有的期货仓位（不是资产）
-    res = json.loads(operator_future.request('fapi', '/fapi/v2/account', 'GET', {
+    res = json.loads(operator.request('fapi', '/fapi/v2/account', 'GET', {
         'timestamp': binance_api.get_timestamp()
     }))['positions']
     money_future = {}
@@ -342,7 +342,7 @@ def request_premium():
             percision[e['symbol']] = e['baseAssetPrecision']
 
     # 获取每个 期货 交易对的规则（下单精度）
-    info = json.loads(operator_future.request(
+    info = json.loads(operator.request(
         'fapi', '/fapi/v1/exchangeInfo', 'GET', {}, send_signature=False))['symbols']
     percision_future = {}
     for e in info:
@@ -360,7 +360,7 @@ def request_premium():
 
     # 获取期货所有交易对的资金费率（这东西可能有假的，没上市的合约也能查出资金费率）
     print('正在获取期货所有交易对的资金费率')
-    premium_index = json.loads(operator_future.request(
+    premium_index = json.loads(operator.request(
         'fapi', '/fapi/v1/premiumIndex', 'GET', {}))
     premium = {}
     premium_time = {}
@@ -387,7 +387,7 @@ def request_premium():
     res = list(filter(lambda x: x['price'] is not None, res))
 
     # 查询期货价格
-    prices = json.loads(operator_future.request(
+    prices = json.loads(operator.request(
         'fapi', '/fapi/v1/ticker/price', 'GET', {}, send_signature=False))
     price_dict = {}
     for e in prices:

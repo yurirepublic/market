@@ -10,8 +10,7 @@ import threading
 from hashlib import sha256
 
 """
-此脚本用于放置对币安API的封装\n
-封装的最终目的是，不在外调用一次request
+此脚本用于放置对币安API的封装
 """
 
 base_url = 'binance.com'  # 基本网址，用于快速切换国内地址和国地址，国际地址是binance.com，国内地址是binancezh.pro
@@ -316,7 +315,7 @@ class SmartOperator(BaseOperator):
     """
 
     def __init__(self) -> None:
-        super().__init__(self)
+        super().__init__()
 
         # # 实例化一个基本操作者，用来发出request
         # self.operator = BaseOperator()
@@ -358,14 +357,14 @@ class SmartOperator(BaseOperator):
             else:
                 raise Exception('没有找到欲查询的精度信息')
 
-    def trade_market(self, symbol: str, mode: str, amount: Union[str, float], side: str, test=False, volume_mode=False) -> str:
+    def trade_market(self, symbol: str, mode: str, amount: Union[str, float, int], side: str, test=False, volume_mode=False) -> str:
         """
         下市价单\n
         需要注意的是，amount可以传入float和str\n
         传入str会直接使用此str的数字进行下单\n
         传入float会自动获取要下单货币对的精度，并向下取整转为str再下单\n
         以成交额方式交易可能会有误差导致下单失败，建议确保有足够资产才使用成交额方式下单\n
-        此外，期货不能以成交额方式下单\n
+        此外，期货不能以成交额方式下单
         :param symbol: 要下单的交易对符号，会自动转大写
         :param mode: 要下单的模式，只能为MAIN或者FUTURE，对应现货和期货
         :param amount: 要下单的货币数量，默认是货币数量，如果开启成交额模式，则为成交额
@@ -408,6 +407,12 @@ class SmartOperator(BaseOperator):
                 amount = float_to_str_floor(amount, percision)
             else:
                 amount = float_to_str_floor(amount)
+        elif isinstance(amount, int):
+            amount = str(amount)
+        elif isinstance(amount, str):
+            pass
+        else:
+            raise Exception('传入amount类型不可识别', type(amount))
 
         # 判断是否成交额模式填写不同的参数
         if not volume_mode:
@@ -496,3 +501,77 @@ class SmartOperator(BaseOperator):
                 return float(e['positionAmt'])
         else:
             raise Exception('没有找到查询的交易对仓位')
+
+    def transfer_asset(self, mode: str, asset_symbol: str, amount: Union[str, float, int]):
+        """
+        划转指定资产，需要开通万向划转权限\n
+        可用的模式如下\n
+        MAIN_C2C 现货钱包转向C2C钱包\n
+        MAIN_UMFUTURE 现货钱包转向U本位合约钱包\n
+        MAIN_CMFUTURE 现货钱包转向币本位合约钱包\n
+        MAIN_MARGIN 现货钱包转向杠杆全仓钱包\n
+        MAIN_MINING 现货钱包转向矿池钱包\n
+        C2C_MAIN C2C钱包转向现货钱包\n
+        C2C_UMFUTURE C2C钱包转向U本位合约钱包\n
+        C2C_MINING C2C钱包转向矿池钱包\n
+        UMFUTURE_MAIN U本位合约钱包转向现货钱包\n
+        UMFUTURE_C2C U本位合约钱包转向C2C钱包\n
+        UMFUTURE_MARGIN U本位合约钱包转向杠杆全仓钱包\n
+        CMFUTURE_MAIN 币本位合约钱包转向现货钱包\n
+        MARGIN_MAIN 杠杆全仓钱包转向现货钱包\n
+        MARGIN_UMFUTURE 杠杆全仓钱包转向U本位合约钱包\n
+        MINING_MAIN 矿池钱包转向现货钱包\n
+        MINING_UMFUTURE 矿池钱包转向U本位合约钱包\n
+        MINING_C2C 矿池钱包转向C2C钱包\n
+        MARGIN_CMFUTURE 杠杆全仓钱包转向币本位合约钱包\n
+        CMFUTURE_MARGIN 币本位合约钱包转向杠杆全仓钱包\n
+        MARGIN_C2C 杠杆全仓钱包转向C2C钱包\n
+        C2C_MARGIN C2C钱包转向杠杆全仓钱包\n
+        MARGIN_MINING 杠杆全仓钱包转向矿池钱包\n
+        MINING_MARGIN 矿池钱包转向杠杆全仓钱包
+        :param mode: 划转模式
+        :param asset_symbol: 欲划转资产
+        :param amount: 划转数目，str格式则直接使用，float则转换为最高精度
+        """
+        # 将资产和模式转为大写
+        mode = mode.upper()
+        asset_symbol = asset_symbol.upper()
+
+        if isinstance(amount, float):
+            amount = float_to_str_round(amount)
+        elif isinstance(amount, int):
+            amount = str(amount)
+        elif isinstance(amount, str):
+            pass
+        else:
+            raise Exception('传入amount类型不可识别', type(amount))
+
+        self.request('api', '/sapi/v1/asset/transfer', 'POST', {
+            'type': mode,
+            'asset': asset_symbol,
+            'amount': amount,
+            'timestamp': get_timestamp()
+        })
+
+    def get_latest_price(self, symbol: str, mode: str) -> float:
+        """
+        获取某个货币对的最新价格
+        """
+        symbol = symbol.upper()
+        mode = mode.upper()
+
+        # 判断mode是否填写正确
+        if mode != 'MAIN' and mode != 'FUTURE':
+            raise Exception('交易mode填写错误，只能为MAIN或者FUTURE')
+
+        if mode == 'MAIN':
+            price = json.loads(self.request('api', '/api/v3/ticker/price', 'GET', {
+                'symbol': symbol
+            }, send_signature=False))['price']
+        else:
+            price = json.loads(self.request('fapi', '/fapi/v1/ticker/price', 'GET', {
+                'symbol': symbol
+            }, send_signature=False))['price']
+
+        price = float(price)
+        return price
