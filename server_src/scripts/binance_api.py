@@ -438,8 +438,14 @@ class SmartOperator(BaseOperator):
         }
         signature = hmac.new(self.private_key.encode('ascii'),
                              data.encode('ascii'), digestmod=sha256).hexdigest()
-        url = 'https://api.' + base_url + '/api/v3/order' + \
-            test_trade + '?' + data + '&signature=' + signature
+
+        # 根据期货现货不同，提交对应的url
+        if mode == 'MAIN':
+            url = 'https://api.' + base_url + '/api/v3/order' + \
+                test_trade + '?' + data + '&signature=' + signature
+        else:
+            url = 'https://fapi.' + base_url + '/fapi/v1/order' + \
+                test_trade + '?' + data + '&signature=' + signature
 
         r = requests.post(url, headers=headers)
 
