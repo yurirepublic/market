@@ -315,7 +315,7 @@ class SmartOperator(BaseOperator):
     """
 
     def __init__(self) -> None:
-        super().__init__(self)
+        super().__init__()
 
         # # 实例化一个基本操作者，用来发出request
         # self.operator = BaseOperator()
