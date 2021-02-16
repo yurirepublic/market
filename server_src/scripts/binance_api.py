@@ -365,6 +365,7 @@ class SmartOperator(BaseOperator):
         传入float会自动获取要下单货币对的精度，并向下取整转为str再下单\n
         以成交额方式交易可能会有误差导致下单失败，建议确保有足够资产才使用成交额方式下单\n
         此外，期货不能以成交额方式下单
+        TODO 期货其实也可以，自行计算仓位再下单即可
         :param symbol: 要下单的交易对符号，会自动转大写
         :param mode: 要下单的模式，只能为MAIN或者FUTURE，对应现货和期货
         :param amount: 要下单的货币数量，默认是货币数量，如果开启成交额模式，则为成交额

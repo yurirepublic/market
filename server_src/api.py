@@ -2,7 +2,7 @@ from flask import Flask, request
 from flask_cors import CORS
 from flask.wrappers import Response
 
-import binance_api
+from scripts import binance_api
 import tools
 
 import json
@@ -183,16 +183,18 @@ def bnb_asset():
     # asset = asset[0]['free']
 
     # 获取期货资产
-    asset_future = json.loads(operator.request('fapi', '/fapi/v2/balance', 'GET', {
-        'timestamp': binance_api.get_timestamp()
-    }))
-    asset_future = list(filter(lambda x: x['asset'] == 'BNB', asset_future))
-    asset_future = asset_future[0]['balance']
+    asset_future = operator.get_asset_amount('BNB', 'FUTURE')
+    # asset_future = json.loads(operator.request('fapi', '/fapi/v2/balance', 'GET', {
+    #     'timestamp': binance_api.get_timestamp()
+    # }))
+    # asset_future = list(filter(lambda x: x['asset'] == 'BNB', asset_future))
+    # asset_future = asset_future[0]['balance']
 
     # 获取BNB最新价格（用于估算USDT市值）
-    bnb_price = json.loads(operator.request('api', '/api/v3/ticker/price', 'GET', {
-        'symbol': 'BNBUSDT'
-    }, send_signature=False))['price']
+    bnb_price = operator.get_latest_price('BNBUSDT', 'MAIN')
+    # bnb_price = json.loads(operator.request('api', '/api/v3/ticker/price', 'GET', {
+    #     'symbol': 'BNBUSDT'
+    # }, send_signature=False))['price']
 
     return {
         'msg': 'success',
@@ -455,12 +457,12 @@ def request_premium():
 
 
 if __name__ == '__main__':
-    # 创建脚本目录
-    if not os.path.exists('scripts'):
-        os.mkdir('scripts')
+    # # 创建脚本目录
+    # if not os.path.exists('scripts'):
+    #     os.mkdir('scripts')
 
-    # 将脚本目录加入path
-    sys.path.append('scripts')
+    # # 将脚本目录加入path
+    # sys.path.append('scripts')
 
     # 运行脚本管理器
     script_server = tools.Server()
