@@ -571,7 +571,7 @@ class SmartOperator(BaseOperator):
         else:
             price = json.loads(self.request('fapi', '/fapi/v1/ticker/price', 'GET', {
                 'symbol': symbol
-            }, send_signature=False))
+            }, send_signature=False))['price']
 
         price = float(price)
         return price
