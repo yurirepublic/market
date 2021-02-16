@@ -483,7 +483,7 @@ class SmartOperator(BaseOperator):
             # 遍历查找查询的symbol
             for e in res:
                 if e['asset'] == symbol:
-                    return float(e['availableBalance'])
+                    return float(e['maxWithdrawAmount'])
             else:
                 raise Exception('没有找到查询的symbol资产')
 
