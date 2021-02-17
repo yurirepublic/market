@@ -3,7 +3,7 @@ from flask_cors import CORS
 from flask.wrappers import Response
 
 from scripts import binance_api
-import tools
+from scripts import tools
 
 import json
 import time
@@ -175,26 +175,12 @@ def bnb_asset():
     获取账户内BNB资产
     """
     asset = operator.get_asset_amount('BNB', 'MAIN')
-    # # 获取现货资产
-    # asset = json.loads(operator.request('api', '/api/v3/account', 'GET', {
-    #     'timestamp': binance_api.get_timestamp()
-    # }))['balances']
-    # asset = list(filter(lambda x: x['asset'] == 'BNB', asset))
-    # asset = asset[0]['free']
 
     # 获取期货资产
     asset_future = operator.get_asset_amount('BNB', 'FUTURE')
-    # asset_future = json.loads(operator.request('fapi', '/fapi/v2/balance', 'GET', {
-    #     'timestamp': binance_api.get_timestamp()
-    # }))
-    # asset_future = list(filter(lambda x: x['asset'] == 'BNB', asset_future))
-    # asset_future = asset_future[0]['balance']
 
     # 获取BNB最新价格（用于估算USDT市值）
     bnb_price = operator.get_latest_price('BNBUSDT', 'MAIN')
-    # bnb_price = json.loads(operator.request('api', '/api/v3/ticker/price', 'GET', {
-    #     'symbol': 'BNBUSDT'
-    # }, send_signature=False))['price']
 
     return {
         'msg': 'success',
@@ -213,21 +199,14 @@ def wallet_money():
     """
     print('正在获取账户余额')
 
-    usdt_free = json.loads(operator.request('api', '/api/v3/account', 'GET', {
-        'timestamp': binance_api.get_timestamp()
-    }))['balances']
-    usdt_free = float(
-        list(filter(lambda x: x['asset'] == 'USDT', usdt_free))[0]['free'])
-    usdt_future_free = json.loads(operator.request('fapi', '/fapi/v2/balance', 'GET', {
-        'timestamp': binance_api.get_timestamp()
-    }))
-    usdt_future_free = float(
-        list(filter(lambda x: x['asset'] == 'USDT', usdt_future_free))[0]['availableBalance'])
+    usdt_free = operator.get_asset_amount('USDT', 'MAIN')
+    usdt_future_free = operator.get_asset_amount('USDT', 'FUTURE')
+
     return {
         'msg': 'success',
         'data': {
-            'usdt_free': usdt_free,
-            'usdt_future_free': usdt_future_free
+            'usdt_free': binance_api.float_to_str_round(usdt_free),
+            'usdt_future_free': binance_api.float_to_str_round(usdt_future_free)
         }
     }
 
