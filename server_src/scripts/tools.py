@@ -23,16 +23,26 @@ import os
 import time
 
 
+class ScriptInput():
+    """
+    脚本的输入描述信息\n
+    """
+
+    def __init__(self, show_text: str, var_name: str, default):
+        self.show_text: str = None       # 用于展示给用户的文字，可以是中文
+        self.var_name: str = None       # 自定义变量名，脚本执行时，会传入字典来接收输入，字典的key就是这名字
+        self.default = default          # 展示给用户的时候，默认填充的内容
+
+
 class ScriptInfo():
     """
-    脚本的描述信息
-
-    # TODO 如果读取不到描述信息，或者文件里没有script，就不认为是脚本，不返回到list里
-    # TODO list不仅返回脚本名，还返回脚本描述balabala的信息
-    # TODO 得弄一个给自己脚本打包的机制
+    脚本的描述信息类\n
     """
-    def __init__():
-        pass
+
+    def __init__(self):
+        self.title: str = None       # 脚本的标题，和文件名无关，尽量几个字概括功能
+        self.description: str = None     # 脚本的描述，可以写长一点，把注意事项什么的全写进去都可以
+        self.inputs: list = []         # 脚本的输入请求，列表里面放入ScriptInput
 
 
 class Script():
@@ -42,18 +52,21 @@ class Script():
     甚至是实现脚本说明、输入输出GUI描述
     需要每个脚本都实现一个Script来与管理器对接
     每个脚本都相当于运行在这个类当中
+    注意，如果脚本描述信息填写不全，任何一项为None，将不会显示到脚本列表中
     """
 
     def __init__(self):
         self.log_to_print = False   # 是否在记录log的同时使用print打印出来
         self.manager_dict = None        # 多进程共享字典对象
+        self.input_dict = {}        # 初始化用户输入字典
 
-    def run_script(self, manager_dict):
+    def run_script(self, manager_dict, input_dict):
         """
         脚本管理器需要调用此函数来运行脚本
         此函数封装了一个异常捕获，使得异常可以写入log
         为了不把manager的传递写入__init__增加用户负担，多进程共享字典也写到了这里
         """
+        self.input_dict = input_dict
         self.manager_dict = manager_dict
         self.manager_dict['log'] = '-----开始记录脚本log-----\n'        # 脚本的log
         self.manager_dict['except_exit'] = False        # 是否是因为未捕获的异常而退出
@@ -69,6 +82,12 @@ class Script():
         不要让脚本管理器调用此函数！！！
         """
         pass
+
+    def info(self) -> ScriptInfo:
+        """
+        重写此函数作为脚本的描述，需要返回一个ScriptInfo对象
+        """
+        return ScriptInfo()
 
     def log(self, text: str):
         """

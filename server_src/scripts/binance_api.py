@@ -97,11 +97,11 @@ class BaseOperator(object):
     def request(self, area_url: str, path_url, method: str, data: dict, test=False, send_signature=True) -> str:
         """
         用于发出请求的内部API
-        :param test: 是否添加/test路径，用于测试下单，默认False
         :param area_url: 头部的地址，例如api、fapi、dapi
         :param path_url: 路径地址，例如/fapi/v2/account
         :param method: 请求方法，仅限POST和GET
         :param data: 发送的数据
+        :param test: 是否添加/test路径，用于测试下单，默认False
         :param send_signature: 是否发送签名，有的api不接受多余的参数，就不能默认发送签名
         :return: 返回的数据文本格式
         """
@@ -574,7 +574,9 @@ class SmartOperator(BaseOperator):
 
     def get_latest_price(self, symbol: str, mode: str) -> float:
         """
-        获取某个货币对的最新价格
+        获取某个货币对的最新价格\n
+        :param symbol: 货币对的符号
+        :param mode: 查询模式，MAIN或者FUTURE，代表现货或者期货
         """
         symbol = symbol.upper()
         mode = mode.upper()
