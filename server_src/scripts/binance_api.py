@@ -102,6 +102,7 @@ class BaseOperator(object):
         :param path_url: 路径地址，例如/fapi/v2/account
         :param method: 请求方法，仅限POST和GET
         :param data: 发送的数据
+        :param send_signature: 是否发送签名，有的api不接受多余的参数，就不能默认发送签名
         :return: 返回的数据文本格式
         """
         if method.upper() != 'POST' and method.upper() != 'GET':
@@ -364,8 +365,7 @@ class SmartOperator(BaseOperator):
         传入str会直接使用此str的数字进行下单\n
         传入float会自动获取要下单货币对的精度，并向下取整转为str再下单\n
         以成交额方式交易可能会有误差导致下单失败，建议确保有足够资产才使用成交额方式下单\n
-        此外，期货不能以成交额方式下单
-        TODO 期货其实也可以，自行计算仓位再下单即可
+        期货以成交额模式下单，会自动计算市值并下单\n
         :param symbol: 要下单的交易对符号，会自动转大写
         :param mode: 要下单的模式，只能为MAIN或者FUTURE，对应现货和期货
         :param amount: 要下单的货币数量，默认是货币数量，如果开启成交额模式，则为成交额
@@ -395,7 +395,10 @@ class SmartOperator(BaseOperator):
 
         # 判断是否期货却用了成交额模式下单
         if mode == 'FUTURE' and volume_mode:
-            raise Exception('期货不可使用成交额模式下单')
+            # 获取期货币价最新价格
+            latest_price = self.get_latest_price(symbol, 'FUTURE')
+            # 一个除法计算要买多少币
+            amount = float(amount) / latest_price
 
         # 如果amount是float格式则根据精度转换一下
         if isinstance(amount, float):
