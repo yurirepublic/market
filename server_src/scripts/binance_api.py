@@ -496,9 +496,10 @@ class SmartOperator(BaseOperator):
             else:
                 raise Exception('没有找到查询的symbol资产')
 
-    def get_future_position(self, symbol: str) -> float:
+    def get_future_position(self, symbol: str = None) -> Union[float, dict]:
         """
-        获取期货仓位情况
+        获取期货仓位情况\n
+        如果不传入symbol，则返回字典类型的所有仓位，key为大写symbol\n TODO
         :param symbol: 要查询的交易对
         :return: 返回持仓数量，多空使用正负表示
         """
@@ -506,11 +507,19 @@ class SmartOperator(BaseOperator):
         res = json.loads(self.request('fapi', '/fapi/v2/account', 'GET', {
             'timestamp': get_timestamp()
         }))['positions']
-        for e in res:
-            if e['symbol'] == symbol:
-                return float(e['positionAmt'])
+        if symbol is not None:
+            # 有symbol的情况下直接返回symbol的仓位
+            for e in res:
+                if e['symbol'] == symbol:
+                    return float(e['positionAmt'])
+            else:
+                raise Exception('没有找到查询的交易对仓位')
         else:
-            raise Exception('没有找到查询的交易对仓位')
+            # 没有symbol的情况下返回交易对的仓位字典
+            dict = {}
+            for e in res:
+                dict[e['symbol']] = e['positionAmt']
+            return dict
 
     def transfer_asset(self, mode: str, asset_symbol: str, amount: Union[str, float, int]):
         """
