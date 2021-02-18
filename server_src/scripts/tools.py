@@ -20,6 +20,7 @@ from multiprocessing import Process, Manager, Lock
 import queue
 import zipfile
 import os
+import sys
 import time
 
 
@@ -29,8 +30,8 @@ class ScriptInput():
     """
 
     def __init__(self, show_text: str, var_name: str, default):
-        self.show_text: str = None       # 用于展示给用户的文字，可以是中文
-        self.var_name: str = None       # 自定义变量名，脚本执行时，会传入字典来接收输入，字典的key就是这名字
+        self.show_text: str = show_text       # 用于展示给用户的文字，可以是中文
+        self.var_name: str = var_name       # 自定义变量名，脚本执行时，会传入字典来接收输入，字典的key就是这名字
         self.default = default          # 展示给用户的时候，默认填充的内容
 
 
@@ -42,7 +43,7 @@ class ScriptInfo():
     def __init__(self):
         self.title: str = None       # 脚本的标题，和文件名无关，尽量几个字概括功能
         self.description: str = None     # 脚本的描述，可以写长一点，把注意事项什么的全写进去都可以
-        self.inputs: list = []         # 脚本的输入请求，列表里面放入ScriptInput
+        self.inputs: list[ScriptInput] = []         # 脚本的输入请求，列表里面放入ScriptInput
 
 
 class Script():
@@ -298,7 +299,7 @@ class Server(Base):
         # 执行ls指令（列出服务器当前目录的文件）
         elif header.commands[0] == 'ls':
             # 获取服务器脚本目录的文件列表，转成json
-            data = os.listdir('scripts')
+            data = self._command_ls()
             data = json.dumps(data).encode('utf-8')
             length = len(data)
             # 生成通信头 发送
@@ -348,6 +349,57 @@ class Server(Base):
 
         sock.close()
         print('识别码%d处理完毕' % pid)
+
+    def _command_ls(self) -> list:
+        """
+        获取脚本目录的脚本列表
+        """
+        file_list = os.listdir('scripts')
+        res = []
+        # 将所有文件挨个导入，并检查是否符合规则可以返回
+        for e in file_list:
+            
+            # 因为需要添加scripts目录到path来读取脚本，所以需要另开进程来避免污染主进程，返回值用manager传递
+
+            def _check_script(file_name, return_dict):
+                try:
+                    # 将脚本目录添加到path
+                    sys.path.append('scripts')
+                    # 将脚本去掉.py，以模块形式导入
+                    script_import = __import__(file_name.replace('.py', ''))
+                    # 获取脚本的info信息
+                    info: ScriptInfo = script_import.Script().info()
+                    # 逐个转录脚本的info信息
+                    info_dict = {
+                        'title': info.title,
+                        'description': info.description,
+                        'inputs': []
+                    }
+                    if None in info_dict.values():
+                        raise Exception('主信息不完整', info_dict)
+                    for x in info.inputs:
+                        temp_dict = {
+                            'show_text': x.show_text,
+                            'var_name': x.var_name,
+                            'default': x.default
+                        }
+                        if None in temp_dict.values():
+                            raise Exception('输入信息不完整', temp_dict)
+                        info_dict['inputs'].append(temp_dict)
+                    return_dict['return'] = info_dict
+                    print('成功识别', file_name)
+                except Exception as e:
+                    print('识别失败', file_name, e)
+            # 启动多进程
+            return_manager = Manager().dict()
+            handel = Process(target=_check_script, args=(e, return_manager))
+            handel.start()
+            handel.join()
+            # 如果有返回值则直接把返回值丢进结果
+            if 'return' in return_manager.keys():
+                res.append(return_manager['return'])
+
+        return res
 
     def _command_exec(self, script_path: str) -> None:
         """

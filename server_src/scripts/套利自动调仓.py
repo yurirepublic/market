@@ -22,17 +22,18 @@ class Script(tools.Script):
         info.inputs.append(tools.ScriptInput('调仓的交易对', 'close_symbol', ''))
         info.inputs.append(tools.ScriptInput('减仓限制', 'close_limit', 200))
         info.inputs.append(tools.ScriptInput('加仓限制', 'open_limit', 1500))
+        info.inputs.append(tools.ScriptInput('刷新间隔（秒）', 'refresh_timeout', 30))
         return info
 
     def main(self):
         operator = binance_api.SmartOperator()     # 实例化一个币安api的操作者
 
         # 从用户输入获取
-        close_symbol = 'ANKRUSDT'       # 期货账户保证金不足时用于平仓的货币对
-        close_limit = 200           # 低于此金额，将会减杠杆
-        open_limit = 1500           # 高于此金额，将会加杠杆
+        close_symbol = str(self.input_dict['close_symbol'])
+        close_limit = float(self.input_dict['close_limit'])
+        open_limit = float(self.input_dict['open_limit'])
 
-        refresh_timeout = 30            # 刷新账户金额的间隔(秒)，极快刷新可能导致服务器被封禁
+        refresh_timeout = float(self.input_dict['refresh_timeout'])
         """
         注：每次调仓会将仓位调到close和open的中间
         """
