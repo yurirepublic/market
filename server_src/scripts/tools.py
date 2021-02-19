@@ -20,6 +20,7 @@ from multiprocessing import Process, Manager, Lock
 import queue
 import zipfile
 import os
+import sys
 import time
 
 
@@ -29,8 +30,8 @@ class ScriptInput():
     """
 
     def __init__(self, show_text: str, var_name: str, default):
-        self.show_text: str = None       # 用于展示给用户的文字，可以是中文
-        self.var_name: str = None       # 自定义变量名，脚本执行时，会传入字典来接收输入，字典的key就是这名字
+        self.show_text: str = show_text       # 用于展示给用户的文字，可以是中文
+        self.var_name: str = var_name       # 自定义变量名，脚本执行时，会传入字典来接收输入，字典的key就是这名字
         self.default = default          # 展示给用户的时候，默认填充的内容
 
 
@@ -42,7 +43,7 @@ class ScriptInfo():
     def __init__(self):
         self.title: str = None       # 脚本的标题，和文件名无关，尽量几个字概括功能
         self.description: str = None     # 脚本的描述，可以写长一点，把注意事项什么的全写进去都可以
-        self.inputs: list = []         # 脚本的输入请求，列表里面放入ScriptInput
+        self.inputs: list[ScriptInput] = []         # 脚本的输入请求，列表里面放入ScriptInput
 
 
 class Script():
@@ -89,16 +90,19 @@ class Script():
         """
         return ScriptInfo()
 
-    def log(self, text: str):
+    def log(self, *args):
         """
         打印一个log，除非特别设置，否则不会显示到控制台，会打印到脚本的变量中
         如果log_to_time选项为True，会在每条log前面都加上时间
         """
-        text = str(text)
+        text = ''
+        for e in args:
+            text += str(e) + ' '
+        if len(args) != 0:
+            text = text[:-1]        # 删掉最后一个空格
         time_str = "[" + \
             time.strftime("%m-%d %H:%M:%S", time.localtime()) + "] "
-        self.manager_dict['log'] = self.manager_dict['log'] + \
-            time_str + text + '\n'
+        self.manager_dict['log'] += time_str + text + '\n'
         if self.log_to_print:
             print(time_str, text)
 
@@ -217,7 +221,25 @@ class Base():
         if data is not None:
             return data
 
-    def client_ask_command(self, sock: socket.socket, commands: list) -> None:
+    def client_send_data(self, sock: socket.socket, commands: list, data: bytes) -> None:
+        """
+        执行一套标准的指令附带数据发送流程，暂时只能一次性以bytes形式传入所有data\n
+        所以只适用于发送小数据，例如附带的json信息
+        :param sock: 套接字
+        :param commands: 指令列表
+        :param data: 要附带发送数据的bytes
+        """
+        # 生成 & 发送通信头
+        header = self.generate(len(data), commands)
+        sock.send(header)
+
+        # 发送数据
+        sock.send(data)
+
+        # 接收回执
+        self.recv_ack(sock)
+
+    def client_send_command(self, sock: socket.socket, commands: list) -> None:
         """
         执行一套标准的指令发送流程  用于客户端
         和数据请求的区别在于这东西不会接收数据
@@ -298,7 +320,7 @@ class Server(Base):
         # 执行ls指令（列出服务器当前目录的文件）
         elif header.commands[0] == 'ls':
             # 获取服务器脚本目录的文件列表，转成json
-            data = os.listdir('scripts')
+            data = self._command_ls()
             data = json.dumps(data).encode('utf-8')
             length = len(data)
             # 生成通信头 发送
@@ -310,10 +332,12 @@ class Server(Base):
             response = self.recv_ack(sock)
             print('获得回应', response)
         elif header.commands[0] == 'exec':
-            self._command_exec(header.commands[1])
+            # 接收附加信息
+            data = json.loads(self.recv(sock, header.length).decode('utf-8'))
+            self._command_exec(data['script_path'], data['input_dict'])
             print('脚本成功运行')
             # 发送回执
-            sock.send('success'.encode('utf-8'))
+            self.send_ack(sock)
         elif header.commands[0] == 'status':
             data = self._command_status()
 
@@ -349,20 +373,77 @@ class Server(Base):
         sock.close()
         print('识别码%d处理完毕' % pid)
 
-    def _command_exec(self, script_path: str) -> None:
+    def _command_ls(self) -> list:
+        """
+        获取脚本目录的脚本列表
+        """
+        file_list = os.listdir('scripts')
+        res = []
+        # 将所有文件挨个导入，并检查是否符合规则可以返回
+        for e in file_list:
+            # 另开进程来避免污染主进程，返回值用manager传递
+            def _check_script(file_name, return_dict):
+                try:
+                    os.chdir('./scripts')
+                    sys.path.append('./')
+                    # 将脚本去掉.py，以模块形式导入
+                    script_import = __import__(file_name.replace('.py', ''))
+                    # 获取脚本的info信息
+                    info: ScriptInfo = script_import.Script().info()
+                    # 逐个转录脚本的info信息
+                    info_dict = {
+                        'title': info.title,
+                        'description': info.description,
+                        'inputs': []
+                    }
+                    if None in info_dict.values():
+                        raise Exception('主信息不完整', info_dict)
+                    for x in info.inputs:
+                        temp_dict = {
+                            'show_text': x.show_text,
+                            'var_name': x.var_name,
+                            'default': x.default
+                        }
+                        if None in temp_dict.values():
+                            raise Exception('输入信息不完整', temp_dict)
+                        info_dict['inputs'].append(temp_dict)
+                    return_dict['return'] = info_dict
+                    print('成功识别', file_name)
+                except Exception as e:
+                    print('识别失败', file_name, e)
+            # 启动多进程
+            return_manager = Manager().dict()
+            handel = Process(target=_check_script, args=(e, return_manager))
+            handel.start()
+            handel.join()
+            # 如果有返回值则直接把返回值丢进结果
+            if 'return' in return_manager.keys():
+                return_info = return_manager['return']
+                return_info['file_name'] = e
+                res.append(return_info)
+        return res
+
+    def _command_exec(self, script_path: str, input_dict: dict) -> None:
         """
         执行一个服务器上的脚本文件
+        :param script_path: 脚本文件名
+        :params
         """
-        # 导入脚本文件的类模块
-        script_import = __import__(script_path)
-
         # 生成共享字典对象
         manager_dict = Manager().dict()
 
         # 执行脚本
-        script: Script = script_import.Script()
+        def _x(manager_dict, input_dict, script_path):
+            os.chdir('./scripts')
+            sys.path.append('./')
+            # 导入脚本文件的类模块
+            script_import = __import__(script_path.replace('.py', ''))
+            script = script_import.Script()
+            script.run_script(manager_dict, input_dict)
+
+        # script: Script = script_import.Script()
         handle = Process(
-            target=script.run_script, args=(manager_dict,), name=script_path)
+            target=_x, args=(manager_dict, input_dict, script_path), name=script_path)
         handle.start()
 
         # 把脚本丢入正在运行列表中
@@ -507,7 +588,7 @@ class Client(Base):
         """
 
         sock = self._create_socket()
-        self.client_ask_command(sock, ['kill', str(thread_id)])
+        self.client_send_command(sock, ['kill', str(thread_id)])
         sock.close()
 
     def get_log(self, thread_id: int) -> str:
@@ -527,16 +608,25 @@ class Client(Base):
         """
 
         sock = self._create_socket()
-        self.client_ask_command(sock, ['clean'])
+        self.client_send_command(sock, ['clean'])
         sock.close()
 
-    def exec(self, script_path: str) -> None:
+    def exec(self, script_path: str, input_dict: dict) -> None:
         """
         执行服务器上某个脚本
         """
-        # 将路径的.py后缀名去掉
-        script_path = script_path.replace('.py', '')
-
         sock = self._create_socket()
-        self.client_ask_command(sock, ['exec', script_path])
+        data = {
+            'script_path': script_path,
+            'input_dict': input_dict,
+        }
+        data = json.dumps(data).encode('utf-8')
+        header = self.generate(len(data), ['exec'])
+        # 发出header
+        sock.send(header)
+        # 发出data
+        sock.send(data)
+        # 接收回执
+        self.recv_ack(sock)
+
         sock.close()
