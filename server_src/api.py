@@ -82,12 +82,12 @@ def script_log(pid):
     }
 
 
-def run_script(path):
+def run_script(path, input_dict):
     """
     运行服务器上某个脚本
     """
     client = tools.Client()
-    client.exec(path)
+    client.exec(path, input_dict)
     return {
         'msg': 'success'
     }
@@ -436,13 +436,6 @@ def request_premium():
 
 
 if __name__ == '__main__':
-    # # 创建脚本目录
-    # if not os.path.exists('scripts'):
-    #     os.mkdir('scripts')
-
-    # # 将脚本目录加入path
-    # sys.path.append('scripts')
-
     # 运行脚本管理器
     script_server = tools.Server()
 
