@@ -321,25 +321,27 @@ class SmartOperator(BaseOperator):
         # # 实例化一个基本操作者，用来发出request
         # self.operator = BaseOperator()
 
-    def get_symbol_precision(self, symbol: str, mode: str) -> int:
+    def get_symbol_precision(self, symbol: str, mode: str = None) -> int:
         """
-        获取交易对的报价精度，用于按照数量下单时，得知最大货币下单精度
+        获取交易对的报价精度，用于按照数量下单时，得知最大货币下单精度\n
+        如果不传入mode，则会自动比较期货和现货，传回一个最低精度，用于双向开仓\n
         :param symbol: 要查询的交易对名字
         :param mode: 要查询的模式，仅可查询MAIN，FUTURE。代表现货和期货
         :return: 查询的小数位数量
         """
         # 转换符号到大写
         symbol = symbol.upper()
-        mode = mode.upper()
+        if mode is not None:
+            mode = mode.upper()
 
         # 判断mode有没有输入正确
-        if mode != 'MAIN' and mode != 'FUTURE':
+        if mode != 'MAIN' and mode != 'FUTURE' and mode is not None:
             raise Exception('mode输入错误，仅可输入MAIN或者FUTURE')
 
         # 根据mode获取对应的交易对精度
         if mode == 'MAIN':
             # 获取每个 现货 交易对的规则（下单精度）
-            info = json.loads(self.operator.request(
+            info = json.loads(self.request(
                 'api', '/api/v3/exchangeInfo', 'GET', {}, send_signature=False))['symbols']
             # 在获取的结果里面找到需要的精度信息
             for e in info:
@@ -350,13 +352,17 @@ class SmartOperator(BaseOperator):
             else:
                 raise Exception('没有找到欲查询的精度信息')
         if mode == 'FUTURE':
-            info = json.loads(self.operator.request(
+            info = json.loads(self.request(
                 'fapi', '/fapi/v1/exchangeInfo', 'GET', {}, send_signature=False))['symbols']
             for e in info:
                 if e['symbol'] == symbol:
                     return int(e['quantityPrecision'])
             else:
                 raise Exception('没有找到欲查询的精度信息')
+        if mode is None:
+            main_percision = self.get_symbol_precision(symbol, 'MAIN')
+            future_percision = self.get_symbol_precision(symbol, 'FUTURE')
+            return min(main_percision, future_percision)
 
     def trade_market(self, symbol: str, mode: str, amount: Union[str, float, int], side: str, test=False, volume_mode=False) -> str:
         """
