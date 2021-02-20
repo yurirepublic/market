@@ -3,10 +3,18 @@
     <TitleBar style="-webkit-app-region: drag" />
     <div class="d-flex" style="height: 100%">
       <FuncSwitchBar :focus_page="focus_page" @click="switchPage" />
-      <premium v-if="focus_page == 'premium'" />
-      <Setting v-if="focus_page == 'setting'" />
-      <RunningScript v-if="focus_page == 'running_script'" />
-      <ScriptManage v-if="focus_page == 'script_manage'" />
+      <div v-show="focus_page == 'premium'">
+        <premium />
+      </div>
+      <div v-show="focus_page == 'setting'">
+        <Setting />
+      </div>
+      <div v-show="focus_page == 'running_script'">
+        <RunningScript />
+      </div>
+      <div v-show="focus_page == 'script_manage'">
+        <ScriptManage />
+      </div>
     </div>
   </div>
   <!-- <div id="app">
