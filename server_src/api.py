@@ -8,7 +8,9 @@ from scripts import tools
 import json
 import time
 import multiprocessing
+from multiprocessing import Process, Manager
 import traceback
+
 import numpy as np
 import sys
 import os
@@ -354,10 +356,28 @@ def request_premium():
         e['rate'] = premium[e['symbol']]
         e['next_time'] = premium_time[e['symbol']]
 
-    # 查询现货价格
-    prices = json.loads(operator.request(
-        'api', '/api/v3/ticker/price', 'GET', {}, send_signature=False))
+    def _x(manager_dict):
+        # 查询现货价格
+        prices_future = json.loads(operator.request(
+            'api', '/api/v3/ticker/price', 'GET', {}, send_signature=False))
+        manager_dict['prices'] = prices_future
+
+    def _y(manager_dict):
+        # 查询期货价格
+        prices = json.loads(operator.request(
+            'fapi', '/fapi/v1/ticker/price', 'GET', {}, send_signature=False))
+        manager_dict['prices_future'] = prices
+
+    manager_dict = Manager().dict()
+    handel1 = Process(target=_x, args=(manager_dict,))
+    handel2 = Process(target=_y, args=(manager_dict,))
+    handel1.start()
+    handel2.start()
+    handel1.join()
+    handel2.join()
+
     price_dict = {}
+    prices = manager_dict['prices']
     for e in prices:
         price_dict[e['symbol']] = e['price']
     for e in res:
@@ -367,10 +387,8 @@ def request_premium():
             e['price'] = None
     res = list(filter(lambda x: x['price'] is not None, res))
 
-    # 查询期货价格
-    prices = json.loads(operator.request(
-        'fapi', '/fapi/v1/ticker/price', 'GET', {}, send_signature=False))
     price_dict = {}
+    prices = manager_dict['prices_future']
     for e in prices:
         price_dict[e['symbol']] = e['price']
     for e in res:
@@ -421,13 +439,24 @@ def request_premium():
 
     # 查询资金费率
     for e in res:
-        premium = premium_history(e['symbol'])
-        e['premium_history'] = premium['data']
+        e['premium_history'] = premium_history(e['symbol'])['data']
 
-    # 统计平均资金费率
-    for e in res:
-        e['avg_rate'] = '{:.4f}'.format(
-            np.average(e['premium_history']['rate']) * 100)
+        # 计算平均资金费率
+        if len(e['premium_history']['rate']) == 0:
+            e['avg_rate'] = 0
+        else:
+            e['avg_rate'] = '{:.4f}'.format(
+                np.average(e['premium_history']['rate']) * 100)
+
+        # 如果长度不够100，则填充到100
+        if len(e['premium_history']['rate']) < 100:
+            e['premium_history']['rate'] = list(
+                np.zeros(100 - len(e['premium_history']['rate']))) + e['premium_history']['rate']
+            e['premium_history']['time'] = list(
+                np.zeros(100 - len(e['premium_history']['rate']))) + e['premium_history']['time']
+
+    # # 统计平均资金费率
+    # for e in res:
 
     return {
         'msg': 'success',
