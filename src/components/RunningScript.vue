@@ -119,4 +119,9 @@ export default {
 };
 </script>
 
-<style lang="stylus" scoped></style>
+<style scoped>
+pre {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+</style>
