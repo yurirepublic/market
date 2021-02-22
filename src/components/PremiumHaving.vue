@@ -21,11 +21,7 @@
         </tr>
       </thead>
       <tbody>
-        <tr
-          v-for="(item, index) in havingItems"
-          :key="item['symbol']"
-          @click="premiumClickAction(item[index])"
-        >
+        <tr v-for="(item, index) in havingItems" :key="item['symbol']">
           <td class="text-monospace align-middle">
             {{ item["symbol"] }}
           </td>
