@@ -17,6 +17,25 @@ base_url = 'binance.com'  # 基本网址，用于快速切换国内地址和国�
 request_trace = True  # 是否追踪请求，开启会打印出每次请求的url、状态码、返回的文本
 
 
+class BinanceException(Exception):
+
+    def __init__(self, status_code, response):
+        """
+        币安的请求没有返回200就抛出此异常
+        """
+        self.status_code = status_code
+        self.response = response
+
+
+class CantRetryException(Exception):
+    def __init__(self, status_code, response):
+        """
+        经过一定程度的判断，无法简单retry解决就返回此异常
+        """
+        self.status_code = status_code
+        self.response = response
+
+
 def get_timestamp():
     """
     获取币安常用的毫秒级timestamp
@@ -94,15 +113,17 @@ class BaseOperator(object):
         self.subscribe_id_lock.release()
         return res
 
-    def request(self, area_url: str, path_url, method: str, data: dict, test=False, send_signature=True) -> str:
+    def request(self, area_url: str, path_url, method: str, data: dict, test=False, send_signature=True, retry_count: int = 3) -> str:
         """
-        用于发出请求的内部API
+        用于向币安发送请求的内部API\n
+        如果请求状态码不是200，会引发BinanceException\n
         :param area_url: 头部的地址，例如api、fapi、dapi
         :param path_url: 路径地址，例如/fapi/v2/account
         :param method: 请求方法，仅限POST和GET
         :param data: 发送的数据
         :param test: 是否添加/test路径，用于测试下单，默认False
         :param send_signature: 是否发送签名，有的api不接受多余的参数，就不能默认发送签名
+        :param retry_time: 返回状态码不为200时，自动重试的次数
         :return: 返回的数据文本格式
         """
         if method.upper() != 'POST' and method.upper() != 'GET':
@@ -123,14 +144,28 @@ class BaseOperator(object):
         else:
             url = 'https://{}.{}{}{}?{}'.format(
                 area_url, base_url, path_url, test_path, data)
-        if method.upper() == 'GET':
-            r = requests.get(url, headers=headers)
-        else:
-            r = requests.post(url, headers=headers)
-        if request_trace:
-            print(url)
-            print(r.status_code)
-            print(r.text)
+
+        while retry_count > 0:
+            if method.upper() == 'GET':
+                r = requests.get(url, headers=headers)
+            else:
+                r = requests.post(url, headers=headers)
+
+            if request_trace:
+                print('-----start-----')
+                print(url)
+                print(r.status_code)
+                print(r.text)
+                print('-----ended-----')
+
+            if r.status_code != 200:
+                if retry_count > 0:
+                    retry_count -= 1
+                else:
+                    raise BinanceException(r.status_code, r.text)
+            else:
+                break
+
         return r.text
 
     # def subscribe_price(self, name: str):
@@ -553,7 +588,7 @@ class SmartOperator(BaseOperator):
         MARGIN_C2C 杠杆全仓钱包转向C2C钱包\n
         C2C_MARGIN C2C钱包转向杠杆全仓钱包\n
         MARGIN_MINING 杠杆全仓钱包转向矿池钱包\n
-        MINING_MARGIN 矿池钱包转向杠杆全仓钱包
+        MINING_MARGIN 矿池钱包转向杠杆全仓钱包\n
         :param mode: 划转模式
         :param asset_symbol: 欲划转资产
         :param amount: 划转数目，str格式则直接使用，float则转换为最高精度
