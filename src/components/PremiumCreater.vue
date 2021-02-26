@@ -23,16 +23,6 @@
       <div class="mt-3 d-flex flex-column">
         <InfoItem header="每边开仓" :content="quantity" :footer="symbol" />
         <InfoItem header="预计8小时收益" :content="benefit" footer="USDT" />
-        <!-- <InfoItem
-          header="现货开仓手续费(以0.075%)"
-          :content="tax"
-          footer="USDT"
-        />
-        <InfoItem
-          header="期货开仓手续费(以0.04%)"
-          :content="tax_future"
-          footer="USDT"
-        /> -->
         <InfoItem header="总开仓手续费" :content="total_tax" footer="USDT" />
         <span class="text-muted small align-self-end"
           >现货手续费(以0.075%) {{ tax }} USDT</span
@@ -48,17 +38,17 @@
             :disabled="disabled_trade"
             style="background-color: #02c076; border-color: transparent"
           >
-            多现货 空期货
+            多现货 空期货 (加仓)
           </button>
-          <!-- <button
+          <button
             type="submit"
             class="btn btn-primary mt-3 px-2 ml-5"
-            @click="OpenPosition"
+            @click="ClosePosition"
             :disabled="disabled_trade"
             style="background-color: #f84960; border-color: transparent"
           >
-            多期货 空现货
-          </button> -->
+            多期货 空现货 (减仓)
+          </button>
         </div>
       </div>
     </div>
@@ -109,7 +99,7 @@ export default {
   },
 
   methods: {
-    // 开仓下单
+    // 加仓下单
     OpenPosition: function () {
       // 取出要下单的交易对
       let pair_symbol = this.pair_item["symbol"];
@@ -119,11 +109,32 @@ export default {
       this.disabled_trade = true;
       this.method_request("create_premium", [pair_symbol, quantity])
         .then((res) => {
-          this.showToast().success("开仓成功");
+          this.showToast().success("加仓成功");
         })
         .catch((err) => {
           console.log(this.showToast);
-          this.showToast().error("开仓失败");
+          this.showToast().error("加仓失败");
+        })
+        .finally(() => {
+          this.disabled_trade = false;
+        });
+    },
+
+    // 减仓下单
+    ClosePosition: function () {
+      // 取出要下单的交易对
+      let pair_symbol = this.pair_item["symbol"];
+      // 取出要下单的数量
+      let quantity = this.quantity;
+      // 发送指令
+      this.disabled_trade = true;
+      this.method_request("destory_premium", [pair_symbol, quantity])
+        .then((res) => {
+          this.showToast().success("减仓成功");
+        })
+        .catch((err) => {
+          console.log(this.showToast);
+          this.showToast().error("减仓失败");
         })
         .finally(() => {
           this.disabled_trade = false;
