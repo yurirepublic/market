@@ -30,9 +30,9 @@ class ScriptInput():
     """
 
     def __init__(self, show_text: str, var_name: str, default):
-        self.show_text: str = show_text       # 用于展示给用户的文字，可以是中文
-        self.var_name: str = var_name       # 自定义变量名，脚本执行时，会传入字典来接收输入，字典的key就是这名字
-        self.default = default          # 展示给用户的时候，默认填充的内容
+        self.show_text: str = show_text  # 用于展示给用户的文字，可以是中文
+        self.var_name: str = var_name  # 自定义变量名，脚本执行时，会传入字典来接收输入，字典的key就是这名字
+        self.default = default  # 展示给用户的时候，默认填充的内容
 
 
 class ScriptInfo():
@@ -41,9 +41,9 @@ class ScriptInfo():
     """
 
     def __init__(self):
-        self.title: str = None       # 脚本的标题，和文件名无关，尽量几个字概括功能
-        self.description: str = None     # 脚本的描述，可以写长一点，把注意事项什么的全写进去都可以
-        self.inputs: list[ScriptInput] = []         # 脚本的输入请求，列表里面放入ScriptInput
+        self.title: str = None  # 脚本的标题，和文件名无关，尽量几个字概括功能
+        self.description: str = None  # 脚本的描述，可以写长一点，把注意事项什么的全写进去都可以
+        self.inputs: list[ScriptInput] = []  # 脚本的输入请求，列表里面放入ScriptInput
 
 
 class Script():
@@ -57,9 +57,9 @@ class Script():
     """
 
     def __init__(self):
-        self.log_to_print = False   # 是否在记录log的同时使用print打印出来
-        self.manager_dict = None        # 多进程共享字典对象
-        self.input_dict = {}        # 初始化用户输入字典
+        self.log_to_print = False  # 是否在记录log的同时使用print打印出来
+        self.manager_dict = None  # 多进程共享字典对象
+        self.input_dict = {}  # 初始化用户输入字典
 
     def run_script(self, manager_dict, input_dict):
         """
@@ -69,8 +69,8 @@ class Script():
         """
         self.input_dict = input_dict
         self.manager_dict = manager_dict
-        self.manager_dict['log'] = '-----开始记录脚本log-----\n'        # 脚本的log
-        self.manager_dict['except_exit'] = False        # 是否是因为未捕获的异常而退出
+        self.manager_dict['log'] = '-----开始记录脚本log-----\n'  # 脚本的log
+        self.manager_dict['except_exit'] = False  # 是否是因为未捕获的异常而退出
         try:
             self.main()
         except Exception:
@@ -99,9 +99,9 @@ class Script():
         for e in args:
             text += str(e) + ' '
         if len(args) != 0:
-            text = text[:-1]        # 删掉最后一个空格
+            text = text[:-1]  # 删掉最后一个空格
         time_str = "[" + \
-            time.strftime("%m-%d %H:%M:%S", time.localtime()) + "] "
+                   time.strftime("%m-%d %H:%M:%S", time.localtime()) + "] "
         self.manager_dict['log'] += time_str + text + '\n'
         if self.log_to_print:
             print(time_str, text)
@@ -113,8 +113,8 @@ class BaseHeader():
     """
 
     def __init__(self, length: int, commands: list):
-        self.length = length        # 数据长度
-        self.commands = commands        # 指令列表
+        self.length = length  # 数据长度
+        self.commands = commands  # 指令列表
 
 
 class Base():
@@ -129,13 +129,13 @@ class Base():
         """
         data = b''
         while len(data) != 1024:
-            buf = sock.recv(1024 - len(data))   # 接收剩余的东西
+            buf = sock.recv(1024 - len(data))  # 接收剩余的东西
             data += buf
         # 接收完了拿去解析
         data = data.decode('utf-8')
-        datas = data.split('@')     # 使用分隔符隔开指令
-        datas[0] = int(datas[0])    # 头位一定是数据长度，所以转int
-        datas = datas[:-2]    # 数据后两个是end和填充符，直接丢掉
+        datas = data.split('@')  # 使用分隔符隔开指令
+        datas[0] = int(datas[0])  # 头位一定是数据长度，所以转int
+        datas = datas[:-2]  # 数据后两个是end和填充符，直接丢掉
         print(datas)
         header = BaseHeader(datas[0], datas[1:])
         return header
@@ -258,9 +258,9 @@ class ScriptListItem():
     """
 
     def __init__(self, handle: Process, thread_id: int, manager_dict):
-        self.handle = handle        # 脚本的进程对象
-        self.thread_id = thread_id      # 生成的线程id
-        self.manager_dict = manager_dict    # 多进程共享变量的管理器
+        self.handle = handle  # 脚本的进程对象
+        self.thread_id = thread_id  # 生成的线程id
+        self.manager_dict = manager_dict  # 多进程共享变量的管理器
 
 
 class Server(Base):
@@ -269,10 +269,10 @@ class Server(Base):
     """
 
     def __init__(self) -> None:
-        self.sock: socket.socket = None     # 服务器用于侦听的socket
-        self.running_scripts: List[ScriptListItem] = []     # 正在运行的脚本列表
-        self._thread_id = 0      # 线程计数器，用于生成不重复的线程id，和threading的ident或者pid不是一回事
-        self._thread_id_lock = Lock()   # 线程计数器的多进程锁
+        self.sock: socket.socket = None  # 服务器用于侦听的socket
+        self.running_scripts: List[ScriptListItem] = []  # 正在运行的脚本列表
+        self._thread_id = 0  # 线程计数器，用于生成不重复的线程id，和threading的ident或者pid不是一回事
+        self._thread_id_lock = Lock()  # 线程计数器的多进程锁
         """
         注：脚本的启动实现方式多样化，最开始是threading，现在是Process，以后会什么样子不知道
             所以_thread_id变量的取名仅仅是作为工作的 线程/进程 编号，并不是thread就代表多线程
@@ -411,6 +411,7 @@ class Server(Base):
                     print('成功识别', file_name)
                 except Exception as e:
                     print('识别失败', file_name, e)
+
             # 启动多进程
             return_manager = Manager().dict()
             handel = Process(target=_check_script, args=(e, return_manager))
@@ -503,7 +504,7 @@ class Server(Base):
             config = json.loads(f.read())
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.setsockopt(
-            socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)       # 设置让程序关闭后立即释放端口
+            socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # 设置让程序关闭后立即释放端口
         self.socket.bind((config['script_manager_listen_ip'],
                           config['script_manager_listen_port']))
         self.socket.listen(100)

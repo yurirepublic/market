@@ -17,7 +17,5 @@ class Script(tools.Script):
 
     def main(self):
         operator = binance_api.SmartOperator()
-        res = json.loads(operator.request('fapi', '/fapi/v1/fundingRate', 'GET', {
-            'symbol': 'BNBUSDT'
-        }))
-        self.log(res)
+        operator.trade_market('BTCUSDT', 'MAIN', '10000',
+                              'BUY', volume_mode=True)

@@ -1,6 +1,5 @@
 from flask import Flask, request
 from flask_cors import CORS
-from flask.wrappers import Response
 
 from scripts import binance_api
 from scripts import tools
@@ -12,12 +11,9 @@ from multiprocessing import Process, Manager
 import traceback
 
 import numpy as np
-import sys
-import os
 
 app = Flask(__name__)
-CORS(app, supports_credentials=True)    # 允许跨域
-
+CORS(app, supports_credentials=True)  # 允许跨域
 
 # 创建公用币安api对象
 operator = binance_api.SmartOperator()
@@ -217,11 +213,13 @@ def create_premium(symbol: str, quantity: float):
     """
     创建套利交易
     """
+
     def a():
         operator.trade_market(symbol, 'MAIN', quantity, 'BUY')
 
     def b():
         operator.trade_market(symbol, 'FUTURE', quantity, 'SELL')
+
     handle_a = multiprocessing.Process(target=a, args=())
     handle_b = multiprocessing.Process(target=b, args=())
     handle_a.start()
@@ -238,11 +236,13 @@ def destroy_premium(symbol: str, quantity: float):
     """
     平仓一个套利交易
     """
+
     def a():
         operator.trade_market(symbol, 'MAIN', quantity, 'SELL')
 
     def b():
         operator.trade_market(symbol, 'FUTURE', quantity, 'BUY')
+
     handle_a = multiprocessing.Process(target=a, args=())
     handle_b = multiprocessing.Process(target=b, args=())
     handle_a.start()
@@ -280,15 +280,15 @@ def analyze_premium():
     same = set(money.keys()) & set(money_future.keys())
 
     # 取两边资产最小的一方作为套利仓位并返回
-    pair = []           # 配对的双向仓位（期货必须是做空期货，暂不支持做空现货）
-    single = []             # 不配对的孤立仓位
+    pair = []  # 配对的双向仓位（期货必须是做空期货，暂不支持做空现货）
+    single = []  # 不配对的孤立仓位
     for e in same:
         if money_future[e] <= 0:
             pair.append({
                 'symbol': e + 'USDT',
                 'quantity': str(min(money[e], abs(money_future[e])))
             })
-        # 两边有不对等的则算入孤立仓位
+            # 两边有不对等的则算入孤立仓位
             single.append({
                 'symbol': e + 'USDT',
                 # 仅保留10位小数消除浮点精度误差
@@ -313,32 +313,32 @@ def request_premium():
     """
     获取资金费率交易所需要的表格数据
     """
-    res = []    # 里面放的是字典
+    res = []  # 里面放的是字典
 
     # 获取每个 现货 交易对的规则（下单精度）
     info = json.loads(operator.request(
         'api', '/api/v3/exchangeInfo', 'GET', {}, send_signature=False))['symbols']
-    percision = {}
+    precision = {}
     for e in info:
         # 只需要报价单位是USDT的(排除掉BUSD之类的)
         if e['quoteAsset'] == 'USDT':
-            percision[e['symbol']] = e['baseAssetPrecision']
+            precision[e['symbol']] = e['baseAssetPrecision']
 
     # 获取每个 期货 交易对的规则（下单精度）
     info = json.loads(operator.request(
         'fapi', '/fapi/v1/exchangeInfo', 'GET', {}, send_signature=False))['symbols']
-    percision_future = {}
+    precision_future = {}
     for e in info:
-        percision_future[e['symbol']] = e['quantityPrecision']
+        precision_future[e['symbol']] = e['quantityPrecision']
 
     # 统计两边交易对的交集
-    same_info = set(percision.keys()) & set(percision_future.keys())
+    same_info = set(precision.keys()) & set(precision_future.keys())
 
     # 将有效的交易对symbol以及精度放入列表
     for name in same_info:
         res.append({
             "symbol": name,
-            "percision": min(percision[name], percision_future[name])
+            "precision": min(precision[name], precision_future[name])
         })
 
     # 获取期货所有交易对的资金费率（这东西可能有假的，没上市的合约也能查出资金费率）
@@ -356,25 +356,24 @@ def request_premium():
         e['rate'] = premium[e['symbol']]
         e['next_time'] = premium_time[e['symbol']]
 
-    def _x(manager_dict):
-        # 查询现货价格
-        prices_future = json.loads(operator.request(
-            'api', '/api/v3/ticker/price', 'GET', {}, send_signature=False))
-        manager_dict['prices'] = prices_future
-
-    def _y(manager_dict):
-        # 查询期货价格
-        prices = json.loads(operator.request(
-            'fapi', '/fapi/v1/ticker/price', 'GET', {}, send_signature=False))
-        manager_dict['prices_future'] = prices
-
     manager_dict = Manager().dict()
-    handel1 = Process(target=_x, args=(manager_dict,))
-    handel2 = Process(target=_y, args=(manager_dict,))
-    handel1.start()
-    handel2.start()
-    handel1.join()
-    handel2.join()
+
+    def _x():
+        # 查询现货价格
+        manager_dict['prices'] = json.loads(operator.request(
+            'api', '/api/v3/ticker/price', 'GET', {}, send_signature=False))
+
+    def _y():
+        # 查询期货价格
+        manager_dict['prices_future'] = json.loads(operator.request(
+            'fapi', '/fapi/v1/ticker/price', 'GET', {}, send_signature=False))
+
+    handle1 = Process(target=_x)
+    handle2 = Process(target=_y)
+    handle1.start()
+    handle2.start()
+    handle1.join()
+    handle2.join()
 
     price_dict = {}
     prices = manager_dict['prices']

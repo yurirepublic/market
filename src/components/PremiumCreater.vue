@@ -30,6 +30,14 @@
         <span class="text-muted small align-self-end float-right"
           >期货手续费(以0.040%) {{ tax_future }} USDT</span
         >
+        <div>
+          <span>现货下单位置</span>
+          <div>
+            <span>现货</span>
+            <span>全仓</span>
+            <span>逐仓</span>
+          </div>
+        </div>
         <div class="d-flex">
           <button
             type="submit"
@@ -38,7 +46,7 @@
             :disabled="disabled_trade"
             style="background-color: #02c076; border-color: transparent"
           >
-            多现货 空期货 (加仓)
+            多现货 空期货 (正向)
           </button>
           <button
             type="submit"
@@ -47,7 +55,7 @@
             :disabled="disabled_trade"
             style="background-color: #f84960; border-color: transparent"
           >
-            多期货 空现货 (减仓)
+            多期货 空现货 (反向)
           </button>
         </div>
       </div>

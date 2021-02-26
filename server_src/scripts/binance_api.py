@@ -3,8 +3,6 @@ import hmac
 import time
 from typing import Union
 import requests
-import _thread
-import websocket
 import math
 import threading
 from hashlib import sha256
@@ -98,7 +96,7 @@ class BaseOperator(object):
             self.private_key = jsons['binance_private_key']
 
             self.subscribe_id = 1  # 订阅时要发送的id，每次+1（似乎每次发一样的也行）
-            self.subscribe_id_lock = threading.Lock()       # 订阅id线程锁
+            self.subscribe_id_lock = threading.Lock()  # 订阅id线程锁
 
             # self.price = {}  # 当前已订阅交易对的最新价格
 
@@ -113,17 +111,19 @@ class BaseOperator(object):
         self.subscribe_id_lock.release()
         return res
 
-    def request(self, area_url: str, path_url, method: str, data: dict, test=False, send_signature=True, retry_count: int = 3) -> str:
+    def request(self, area_url: str, path_url, method: str, data: dict, test=False, send_signature=True,
+                retry_count: int = 3, retry_interval: int = 0) -> str:
         """
         用于向币安发送请求的内部API\n
         如果请求状态码不是200，会引发BinanceException\n
         :param area_url: 头部的地址，例如api、fapi、dapi
         :param path_url: 路径地址，例如/fapi/v2/account
         :param method: 请求方法，仅限POST和GET
-        :param data: 发送的数据
+        :param data: 发送的数据，dict会自动转换成http参数，str则不转换
         :param test: 是否添加/test路径，用于测试下单，默认False
         :param send_signature: 是否发送签名，有的api不接受多余的参数，就不能默认发送签名
-        :param retry_time: 返回状态码不为200时，自动重试的次数
+        :param retry_count: 返回状态码不为200时，自动重试的次数
+        :param retry_interval: 自动尝试的间隔(秒)
         :return: 返回的数据文本格式
         """
         if method.upper() != 'POST' and method.upper() != 'GET':
@@ -135,7 +135,12 @@ class BaseOperator(object):
             test_path = '/test'
         else:
             test_path = ''
-        data = make_query_string(**data)
+        if isinstance(data, dict):
+            data = make_query_string(**data)
+        elif isinstance(data, str):
+            pass
+        else:
+            raise Exception('data格式错误，必须为dict，或者使用make_query_string转换后的str')
         signature = hmac.new(self.private_key.encode('ascii'),
                              data.encode('ascii'), digestmod=sha256).hexdigest()
         if send_signature:
@@ -164,9 +169,8 @@ class BaseOperator(object):
                 else:
                     raise BinanceException(r.status_code, r.text)
             else:
-                break
-
-        return r.text
+                return r.text
+            time.sleep(retry_interval)
 
     # def subscribe_price(self, name: str):
     #     # 订阅最新交易价格
@@ -399,7 +403,8 @@ class SmartOperator(BaseOperator):
             future_percision = self.get_symbol_precision(symbol, 'FUTURE')
             return min(main_percision, future_percision)
 
-    def trade_market(self, symbol: str, mode: str, amount: Union[str, float, int], side: str, test=False, volume_mode=False) -> str:
+    def trade_market(self, symbol: str, mode: str, amount: Union[str, float, int], side: str, test=False,
+                     volume_mode=False) -> str:
         """
         下市价单\n
         需要注意的是，amount可以传入float和str\n
@@ -408,7 +413,7 @@ class SmartOperator(BaseOperator):
         以成交额方式交易可能会有误差导致下单失败，建议确保有足够资产才使用成交额方式下单\n
         期货以成交额模式下单，会自动计算市值并下单\n
         :param symbol: 要下单的交易对符号，会自动转大写
-        :param mode: 要下单的模式，只能为MAIN或者FUTURE，对应现货和期货
+        :param mode: 要下单的模式，可为MAIN(现货)、FUTURE(期货)、MARGIN(全仓杠杆)、ISOLATED(逐仓杠杆)
         :param amount: 要下单的货币数量，默认是货币数量，如果开启成交额模式，则为成交额
         :param side: 下单方向，字符串格式，只能为SELL或者BUY
         :param test: 是否为测试下单，默认False。测试下单不会提交到撮合引擎，用于测试
@@ -427,14 +432,14 @@ class SmartOperator(BaseOperator):
             test_trade = ''
 
         # 判断mode是否填写正确
-        if mode != 'MAIN' and mode != 'FUTURE':
-            raise Exception('交易mode填写错误，只能为MAIN或者FUTURE')
+        if mode != 'MAIN' and mode != 'FUTURE' and mode != 'MARGIN' and mode != 'ISOLATED':
+            raise Exception('交易mode填写错误，只能为MAIN FUTURE MARGIN ISOLATED')
 
         # 判断side是否填写正确
         if side != 'BUY' and side != 'SELL':
             raise Exception('交易side填写错误，只能为SELL或者BUY')
 
-        # 判断是否期货却用了成交额模式下单
+        # 如果期货用了成交额模式，则获取币价来计算下单货币数
         if mode == 'FUTURE' and volume_mode:
             # 获取期货币价最新价格
             latest_price = self.get_latest_price(symbol, 'FUTURE')
@@ -446,10 +451,10 @@ class SmartOperator(BaseOperator):
             # 以币数量下单则获取精度转换，成交额下单则直接转为最高精度
             if not volume_mode:
                 if mode == 'MAIN':
-                    percision = self.get_symbol_precision(symbol, 'MAIN')
+                    precision = self.get_symbol_precision(symbol, 'MAIN')
                 else:
-                    percision = self.get_symbol_precision(symbol, 'FUTURE')
-                amount = float_to_str_floor(amount, percision)
+                    precision = self.get_symbol_precision(symbol, 'FUTURE')
+                amount = float_to_str_floor(amount, precision)
             else:
                 amount = float_to_str_floor(amount)
         elif isinstance(amount, int):
@@ -459,46 +464,33 @@ class SmartOperator(BaseOperator):
         else:
             raise Exception('传入amount类型不可识别', type(amount))
 
-        # 判断是否成交额模式填写不同的参数
-        if not volume_mode:
-            data = make_query_string(
-                symbol=symbol,
-                side=side,
-                type='MARKET',
-                quantity=amount,
-                timestamp=get_timestamp()
-            )
-        else:
-            data = make_query_string(
-                symbol=symbol,
-                side=side,
-                type='MARKET',
-                quoteOrderQty=amount,
-                timestamp=get_timestamp()
-            )
-
-        headers = {
-            'X-MBX-APIKEY': self.public_key
+        data = {
+            'symbol': symbol,
+            'side': side,
+            'type': 'MARKET',
+            'timestamp': get_timestamp()
         }
-        signature = hmac.new(self.private_key.encode('ascii'),
-                             data.encode('ascii'), digestmod=sha256).hexdigest()
-
-        # 根据期货现货不同，提交对应的url
-        if mode == 'MAIN':
-            url = 'https://api.' + base_url + '/api/v3/order' + \
-                test_trade + '?' + data + '&signature=' + signature
+        # 使用交易额参数下单(非期货)
+        if volume_mode and mode != 'FUTURE':
+            data['quoteOrderQty'] = amount
+        # 使用货币数下单
         else:
-            url = 'https://fapi.' + base_url + '/fapi/v1/order' + \
-                test_trade + '?' + data + '&signature=' + signature
+            data['quantity'] = amount
+        # 加入全仓或者逐仓参数
+        if mode == 'MARGIN':
+            data['isIsolated'] = 'FALSE'
+        if mode == 'ISOLATE':
+            data['isIsolated'] = 'TRUE'
 
-        r = requests.post(url, headers=headers)
+        # 根据期货现货不同，发出不同的请求
+        if mode == 'MAIN':
+            r = self.request('api', '/api/v3/order', 'POST', data)
+        elif mode == 'FUTURE':
+            r = self.request('fapi', '/fapi/v1/order', 'POST', data)
+        else:
+            r = self.request('api', '/sapi/v1/margin/order', 'POST', data)
 
-        if request_trace:
-            print(url)
-            print(r.status_code)
-            print(r.text)
-
-        return r.text
+        return r
 
     def get_asset_amount(self, symbol: str, mode: str) -> float:
         """
@@ -540,7 +532,7 @@ class SmartOperator(BaseOperator):
     def get_future_position(self, symbol: str = None) -> Union[float, dict]:
         """
         获取期货仓位情况\n
-        如果不传入symbol，则返回字典类型的所有仓位，key为大写symbol\n TODO
+        如果不传入symbol，则返回字典类型的所有仓位，key为大写symbol\n
         :param symbol: 要查询的交易对
         :return: 返回持仓数量，多空使用正负表示
         """
@@ -557,10 +549,10 @@ class SmartOperator(BaseOperator):
                 raise Exception('没有找到查询的交易对仓位')
         else:
             # 没有symbol的情况下返回交易对的仓位字典
-            dict = {}
+            all_price = {}
             for e in res:
-                dict[e['symbol']] = e['positionAmt']
-            return dict
+                all_price[e['symbol']] = e['positionAmt']
+            return all_price
 
     def transfer_asset(self, mode: str, asset_symbol: str, amount: Union[str, float, int]):
         """
