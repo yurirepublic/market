@@ -16,6 +16,6 @@ class Script(tools.Script):
         return info
 
     def main(self):
-        operator = binance_api.SmartOperator()
-        operator.trade_market('BTCUSDT', 'MAIN', '10000',
-                              'BUY', volume_mode=True)
+        self.log(random.randint(1, 100))
+        self.log(random.randint(1, 100))
+        self.log(random.randint(1, 100))
