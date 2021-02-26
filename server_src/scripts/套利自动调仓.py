@@ -31,7 +31,7 @@ class Script(tools.Script):
         return info
 
     def main(self):
-        operator = binance_api.SmartOperator()     # 实例化一个币安api的操作者
+        operator = binance_api.SmartOperator()  # 实例化一个币安api的操作者
 
         # 从用户输入获取
         close_symbol = str(self.input_dict['close_symbol'])
@@ -84,6 +84,7 @@ class Script(tools.Script):
                 self.log('需要平仓', coin, close_symbol)
 
                 self.log('发出平仓交易请求')
+
                 # TODO 加入下单错误处理机制
 
                 def _close_main():

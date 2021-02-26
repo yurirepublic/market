@@ -6,15 +6,15 @@ import os
 import json
 
 default_config = {
-    "binance_public_key": "",         # 币安的apikey
-    "binance_private_key": "",              # 币安的私钥
-    "script_manager_listen_ip": "127.0.0.1",        # 脚本管理器服务端监听ip
-    "script_manager_listen_port": 7721,     # 脚本管理器服务端监听端口
-    "script_client_connect_ip": "127.0.0.1",        # 脚本管理器客户端监听ip
-    "script_client_connect_port": 7721,     # 脚本管理器客户端监听端口
-    "listen_ip": "0.0.0.0",     # 中央服务器http监听ip
-    "listen_port": 11327,       # 中央服务器http监听端口
-    "password": "abcdefg"     # 中央服务器认证口令
+    "binance_public_key": "",  # 币安的apikey
+    "binance_private_key": "",  # 币安的私钥
+    "script_manager_listen_ip": "127.0.0.1",  # 脚本管理器服务端监听ip
+    "script_manager_listen_port": 7721,  # 脚本管理器服务端监听端口
+    "script_client_connect_ip": "127.0.0.1",  # 脚本管理器客户端监听ip
+    "script_client_connect_port": 7721,  # 脚本管理器客户端监听端口
+    "listen_ip": "0.0.0.0",  # 中央服务器http监听ip
+    "listen_port": 11327,  # 中央服务器http监听端口
+    "password": "abcdefg"  # 中央服务器认证口令
 }
 
 try:
