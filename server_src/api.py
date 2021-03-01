@@ -1,16 +1,20 @@
+# 导入http框架
+from typing import Union
+
 from flask import Flask, request
 from flask_cors import CORS
 
-from scripts import binance_api
-from scripts import tools
-
+# 导入基本库
 import json
 import time
 import multiprocessing
 from multiprocessing import Process, Manager
 import traceback
-
 import numpy as np
+
+# 导入币安api和脚本管理器
+from scripts import binance_api
+from scripts import tools
 
 app = Flask(__name__)
 CORS(app, supports_credentials=True)  # 允许跨域
@@ -28,7 +32,7 @@ def root():
     print(request.form)
     # 接收指定函数名以及参数并运行
     # 需接收验证口令正确才可运行，口令可以为自定义字符串
-    # 接收格式为表单内 { function: '函数名', args: [...参数字符串列表] }
+    # 接收格式为表单内 { function: '函数名', args: [...参数字符串列表]， password: '口令' }
     if request.form['password'] != config['password']:
         return json.dumps({
             'msg': 'error',
@@ -209,49 +213,59 @@ def wallet_money():
     }
 
 
-def create_premium(symbol: str, quantity: float):
+def trade_market(symbol: str, mode: str, amount: Union[str, float, int], side: str):
     """
-    创建套利交易
+    单向下单\n
     """
-
-    def a():
-        operator.trade_market(symbol, 'MAIN', quantity, 'BUY')
-
-    def b():
-        operator.trade_market(symbol, 'FUTURE', quantity, 'SELL')
-
-    handle_a = multiprocessing.Process(target=a, args=())
-    handle_b = multiprocessing.Process(target=b, args=())
-    handle_a.start()
-    handle_b.start()
-    handle_a.join()
-    handle_b.join()
+    operator.trade_market(symbol, mode, amount, side)
 
     return {
         'msg': 'success'
     }
 
 
-def destroy_premium(symbol: str, quantity: float):
+def trade_premium(symbol: str, amount: float, side: str, main_mode: str):
     """
-    平仓一个套利交易
+    创建套利交易\n
+    :param symbol: 创建套利交易的符号
+    :param amount: 创建套利交易的货币数
+    :param side: 创建套利交易的方向，只能为OPEN或者CLOSE
+    :param main_mode: 现货下单的位置，只能为MAIN、MARGIN、ISOLATED
     """
+    if side != 'OPEN' and side != 'CLOSE':
+        raise Exception('side只能为OPEN或者CLOSE')
+    if main_mode != 'MAIN' and main_mode != 'MARGIN' and main_mode != 'ISOLATED':
+        raise Exception('main_mode只能为MAIN、MARGIN、ISOLATED')
+    if side == 'OPEN':
+        def a():
+            operator.trade_market(symbol, main_mode, amount, 'BUY')
 
-    def a():
-        operator.trade_market(symbol, 'MAIN', quantity, 'SELL')
+        def b():
+            operator.trade_market(symbol, 'FUTURE', amount, 'SELL')
 
-    def b():
-        operator.trade_market(symbol, 'FUTURE', quantity, 'BUY')
+        handle_a = multiprocessing.Process(target=a, args=())
+        handle_b = multiprocessing.Process(target=b, args=())
+        handle_a.start()
+        handle_b.start()
+        handle_a.join()
+        handle_b.join()
 
-    handle_a = multiprocessing.Process(target=a, args=())
-    handle_b = multiprocessing.Process(target=b, args=())
-    handle_a.start()
-    handle_b.start()
-    handle_a.join()
-    handle_b.join()
+    elif side == 'CLOSE':
+        def a():
+            operator.trade_market(symbol, main_mode, amount, 'SELL')
+
+        def b():
+            operator.trade_market(symbol, 'FUTURE', amount, 'BUY')
+
+        handle_a = multiprocessing.Process(target=a, args=())
+        handle_b = multiprocessing.Process(target=b, args=())
+        handle_a.start()
+        handle_b.start()
+        handle_a.join()
+        handle_b.join()
 
     return {
-        'msg': 'success',
+        'msg': 'success'
     }
 
 
@@ -293,7 +307,7 @@ def analyze_premium():
                 'symbol': e + 'USDT',
                 # 仅保留10位小数消除浮点精度误差
                 'quantity': str(round((money[e] + money_future[e]) * 10000000000) / 10000000000),
-                'type': '现货' if money[e] + money_future[e] > 0 else '期货'
+                'type': 'MAIN' if money[e] + money_future[e] > 0 else 'FUTURE'
             })
 
     # 筛选掉仓位为0的资产

@@ -11,7 +11,7 @@ from hashlib import sha256
 此脚本用于放置对币安API的封装
 """
 
-base_url = 'binance.com'  # 基本网址，用于快速切换国内地址和国地址，国际地址是binance.com，国内地址是binancezh.pro
+base_url = 'binance.com'  # 基本网址，用于快速切换国内地址和国际地址，国际地址是binance.com，国内地址是binancezh.pro
 request_trace = True  # 是否追踪请求，开启会打印出每次请求的url、状态码、返回的文本
 
 
@@ -399,9 +399,9 @@ class SmartOperator(BaseOperator):
             else:
                 raise Exception('没有找到欲查询的精度信息')
         if mode is None:
-            main_percision = self.get_symbol_precision(symbol, 'MAIN')
-            future_percision = self.get_symbol_precision(symbol, 'FUTURE')
-            return min(main_percision, future_percision)
+            main_precision = self.get_symbol_precision(symbol, 'MAIN')
+            future_precision = self.get_symbol_precision(symbol, 'FUTURE')
+            return min(main_precision, future_precision)
 
     def trade_market(self, symbol: str, mode: str, amount: Union[str, float, int], side: str, test=False,
                      volume_mode=False) -> str:

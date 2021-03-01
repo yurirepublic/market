@@ -1,7 +1,7 @@
 <template>
   <div
-    class="p-2"
-    style="
+      class="p-2"
+      style="
       overflow: auto;
       max-height: 40rem;
       min-width: 17rem;
@@ -10,36 +10,36 @@
   >
     <div class="mb-2 d-flex justify-content-between align-items-center">
       <span class="font-weight-bold">双向持仓交易对</span>
-      <RefreshButton :anime="refresh_button_anime" @click="refresh" />
+      <RefreshButton :anime="refresh_button_anime" @click="refresh"/>
     </div>
     <table class="table table-hover table-borderless table-sm small">
       <thead>
-        <tr class="text-muted">
-          <th class="font-weight-normal">交易对</th>
-          <th class="font-weight-normal">仓位</th>
-          <th class="font-weight-normal">操作</th>
-        </tr>
+      <tr class="text-muted">
+        <th class="font-weight-normal">交易对</th>
+        <th class="font-weight-normal">仓位</th>
+        <th class="font-weight-normal">操作</th>
+      </tr>
       </thead>
       <tbody>
-        <tr v-for="(item, index) in havingItems" :key="item['symbol']">
-          <td class="text-monospace align-middle">
-            {{ item["symbol"] }}
-          </td>
-          <td class="text-monospace align-middle">
-            {{ item["quantity"] }}
-          </td>
-          <td>
-            <button
+      <tr v-for="(item, index) in havingItems" :key="item['symbol']">
+        <td class="text-monospace align-middle">
+          {{ item["symbol"] }}
+        </td>
+        <td class="text-monospace align-middle">
+          {{ item["quantity"] }}
+        </td>
+        <td>
+          <button
               class="btn btn-secondary btn-sm"
               type="button"
               @click="CloseOut(item)"
               @click.stop
               :disabled="button_disabled"
-            >
-              平仓
-            </button>
-          </td>
-        </tr>
+          >
+            平仓
+          </button>
+        </td>
+      </tr>
       </tbody>
     </table>
     <div class="mb-2 d-flex justify-content-between align-items-center">
@@ -47,36 +47,45 @@
     </div>
     <table class="table table-hover table-borderless table-sm small">
       <thead>
-        <tr class="text-muted">
-          <th class="font-weight-normal">交易对</th>
-          <th class="font-weight-normal">仓位</th>
-          <th class="font-weight-normal">类型</th>
-          <th class="font-weight-normal">操作</th>
-        </tr>
+      <tr class="text-muted">
+        <th class="font-weight-normal">交易对</th>
+        <th class="font-weight-normal">仓位</th>
+        <th class="font-weight-normal">类型</th>
+        <th class="font-weight-normal">操作</th>
+      </tr>
       </thead>
       <tbody>
-        <tr v-for="item in havingItemsSingle" :key="item['symbol']">
-          <td class="text-monospace align-middle">
-            {{ item["symbol"] }}
-          </td>
-          <td class="text-monospace align-middle">
-            {{ item["quantity"] }}
-          </td>
-          <td class="align-middle">
-            {{ item["type"] }}
-          </td>
-          <td>
-            <button
+      <tr v-for="item in havingItemsSingle" :key="item['symbol']">
+        <td class="text-monospace align-middle">
+          {{ item["symbol"] }}
+        </td>
+        <td class="text-monospace align-middle">
+          {{ item["quantity"] }}
+        </td>
+        <td class="align-middle" v-if="item['type'] === 'MAIN'">
+          现货
+        </td>
+        <td class="align-middle" v-if="item['type'] === 'MARGIN'">
+          全仓
+        </td>
+        <td class="align-middle" v-if="item['type'] === 'ISOLATED'">
+          逐仓
+        </td>
+        <td class="align-middle" v-if="item['type'] === 'FUTURE'">
+          期货
+        </td>
+        <td>
+          <button
               class="btn btn-secondary btn-sm"
               type="button"
               @click="CloseSingle(item)"
               @click.stop
               :disabled="button_disabled"
-            >
-              平仓
-            </button>
-          </td>
-        </tr>
+          >
+            平仓
+          </button>
+        </td>
+      </tr>
       </tbody>
     </table>
   </div>
@@ -107,24 +116,24 @@ export default {
 
       // 获取套利开仓情况
       this.method_request("analyze_premium", [])
-        .then((res) => {
-          this.havingItems = res["data"]["pair"];
-          this.havingItemsSingle = res["data"]["single"];
+          .then((res) => {
+            this.havingItems = res["data"]["pair"];
+            this.havingItemsSingle = res["data"]["single"];
 
-          this.$toast.open({
-            message: "套利开仓情况获取成功",
-            type: "success",
+            this.$toast.open({
+              message: "套利开仓情况获取成功",
+              type: "success",
+            });
+          })
+          .catch((err) => {
+            this.$toast.open({
+              message: "套利开仓情况获取失败",
+              type: "error",
+            });
+          })
+          .finally(() => {
+            this.refresh_button_anime = false;
           });
-        })
-        .catch((err) => {
-          this.$toast.open({
-            message: "套利开仓情况获取失败",
-            type: "error",
-          });
-        })
-        .finally(() => {
-          this.refresh_button_anime = false;
-        });
     },
 
     // 平仓
@@ -135,29 +144,45 @@ export default {
       console.log("平仓下单符号", item["symbol"]);
       console.log("平仓下单数量", item["quantity"]);
       this.showToast().info("开始平仓" + item["symbol"]);
-      this.method_request("destroy_premium", [item["symbol"], item["quantity"]])
-        .then((res) => {
-          this.showToast().success(item["symbol"] + "成功平仓");
-        })
-        .catch((err) => {
-          this.showToast().error("平仓失败");
-        })
-        .finally(() => {
-          this.button_disabled = false;
-        });
+      this.method_request("trade_premium", [item["symbol"], item["quantity"], 'MAIN'])
+          .then((res) => {
+            this.showToast().success(item["symbol"] + "成功平仓");
+          })
+          .catch((err) => {
+            this.showToast().error("平仓失败");
+          })
+          .finally(() => {
+            this.button_disabled = false;
+          });
     },
 
     // 平孤立仓
     CloseSingle(item) {
+      this.button_disabled = true;
       console.log("即将平孤立仓", item["symbol"]);
-      console.log("平仓下单符号", item["symbol"]);
       console.log("平仓下单数量", item["quantity"]);
-      if (item["type"] == "现货") {
-        console.log("平仓区域", "现货");
-      } else if (item["type"] == "期货") {
-        console.log("平仓区域", "期货");
-      } else {
-        console.error("没找到平仓区域");
+      console.log('平仓区域', item['type'])
+
+      // 特别对待一下期货的负仓位情况
+      if (item['type'] === 'FUTURE' && item['quantity'] < 0) {
+        // 将仓位的负号消除，方向使用BUY
+        this.method_request('trade_market', [item['symbol'], item['type'], item['quantity'].replace('-', ''), 'BUY']).then(res => {
+          this.showToast().success(item['symbol'] + '成功平仓')
+        }).catch(err => {
+          this.showToast().success(item['symbol'] + '平仓失败')
+        }).finally(() => {
+          this.button_disabled = false
+        })
+      }
+      else {
+        // 将仓位的负号消除，方向使用BUY
+        this.method_request('trade_market', [item['symbol'], item['type'], item['quantity'], 'SELL']).then(res => {
+          this.showToast().success(item['symbol'] + '成功平仓')
+        }).catch(err => {
+          this.showToast().success(item['symbol'] + '平仓失败')
+        }).finally(() => {
+          this.button_disabled = false
+        })
       }
     },
   },
