@@ -269,6 +269,23 @@ def trade_premium(symbol: str, amount: float, side: str, main_mode: str):
     }
 
 
+def get_bnb_burn():
+    """
+    获取BNB燃烧状态
+    """
+    return operator.get_bnb_burn()
+
+
+def set_bnb_burn(spot_bnb_burn: bool, interest_bnb_burn: bool):
+    """
+    设置BNB燃烧状态
+    """
+    operator.set_bnb_burn(spot_bnb_burn, interest_bnb_burn)
+    return {
+        'msg': 'success'
+    }
+
+
 def analyze_premium():
     """
     分析并返回当前所有的套利交易对，还顺带返回孤立仓位

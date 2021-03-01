@@ -629,3 +629,23 @@ class SmartOperator(BaseOperator):
 
         price = float(price)
         return price
+
+    def set_bnb_burn(self, spot_bnb_burn: bool, interest_bnb_burn: bool):
+        """
+        设置BNB抵扣开关状态
+        :param spot_bnb_burn: 是否使用bnb支付现货交易手续费
+        :param interest_bnb_burn: 是否使用bnb支付杠杆贷款利息
+        """
+        data = {
+            'spotBNBBurn': 'true' if spot_bnb_burn else 'false',
+            'interestBNBBurn': 'true' if interest_bnb_burn else 'false',
+        }
+        self.request('api', '/sapi/v1/bnbBurn', 'POST', data)
+
+    def get_bnb_burn(self):
+        """
+        获取BNB抵扣开关状态
+        """
+        return json.loads(self.request('api', '/sapi/v1/bnbBurn', 'GET', {}))
+
+
