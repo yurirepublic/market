@@ -201,14 +201,16 @@ def wallet_money():
     """
     print('正在获取账户余额')
 
-    usdt_free = operator.get_asset_amount('USDT', 'MAIN')
-    usdt_future_free = operator.get_asset_amount('USDT', 'FUTURE')
+    main_free = operator.get_asset_amount('USDT', 'MAIN')
+    future_free = operator.get_asset_amount('USDT', 'FUTURE')
+    margin_free = operator.get_asset_amount('USDT', 'MARGIN')
 
     return {
         'msg': 'success',
         'data': {
-            'usdt_free': binance_api.float_to_str_round(usdt_free),
-            'usdt_future_free': binance_api.float_to_str_round(usdt_future_free)
+            'main_free': binance_api.float_to_str_round(main_free),
+            'future_free': binance_api.float_to_str_round(future_free),
+            'margin_free': binance_api.float_to_str_round(margin_free)
         }
     }
 

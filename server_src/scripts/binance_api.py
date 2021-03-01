@@ -497,13 +497,13 @@ class SmartOperator(BaseOperator):
         获取可用资产数量，已冻结的资产不会在里面\n
         期货使用此函数无法查询仓位，只能查询诸如USDT、BNB之类的资产\n
         :param symbol: 要查询的资产符号
-        :param mode: MAIN或者FUTURE，代表现货和期货
+        :param mode: MAIN、MARGIN、FUTURE 代表现货、全仓、期货
         """
         symbol = symbol.upper()
         mode = mode.upper()
 
-        if mode != 'MAIN' and mode != 'FUTURE':
-            raise Exception('mode只能为MAIN或者FUTURE')
+        if mode != 'MAIN' and mode != 'FUTURE' and mode != 'MARGIN':
+            raise Exception('mode只能为MAIN、FUTURE、MARGIN')
 
         # 根据mode调用不同API查询
         if mode == 'MAIN':
@@ -517,7 +517,7 @@ class SmartOperator(BaseOperator):
                     return float(e['free'])
             else:
                 raise Exception('没有找到查询的symbol资产')
-        if mode == 'FUTURE':
+        elif mode == 'FUTURE':
             # 获取当前所有期货资产
             res = json.loads(self.request('fapi', '/fapi/v2/balance', 'GET', {
                 'timestamp': get_timestamp()
@@ -528,6 +528,19 @@ class SmartOperator(BaseOperator):
                     return float(e['maxWithdrawAmount'])
             else:
                 raise Exception('没有找到查询的symbol资产')
+        elif mode == 'MARGIN':
+            # 获取当前所有全仓资产
+            res = json.loads(self.request('api', '/sapi/v1/margin/account', 'GET', {
+                'timestamp': get_timestamp()
+            }))['userAssets']
+            # 遍历查找查询的symbol
+            for e in res:
+                if e['asset'] == symbol:
+                    return float(e['free'])
+            else:
+                raise Exception('没有找到查询的symbol资产')
+        else:
+            raise Exception('未知的mode', mode)
 
     def get_future_position(self, symbol: str = None) -> Union[float, dict]:
         """
@@ -647,5 +660,3 @@ class SmartOperator(BaseOperator):
         获取BNB抵扣开关状态
         """
         return json.loads(self.request('api', '/sapi/v1/bnbBurn', 'GET', {}))
-
-
