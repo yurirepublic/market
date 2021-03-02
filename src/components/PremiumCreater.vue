@@ -65,7 +65,7 @@
           </button>
           <button
               type="submit"
-              class="btn btn-primary mt-3 px-2 ml-5"
+              class="btn btn-primary mt-3 px-2 ml-2"
               @click="ClosePosition"
               :disabled="disabled_trade"
               style="background-color: #f84960; border-color: transparent"

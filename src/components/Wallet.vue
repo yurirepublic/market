@@ -9,7 +9,7 @@
         <ClickableIcon
             class=""
             name="ri-arrow-left-right-line"
-            @click="show_transfer = show_transfer ? false : true"
+            @click="show_transfer = !show_transfer"
         />
         <RefreshButton :anime="refresh_button_anime" @click="refresh"/>
       </div>

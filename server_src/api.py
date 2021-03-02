@@ -176,21 +176,24 @@ def bnb_asset():
     """
     获取账户内BNB资产
     """
-    asset = operator.get_asset_amount('BNB', 'MAIN')
+    main_bnb = operator.get_asset_amount('BNB', 'MAIN')
 
     # 获取期货资产
-    asset_future = operator.get_asset_amount('BNB', 'FUTURE')
+    future_bnb = operator.get_asset_amount('BNB', 'FUTURE')
 
-    # 获取BNB最新价格（用于估算USDT市值）
+    # 获取全仓资产
+    margin_bnb = operator.get_asset_amount('BNB', 'MARGIN')
+
+    # 获取BNB最新现货价格（用于估算USDT市值）
     bnb_price = operator.get_latest_price('BNBUSDT', 'MAIN')
 
     return {
         'msg': 'success',
         'data': {
-            'asset': asset,
-            'asset_future': asset_future,
-            'asset_usdt': '{:.2f}'.format(float(asset) * float(bnb_price)),
-            'asset_future_usdt': '{:.2f}'.format(float(asset_future) * float(bnb_price))
+            'main_bnb': main_bnb,
+            'future_bnb': future_bnb,
+            'margin_bnb': margin_bnb,
+            'bnb_price': float(bnb_price)
         }
     }
 
@@ -275,16 +278,21 @@ def get_bnb_burn():
     """
     获取BNB燃烧状态
     """
-    return operator.get_bnb_burn()
+    return {
+        'msg': 'success',
+        'data': operator.get_bnb_burn()
+    }
 
 
 def set_bnb_burn(spot_bnb_burn: bool, interest_bnb_burn: bool):
     """
-    设置BNB燃烧状态
+    设置BNB燃烧状态\n
+    会顺带返回设置后的新状态
     """
     operator.set_bnb_burn(spot_bnb_burn, interest_bnb_burn)
     return {
-        'msg': 'success'
+        'msg': 'success',
+        'data': operator.get_bnb_burn()
     }
 
 

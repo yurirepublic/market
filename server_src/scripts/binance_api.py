@@ -654,6 +654,7 @@ class SmartOperator(BaseOperator):
         data = {
             'spotBNBBurn': 'true' if spot_bnb_burn else 'false',
             'interestBNBBurn': 'true' if interest_bnb_burn else 'false',
+            'timestamp': get_timestamp()
         }
         self.request('api', '/sapi/v1/bnbBurn', 'POST', data)
 
@@ -661,4 +662,6 @@ class SmartOperator(BaseOperator):
         """
         获取BNB抵扣开关状态
         """
-        return json.loads(self.request('api', '/sapi/v1/bnbBurn', 'GET', {}))
+        return json.loads(self.request('api', '/sapi/v1/bnbBurn', 'GET', {
+            'timestamp': get_timestamp()
+        }))
