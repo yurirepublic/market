@@ -1,15 +1,17 @@
 # electron-market
 币安非官方套利助手
 
-## 安全起见，如何自己编译客户端？
-### 先安装node.js、以及yarn
-### 使用包管理安装依赖
-```
-yarn
-```
+## 如何编译客户端？
+### 环境安装
+1. 安装```node.js```
+1. 将目录切换到代码根目录
+1. 敲入命令```npm install -g cnpm```来安装```cnpm```
+1. 敲入命令```cnpm install```来安装所有的依赖 
+1. 敲入
+
 ### 启动编译
 ```
-yarn electron:build
+cnpm run electron:build
 ```
 
 ## 如何部署服务端程序？
@@ -19,34 +21,13 @@ yarn electron:build
 - 对应域名的https证书
 
 域名可以在godaddy一年十块钱买到，证书可以在阿里云、腾讯云免费签发
-### 将```api.py```、```binance_api.py```复制到服务器
-### 安装python的依赖库
-```
-pip3 install flask flask-cors numpy requests websocket-client
-```
-### 在代码目录下创建设置文件```config.json```，输入以下内容
-```
-{
-  "binance_public_key": "币安的api密钥",
-  "binance_private_key": "币安的私有密钥",
-  "listen_ip": "监听ip，一般是0.0.0.0代表监听所有ip",
-  "listen_port": "监听端口，不和其他冲突就行，例如11327",
-  "password": "验证口令，客户端发来的请求必须口令一致才会执行",
-  "use_ssl": true 是否使用https加密，不使用可以免去域名和https证书申请，但你要确保网络环境绝对安全，因为http不加密，被人截获数据包的话连口令都是公开的,
-  "ssl_pem": "证书的pem文件目录，例如xxxxx.pem",
-  "ssl_key": "证书的key文件目录，例如xxxxx.key"
-}
+### 部署过程
+1. 将```server_src```所有内容复制到服务器
+1. 安装python的依赖库```pip3 install flask flask-cors numpy requests```
+1. 运行```make_default_config.py```创建默认的配置文件
+1. 在后台服务端程序```nohup python3 -u api.py &```
 
-```
-
-### 在后台运行程序
-```
-nohup python3 -u api.py &
-```
-### 程序会在后台运行，想看log输入
+注：程序会在后台运行，想看log输入
 ```
 tail nohup.out
 ```
-
-### Customize configuration
-See [Configuration Reference](https://cli.vuejs.org/config/).

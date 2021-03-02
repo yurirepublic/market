@@ -9,7 +9,7 @@ class Script(tools.Script):
     def info(self):
         info = tools.ScriptInfo()
         info.title = '用于运行的测试脚本'
-        info.description = '如果不终止就会一直运行'
+        info.description = '如果不终止就会一直运行，5秒输出一次随机数'
         info.inputs = []
         return info
 

@@ -16,8 +16,6 @@ class Script(tools.Script):
         return info
 
     def main(self):
-        operator = binance_api.SmartOperator()
-        res = json.loads(operator.request('fapi', '/fapi/v1/fundingRate', 'GET', {
-            'symbol': 'BNBUSDT'
-        }))
-        self.log(res)
+        self.log(random.randint(1, 100))
+        self.log(random.randint(1, 100))
+        self.log(random.randint(1, 100))
