@@ -21,6 +21,7 @@ class BinanceException(Exception):
         """
         币安的请求没有返回200就抛出此异常
         """
+        super(BinanceException, self).__init__(status_code, response)
         self.status_code = status_code
         self.response = response
 
@@ -30,6 +31,7 @@ class CantRetryException(Exception):
         """
         经过一定程度的判断，无法简单retry解决就返回此异常
         """
+        super(CantRetryException, self).__init__(status_code, response)
         self.status_code = status_code
         self.response = response
 
@@ -150,7 +152,7 @@ class BaseOperator(object):
             url = 'https://{}.{}{}{}?{}'.format(
                 area_url, base_url, path_url, test_path, data)
 
-        while retry_count > 0:
+        while True:
             if method.upper() == 'GET':
                 r = requests.get(url, headers=headers)
             else:
