@@ -22,7 +22,7 @@
           placeholder="转到现货"
           :disabled="disabled_transfer_button"
           v-model="future_to_main_value"
-          @click="future_to_main"
+          @click="Transfer('UMFUTURE_MAIN', future_to_main_value)"
       >
         <b-icon icon="box-arrow-up"></b-icon>
       </TransferInput>
@@ -31,7 +31,7 @@
           placeholder="转到期货"
           :disabled="disabled_transfer_button"
           v-model="main_to_future_value"
-          @click="main_to_future"
+          @click="Transfer('MAIN_UMFUTURE', main_to_future_value)"
       >
         <b-icon icon="box-arrow-down"></b-icon>
       </TransferInput>
@@ -43,7 +43,7 @@
           placeholder="转到现货"
           :disabled="disabled_transfer_button"
           v-model="margin_to_main_value"
-          @click="margin_to_main"
+          @click="Transfer('MARGIN_MAIN', margin_to_main_value)"
       >
         <b-icon icon="box-arrow-up"></b-icon>
       </TransferInput>
@@ -52,7 +52,7 @@
           placeholder="转到全仓"
           :disabled="disabled_transfer_button"
           v-model="main_to_margin_value"
-          @click="main_to_margin"
+          @click="Transfer('MAIN_MARGIN', main_to_margin_value)"
       >
         <b-icon icon="box-arrow-down"></b-icon>
       </TransferInput>
@@ -92,17 +92,22 @@ export default {
   },
   methods: {
     // 转账操作
-    future_to_main(event) {
+    Transfer: function (mode, amount) {
       this.disabled_transfer_button = true;
       this.showToast().info("开始转账");
       this.method_request("transfer", [
-        "UMFUTURE_MAIN",
+        mode,
         "USDT",
-        this.future_to_main_value,
+        amount,
       ])
           .then((res) => {
             this.showToast().success("转账成功");
-            this.future_to_main_value = "";
+            // 转账成功了清空一下输入
+            this.main_to_future_value = ""
+            this.main_to_margin_value = ""
+            this.future_to_main_value = ""
+            this.margin_to_main_value = ""
+
             this.refresh();
           })
           .catch((err) => {
@@ -113,73 +118,6 @@ export default {
             this.disabled_transfer_button = false;
           });
     },
-
-    main_to_future(event) {
-      this.disabled_transfer_button = true;
-      this.showToast().info("开始转账");
-      this.method_request("transfer", [
-        "MAIN_UMFUTURE",
-        "USDT",
-        this.main_to_future_value,
-      ])
-          .then((res) => {
-            this.showToast().success("转账成功");
-            this.main_to_future_value = "";
-            this.refresh();
-          })
-          .catch((err) => {
-            this.showToast().error("转账失败");
-            this.refresh();
-          })
-          .finally(() => {
-            this.disabled_transfer_button = false;
-          });
-    },
-
-    margin_to_main(event) {
-      this.disabled_transfer_button = true
-      this.showToast().info('开始转账')
-      this.method_request('transfer', [
-        'MARGIN_MAIN',
-        'USDT',
-        this.margin_to_main_value
-      ])
-          .then((res) => {
-            this.showToast().success("转账成功");
-            this.main_to_future_value = "";
-            this.refresh();
-          })
-          .catch((err) => {
-            this.showToast().error("转账失败");
-            this.refresh();
-          })
-          .finally(() => {
-            this.disabled_transfer_button = false;
-          });
-    },
-
-    main_to_margin(event) {
-      this.disabled_transfer_button = true
-      this.showToast().info('开始转账')
-      this.method_request('transfer', [
-        'MAIN_MARGIN',
-        'USDT',
-        this.main_to_margin_value
-      ])
-          .then((res) => {
-            this.showToast().success("转账成功");
-            this.main_to_future_value = "";
-            this.refresh();
-          })
-          .catch((err) => {
-            this.showToast().error("转账失败");
-            this.refresh();
-          })
-          .finally(() => {
-            this.disabled_transfer_button = false;
-          });
-    },
-
     refresh() {
       this.refresh_button_anime = true;
 
