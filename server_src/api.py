@@ -301,45 +301,50 @@ def analyze_premium():
     分析并返回当前所有的套利交易对，还顺带返回孤立仓位
     """
     # 获取当前所有现货资产
-    res = json.loads(operator.request('api', '/api/v3/account', 'GET', {
-        'timestamp': binance_api.get_timestamp()
-    }))['balances']
-    # 解析成字典形式
-    money = {}
-    for e in res:
-        money[e['asset']] = float(e['free'])
+    main_asset = operator.get_all_asset_amount('MAIN')
+
+    # 获取当前所有全仓资产
+    margin_asset = operator.get_all_asset_amount('MARGIN')
 
     # 获取当前所有的期货仓位（不是资产）
-    res = json.loads(operator.request('fapi', '/fapi/v2/account', 'GET', {
-        'timestamp': binance_api.get_timestamp()
-    }))['positions']
-    money_future = {}
-    for e in res:
-        money_future[e['symbol'].replace('USDT', '')] = float(e['positionAmt'])
+    future_position = operator.get_future_position()
+    # 将期货符号的USDT去掉
+    new_dict = {}
+    for e in future_position.keys():
+        new_dict[e.replace('USDT', '')] = float(future_position[e])
+    future_position = new_dict
 
     # 寻找两边资产的交集
-    same = set(money.keys()) & set(money_future.keys())
+    same = set(main_asset.keys()) & set(future_position.keys())
 
     # 取两边资产最小的一方作为套利仓位并返回
     pair = []  # 配对的双向仓位（期货必须是做空期货，暂不支持做空现货）
     single = []  # 不配对的孤立仓位
     for e in same:
-        if money_future[e] <= 0:
+        if future_position[e] <= 0:
             pair.append({
                 'symbol': e + 'USDT',
-                'quantity': str(min(money[e], abs(money_future[e])))
+                'quantity': str(min(main_asset[e], abs(future_position[e])))
             })
             # 两边有不对等的则算入孤立仓位
             single.append({
                 'symbol': e + 'USDT',
                 # 仅保留10位小数消除浮点精度误差
-                'quantity': str(round((money[e] + money_future[e]) * 10000000000) / 10000000000),
-                'type': 'MAIN' if money[e] + money_future[e] > 0 else 'FUTURE'
+                'quantity': str(round((main_asset[e] + future_position[e]) * 10000000000) / 10000000000),
+                'type': 'MAIN' if main_asset[e] + future_position[e] > 0 else 'FUTURE'
             })
+
+    # 将全仓交易对也加入孤立仓位（暂时无法分析杠杆仓位）
+    for key in margin_asset.keys():
+        single.append({
+            'symbol': key + 'USDT',
+            'quantity': binance_api.float_to_str_round(margin_asset[key]),
+            'type': 'MARGIN'
+        })
 
     # 筛选掉仓位为0的资产
     pair = list(filter(lambda x: float(x['quantity']) != 0, pair))
-    single = list(filter(lambda x: float(x['quantity']) != 0, single))
+    single = list(filter(lambda x: float(x['quantity']) != 0 and x['symbol'] != 'USDTUSDT', single))
 
     return {
         'msg': 'success',
@@ -422,7 +427,7 @@ def request_premium():
         price_dict[e['symbol']] = e['price']
     for e in res:
         if e['symbol'] in price_dict.keys():
-            e['price'] = price_dict[e['symbol']]
+            e['price'] = float(price_dict[e['symbol']])
         else:
             e['price'] = None
     res = list(filter(lambda x: x['price'] is not None, res))
@@ -433,7 +438,7 @@ def request_premium():
         price_dict[e['symbol']] = e['price']
     for e in res:
         if e['symbol'] in price_dict.keys():
-            e['price_future'] = price_dict[e['symbol']]
+            e['price_future'] = float(price_dict[e['symbol']])
         else:
             e['price_future'] = None
     res = list(filter(lambda x: x['price_future'] is not None, res))

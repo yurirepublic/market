@@ -494,6 +494,48 @@ class SmartOperator(BaseOperator):
 
         return r
 
+    def get_all_asset_amount(self, mode: str) -> dict:
+        """
+        获取某个模式下所有不为0的资产数量\n
+        期货使用此函数无法查询仓位，只能查询诸如USDT、BNB之类的资产\n
+        :param mode: MAIN、MARGIN、FUTURE 代表现货、全仓、期货
+        """
+        if mode != 'MAIN' and mode != 'FUTURE' and mode != 'MARGIN':
+            raise Exception('mode只能为MAIN、FUTURE、MARGIN')
+
+        # 根据mode调用不同API查询
+        asset_dict = {}
+        if mode == 'MAIN':
+            # 获取当前所有现货资产
+            res = json.loads(self.request('api', '/api/v3/account', 'GET', {
+                'timestamp': get_timestamp()
+            }))['balances']
+            # 遍历将非零的资产塞入字典
+            for e in res:
+                if float(e['free']) != 0:
+                    asset_dict[e['asset']] = float(e['free'])
+        elif mode == 'FUTURE':
+            # 获取当前所有期货资产
+            res = json.loads(self.request('fapi', '/fapi/v2/balance', 'GET', {
+                'timestamp': get_timestamp()
+            }))
+            # 遍历将非零资产塞入字典
+            for e in res:
+                if float(e['maxWithdrawAmount']) != 0:
+                    asset_dict[e['asset']] = float(e['maxWithdrawAmount'])
+        elif mode == 'MARGIN':
+            # 获取当前所有的全仓资产
+            res = json.loads(self.request('api', '/sapi/v1/margin/account', 'GET', {
+                'timestamp': get_timestamp()
+            }))['userAssets']
+            # 遍历将非零资产塞入字典
+            for e in res:
+                if float(e['free']) != 0:
+                    asset_dict[e['asset']] = float(e['free'])
+        else:
+            raise Exception('未知的mode', mode)
+        return asset_dict
+
     def get_asset_amount(self, symbol: str, mode: str) -> float:
         """
         获取可用资产数量，已冻结的资产不会在里面\n
@@ -501,7 +543,8 @@ class SmartOperator(BaseOperator):
         :param symbol: 要查询的资产符号
         :param mode: MAIN、MARGIN、FUTURE 代表现货、全仓、期货
         """
-        symbol = symbol.upper()
+        if symbol is not None:
+            symbol = symbol.upper()
         mode = mode.upper()
 
         if mode != 'MAIN' and mode != 'FUTURE' and mode != 'MARGIN':
@@ -510,37 +553,28 @@ class SmartOperator(BaseOperator):
         # 根据mode调用不同API查询
         if mode == 'MAIN':
             # 获取当前所有现货资产
-            res = json.loads(self.request('api', '/api/v3/account', 'GET', {
-                'timestamp': get_timestamp()
-            }))['balances']
-            # 遍历查找查询的symbol
-            for e in res:
-                if e['asset'] == symbol:
-                    return float(e['free'])
+            asset_dict = self.get_all_asset_amount(mode)
+            # 查询可用资产数量
+            if symbol not in asset_dict.keys():
+                return 0
             else:
-                raise Exception('没有找到查询的symbol资产')
+                return asset_dict[symbol]
         elif mode == 'FUTURE':
             # 获取当前所有期货资产
-            res = json.loads(self.request('fapi', '/fapi/v2/balance', 'GET', {
-                'timestamp': get_timestamp()
-            }))
-            # 遍历查找查询的symbol
-            for e in res:
-                if e['asset'] == symbol:
-                    return float(e['maxWithdrawAmount'])
+            asset_dict = self.get_all_asset_amount(mode)
+            # 查询可用资产数量
+            if symbol not in asset_dict.keys():
+                return 0
             else:
-                raise Exception('没有找到查询的symbol资产')
+                return asset_dict[symbol]
         elif mode == 'MARGIN':
             # 获取当前所有全仓资产
-            res = json.loads(self.request('api', '/sapi/v1/margin/account', 'GET', {
-                'timestamp': get_timestamp()
-            }))['userAssets']
-            # 遍历查找查询的symbol
-            for e in res:
-                if e['asset'] == symbol:
-                    return float(e['free'])
+            asset_dict = self.get_all_asset_amount(mode)
+            # 查询可用资产数量
+            if symbol not in asset_dict.keys():
+                return 0
             else:
-                raise Exception('没有找到查询的symbol资产')
+                return asset_dict[symbol]
         else:
             raise Exception('未知的mode', mode)
 
