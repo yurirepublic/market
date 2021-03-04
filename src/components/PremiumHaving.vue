@@ -1,6 +1,6 @@
 <template>
   <div
-      class="p-2"
+      class="p-2 d-flex flex-column flex-column"
       style="
       overflow: auto;
       max-height: 40rem;
@@ -9,101 +9,90 @@
     "
   >
     <div class="mb-2 d-flex justify-content-between align-items-center">
-      <span class="font-weight-bold">双向持仓交易对</span>
-      <RefreshButton :anime="refresh_button_anime" @click="refresh"/>
+      <span class="font-weight-bold">USDT交易对持仓</span>
+      <div class="d-flex">
+        <no-border-button @click="ShowBNB">
+          <input class="align-middle" type="checkbox" :checked="show_bnb"/>
+          <span class="text-muted small ml-1 align-middle">显示BNB</span>
+        </no-border-button>
+        <RefreshButton :anime="refresh_button_anime" @click="refresh"/>
+      </div>
     </div>
     <table class="table table-hover table-borderless table-sm small">
       <thead>
       <tr class="text-muted">
-        <th class="font-weight-normal">交易对</th>
-        <th class="font-weight-normal">仓位</th>
-        <th class="font-weight-normal">操作</th>
+        <th class="font-weight-normal">资产</th>
+        <th class="font-weight-normal">现货</th>
+        <th class="font-weight-normal">全仓/借贷</th>
+        <th class="font-weight-normal">逐仓/借贷</th>
+        <th class="font-weight-normal">逐仓U/借贷</th>
+        <th class="font-weight-normal">逐仓风险</th>
+        <th class="font-weight-normal">期货</th>
+        <th class="font-weight-normal">净持</th>
+        <th class="font-weight-normal">双持</th>
       </tr>
       </thead>
       <tbody>
-      <tr v-for="(item, index) in havingItems" :key="item['symbol']">
+      <tr v-for="(value, key) in havingItems" v-if="!(key=='BNB' && !show_bnb)" :key="key">
         <td class="text-monospace align-middle">
-          {{ item["symbol"] }}
+          <span>{{ key }}</span>
         </td>
         <td class="text-monospace align-middle">
-          {{ item["quantity"] }}
+          <span v-if="value['main'] != 0">{{ value['main'] }}</span>
+
         </td>
-        <td>
-          <button
-              class="btn btn-secondary btn-sm"
-              type="button"
-              @click="CloseOut(item)"
-              @click.stop
-              :disabled="button_disabled"
-          >
-            平仓
-          </button>
+        <td class="text-monospace align-middle">
+          <span v-if="value['margin'] != 0">{{ value['margin'] }}</span>
+          <span v-if="value['margin_borrowed'] != 0">{{ -value['margin_borrowed'] }}</span>
+        </td>
+        <td class="text-monospace align-middle">
+          <span v-if="value['isolated'] != 0">{{ value['isolated'] }}</span>
+          <span v-if="value['isolated_borrowed'] != 0">{{ -value['isolated_borrowed'] }}</span>
+        </td>
+        <td class="text-monospace align-middle">
+          <span v-if="value['isolated_quote'] != 0">{{ value['isolated_quote'] }}</span>
+          <span v-if="value['isolated_quote_borrowed'] != 0">{{ -value['isolated_quote_borrowed'] }}</span>
+        </td>
+        <td class="text-monospace align-middle">
+          <span v-if="value['isolated_risk'] != 999">{{ value['isolated_risk'] }}</span>
+        </td>
+        <td class="text-monospace align-middle">
+          <span v-if="value['future'] != 0">{{ value['future'] }}</span>
+        </td>
+        <td class="text-monospace align-middle">
+          <span v-if="value['net'] != 0">{{ value['net'] }}</span>
+        </td>
+        <td class="text-monospace align-middle">
+          <span v-if="value['hedging'] != 0">{{ value['hedging'] }}</span>
         </td>
       </tr>
       </tbody>
     </table>
-    <div class="mb-2 d-flex justify-content-between align-items-center">
-      <span class="font-weight-bold">孤立仓位</span>
-    </div>
-    <table class="table table-hover table-borderless table-sm small">
-      <thead>
-      <tr class="text-muted">
-        <th class="font-weight-normal">交易对</th>
-        <th class="font-weight-normal">仓位</th>
-        <th class="font-weight-normal">类型</th>
-        <th class="font-weight-normal">操作</th>
-      </tr>
-      </thead>
-      <tbody>
-      <tr v-for="item in havingItemsSingle" :key="item['symbol'] + item['type']">
-        <td class="text-monospace align-middle">
-          {{ item["symbol"] }}
-        </td>
-        <td class="text-monospace align-middle">
-          {{ item["quantity"] }}
-        </td>
-        <td class="align-middle" v-if="item['type'] === 'MAIN'">
-          现货
-        </td>
-        <td class="align-middle" v-if="item['type'] === 'MARGIN'">
-          全仓
-        </td>
-        <td class="align-middle" v-if="item['type'] === 'ISOLATED'">
-          逐仓
-        </td>
-        <td class="align-middle" v-if="item['type'] === 'FUTURE'">
-          期货
-        </td>
-        <td>
-          <button
-              class="btn btn-secondary btn-sm"
-              type="button"
-              @click="CloseSingle(item)"
-              @click.stop
-              :disabled="button_disabled"
-          >
-            平仓
-          </button>
-        </td>
-      </tr>
-      </tbody>
-    </table>
+    <span class="font-weight-bold">全仓风险率 {{ margin_risk }}</span>
+    <span class="font-weight-bold">期货风险率 {{ future_risk }}</span>
   </div>
 </template>
 
 <script>
 import RefreshButton from "@/components/RefreshButton.vue";
+import NoBorderButton from "@/components/NoBorderButton";
 
 export default {
   name: "PremiumHaving",
   data: function () {
     return {
-      havingItems: [],
-      havingItemsSingle: [],
+      havingItems: {},
+      havingItemsSingle: {},
       refresh_button_anime: false,
 
+      margin_risk: '',
+      future_risk: '',
+
       button_disabled: false,
-    };
+
+      show_bnb: false,
+  }
+    ;
   },
   mounted: function () {
     this.refresh();
@@ -117,8 +106,10 @@ export default {
       // 获取套利开仓情况
       this.method_request("analyze_premium", [])
           .then((res) => {
-            this.havingItems = res["data"]["pair"];
-            this.havingItemsSingle = res["data"]["single"];
+            this.havingItems = res["data"]['USDT'];
+            this.margin_risk = res['data']['margin_risk']
+            this.future_risk = res['data']['future_risk']
+            // this.havingItemsSingle = res["data"]["single"];
 
             this.$toast.open({
               message: "套利开仓情况获取成功",
@@ -173,8 +164,7 @@ export default {
         }).finally(() => {
           this.button_disabled = false
         })
-      }
-      else {
+      } else {
         // 将仓位的负号消除，方向使用BUY
         this.method_request('trade_market', [item['symbol'], item['type'], item['quantity'], 'SELL']).then(res => {
           this.showToast().success(item['symbol'] + '成功平仓')
@@ -185,10 +175,19 @@ export default {
         })
       }
     },
+
+    ShowBNB: function () {
+      this.show_bnb = !this.show_bnb
+    }
   },
 
   components: {
     RefreshButton,
+    NoBorderButton
   },
 };
 </script>
+
+<style scoped>
+
+</style>

@@ -46,9 +46,16 @@ def get_timestamp():
 def float_to_str_floor(amount: float, precision: int = 8) -> str:
     """
     将float转为指定精度的str格式，一般用于对高精度计算结果下单，会向下取整避免多下\n
-    如不指定精度，则默认为币安最大精度8
+    如不指定精度，则默认为币安最大精度8\n
+    对于str格式，会自动转为float再进行精度转换
     """
-    return str(math.floor(amount * (10 ** precision)) / (10 ** precision))
+    if isinstance(amount, str):
+        amount = float(amount)
+    res = str(math.floor(amount * (10 ** precision)) / (10 ** precision))
+    # 如果最后结尾是.0，则把.0消除
+    if res[-2:] == '.0':
+        res = res[:-2]
+    return res
 
 
 def float_to_str_ceil(amount: float, precision: int = 8) -> str:
@@ -56,7 +63,13 @@ def float_to_str_ceil(amount: float, precision: int = 8) -> str:
     将float转为指定精度的str格式，一般用于对高精度计算结果下单，会向上取整避免少下\n
     如不指定精度，则默认币安最大精度8
     """
-    return str(math.ceil(amount * (10 ** precision)) / (10 ** precision))
+    if isinstance(amount, str):
+        amount = float(amount)
+    res = str(math.ceil(amount * (10 ** precision)) / (10 ** precision))
+    # 如果最后结尾是.0，则把.0消除
+    if res[-2:] == '.0':
+        res = res[:-2]
+    return res
 
 
 def float_to_str_round(amount: float, precision: int = 8) -> str:
@@ -64,7 +77,13 @@ def float_to_str_round(amount: float, precision: int = 8) -> str:
     将float转为指定精度的str格式，一般用于消除0.000000000001和0.9999999999\n
     会对指定精度四舍五入，如不指定精度，则默认币安最大精度8
     """
-    return str(round(amount * (10 ** precision)) / (10 ** precision))
+    if isinstance(amount, str):
+        amount = float(amount)
+    res = str(round(amount * (10 ** precision)) / (10 ** precision))
+    # 如果最后结尾是.0，则把.0消除
+    if res[-2:] == '.0':
+        res = res[:-2]
+    return res
 
 
 def make_query_string(**kwargs) -> str:
@@ -419,7 +438,7 @@ class SmartOperator(BaseOperator):
         :param amount: 要下单的货币数量，默认是货币数量，如果开启成交额模式，则为成交额
         :param side: 下单方向，字符串格式，只能为SELL或者BUY
         :param test: 是否为测试下单，默认False。测试下单不会提交到撮合引擎，用于测试
-        :volume_mode: 是否用成交额模式下单，默认False，开启后amount代表成交额而不是货币数量
+        :param volume_mode: 是否用成交额模式下单，默认False，开启后amount代表成交额而不是货币数量
         :return: 下单请求提交后，币安返回的结果
         """
         # 转化字符串
@@ -481,7 +500,7 @@ class SmartOperator(BaseOperator):
         # 加入全仓或者逐仓参数
         if mode == 'MARGIN':
             data['isIsolated'] = 'FALSE'
-        if mode == 'ISOLATE':
+        if mode == 'ISOLATED':
             data['isIsolated'] = 'TRUE'
 
         # 根据期货现货不同，发出不同的请求
@@ -494,14 +513,55 @@ class SmartOperator(BaseOperator):
 
         return r
 
+    def get_borrowed_asset_amount(self, mode: str) -> dict:
+        """
+        获取某个模式下的已借入的货币数量\n
+        key为货币符号，值为借入数量
+        如果是逐仓，key为交易对，内容为dict，有base_asset和quote_asset两个float资产数\n
+        以及base_symbol和quote_asset两个资产符号\n
+        :param mode: 只能为MARGIN、ISOLATED，代表全仓逐仓
+        """
+        if mode != 'MARGIN' and mode != 'ISOLATED':
+            raise Exception('mode只能为MARGIN、ISOLATED')
+        # 根据mode调用不同API查询
+        asset_dict = {}
+        if mode == 'MARGIN':
+            # 获取当前所有的全仓资产
+            res = json.loads(self.request('api', '/sapi/v1/margin/account', 'GET', {
+                'timestamp': get_timestamp()
+            }))['userAssets']
+            # 遍历将非零借贷塞入字典
+            for e in res:
+                if float(e['borrowed']) != 0:
+                    asset_dict[e['asset']] = float(e['borrowed'])
+        elif mode == 'ISOLATED':
+            # 获取当前所有的逐仓资产
+            res = json.loads(self.request('api', '/sapi/v1/margin/isolated/account', 'GET', {
+                'timestamp': get_timestamp()
+            }))['assets']
+            # 遍历将非零资产塞入字典
+            for e in res:
+                if float(e['baseAsset']['borrowed']) != 0 or float(e['quoteAsset']['borrowed']) != 0:
+                    asset_dict[e['symbol']] = {}
+                    asset_dict[e['symbol']]['base_asset'] = float(e['baseAsset']['borrowed'])
+                    asset_dict[e['symbol']]['quote_asset'] = float(e['quoteAsset']['borrowed'])
+                    asset_dict[e['symbol']]['base_name'] = e['baseAsset']['asset']
+                    asset_dict[e['symbol']]['quote_name'] = e['quoteAsset']['asset']
+        else:
+            raise Exception('未知的mode', mode)
+        return asset_dict
+
     def get_all_asset_amount(self, mode: str) -> dict:
         """
         获取某个模式下所有不为0的资产数量\n
         期货使用此函数无法查询仓位，只能查询诸如USDT、BNB之类的资产\n
-        :param mode: MAIN、MARGIN、FUTURE 代表现货、全仓、期货
+        如果查询非逐仓，返回的key为资产名字，内容为float的资产数\n
+        如果查询逐仓，返回的key为交易对符号，内容为dict，有base_asset和quote_asset两个float资产数\n
+        以及base_symbol和quote_asset两个资产符号\n
+        :param mode: MAIN、MARGIN、ISOLATED、FUTURE 代表现货、全仓、逐仓、期货
         """
-        if mode != 'MAIN' and mode != 'FUTURE' and mode != 'MARGIN':
-            raise Exception('mode只能为MAIN、FUTURE、MARGIN')
+        if mode != 'MAIN' and mode != 'FUTURE' and mode != 'MARGIN' and mode != 'ISOLATED':
+            raise Exception('mode只能为MAIN、FUTURE、MARGIN、ISOLATED')
 
         # 根据mode调用不同API查询
         asset_dict = {}
@@ -532,6 +592,19 @@ class SmartOperator(BaseOperator):
             for e in res:
                 if float(e['free']) != 0:
                     asset_dict[e['asset']] = float(e['free'])
+        elif mode == 'ISOLATED':
+            # 获取当前所有的逐仓资产
+            res = json.loads(self.request('api', '/sapi/v1/margin/isolated/account', 'GET', {
+                'timestamp': get_timestamp()
+            }))['assets']
+            # 遍历将非零资产塞入字典
+            for e in res:
+                if float(e['baseAsset']['free']) != 0 or float(e['quoteAsset']['free']) != 0:
+                    asset_dict[e['symbol']] = {}
+                    asset_dict[e['symbol']]['base_asset'] = float(e['baseAsset']['free'])
+                    asset_dict[e['symbol']]['quote_asset'] = float(e['quoteAsset']['free'])
+                    asset_dict[e['symbol']]['base_name'] = e['baseAsset']['asset']
+                    asset_dict[e['symbol']]['quote_name'] = e['quoteAsset']['asset']
         else:
             raise Exception('未知的mode', mode)
         return asset_dict
@@ -581,7 +654,7 @@ class SmartOperator(BaseOperator):
     def get_future_position(self, symbol: str = None) -> Union[float, dict]:
         """
         获取期货仓位情况\n
-        如果不传入symbol，则返回字典类型的所有仓位，key为大写symbol\n
+        如果不传入symbol，则返回字典类型的所有仓位，key为大写symbol，且不会返回仓位为0的交易对\n
         :param symbol: 要查询的交易对
         :return: 返回持仓数量，多空使用正负表示
         """
@@ -600,7 +673,9 @@ class SmartOperator(BaseOperator):
             # 没有symbol的情况下返回交易对的仓位字典
             all_price = {}
             for e in res:
-                all_price[e['symbol']] = e['positionAmt']
+                # 过滤掉仓位为0的交易对
+                if float(e['positionAmt']) != 0:
+                    all_price[e['symbol']] = e['positionAmt']
             return all_price
 
     def transfer_asset(self, mode: str, asset_symbol: str, amount: Union[str, float, int]):

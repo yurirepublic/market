@@ -1,17 +1,16 @@
 'use strict'
 
-import { app, protocol, BrowserWindow } from 'electron'
-import { createProtocol } from 'vue-cli-plugin-electron-builder/lib'
-import installExtension, { VUEJS_DEVTOOLS } from 'electron-devtools-installer'
+import {app, protocol, BrowserWindow} from 'electron'
+import {createProtocol} from 'vue-cli-plugin-electron-builder/lib'
+import installExtension, {VUEJS_DEVTOOLS} from 'electron-devtools-installer'
+
 const isDevelopment = process.env.NODE_ENV !== 'production'
 import fs from 'fs'
 
 
-
-
 // Scheme must be registered before the app is ready
 protocol.registerSchemesAsPrivileged([
-  { scheme: 'app', privileges: { secure: true, standard: true } }
+  {scheme: 'app', privileges: {secure: true, standard: true}}
 ])
 
 async function createWindow() {
@@ -29,12 +28,11 @@ async function createWindow() {
 
 
   // 使用fs读取配置文件
-  var readConfig = function () {
+  let readConfig = function () {
     return new Promise(resolve => {
 
     })
   }
-
 
 
   // 定义一下IPC事件
@@ -74,8 +72,7 @@ async function createWindow() {
     fs.writeFile('config.json', JSON.stringify(arg), 'utf-8', err => {
       if (err) {
         event.sender.send('save-config-reply', 'fail')
-      }
-      else {
+      } else {
         event.sender.send('save-config-reply', 'success')
       }
     })
@@ -91,7 +88,7 @@ async function createWindow() {
 
   // 开发者模式把窗口弄宽一点方便开发
   if (!app.isPackaged) {
-    win.setSize(1366, 768)
+    win.setSize(1700, 768)
   }
 
   if (process.env.WEBPACK_DEV_SERVER_URL) {
