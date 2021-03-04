@@ -360,7 +360,7 @@ def analyze_premium():
             new_dict[clear_symbol] = float(future_position[e])
     future_position = new_dict
 
-    # 计算期货风险率（期货总市值 / 期货余额) * 100
+    # 计算期货风险率 (期货总市值 / 期货余额) * 100
     future_position_value = 0
     future_free = operator.get_asset_amount('USDT', 'FUTURE')
     for e in future_position.keys():
@@ -369,6 +369,11 @@ def analyze_premium():
     if future_free == 0:
         future_free = 0.00000001        # 给期货一丁点数字避免除0错误
     future_risk = (future_position_value / future_free) * 100
+
+    # 计算期货风险警报所需市值波动率（500%风险率）
+    future_warning = (future_position_value + (5 * future_free - future_position_value) / 6) / future_position_value
+    future_warning *= 100
+    future_warning -= 100
 
     # 将所有拥有的资产名取个并集
     all_asset_key = set(main_asset.keys()) | set(margin_asset.keys()) | set(isolated_asset.keys()) | set(
@@ -423,6 +428,7 @@ def analyze_premium():
             usdt_asset[e][x] = binance_api.float_to_str_round(usdt_asset[e][x])
     margin_risk = binance_api.float_to_str_round(margin_risk, 2)
     future_risk = binance_api.float_to_str_round(future_risk, 2)
+    future_warning = binance_api.float_to_str_round(future_warning, 2)
 
     return {
         'msg': 'success',
@@ -430,6 +436,7 @@ def analyze_premium():
             'USDT': usdt_asset,
             'margin_risk': margin_risk,
             'future_risk': future_risk,
+            'future_warning': future_warning
         }
     }
 
