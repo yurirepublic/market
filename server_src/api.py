@@ -360,13 +360,13 @@ def analyze_premium():
             new_dict[clear_symbol] = float(future_position[e])
     future_position = new_dict
 
-    # 计算期货风险率（期货总市值 / 期货余额)
+    # 计算期货风险率（期货余额 / 期货总市值)
     future_position_value = 0
     for e in future_position.keys():
         price = operator.get_latest_price(e + 'USDT', 'FUTURE')
         future_position_value += price * abs(future_position[e])
     future_free = operator.get_asset_amount('USDT', 'FUTURE')
-    future_risk = future_position_value / future_free
+    future_risk = future_free / future_position_value
 
     # 将所有拥有的资产名取个并集
     all_asset_key = set(main_asset.keys()) | set(margin_asset.keys()) | set(isolated_asset.keys()) | set(
