@@ -318,7 +318,7 @@ def analyze_premium():
     if 'USDT' in margin_borrowed:
         del margin_borrowed['USDT']
 
-    # 计算全仓风险率（资产总价值 / 借贷）
+    # 计算全仓风险率（借贷 / 资产总价值）* 100
     margin_asset_value = 0
     margin_asset_borrowed = 0
     for e in margin_asset.keys():
@@ -327,10 +327,10 @@ def analyze_premium():
     for e in margin_borrowed.keys():
         price = operator.get_latest_price(e + 'USDT', 'MAIN')
         margin_asset_borrowed += price * margin_borrowed[e]
-    if margin_asset_borrowed == 0:
-        margin_risk = 999
+    if margin_asset_value == 0:
+        margin_risk = 0
     else:
-        margin_risk = margin_asset_value / margin_asset_borrowed
+        margin_risk = (margin_asset_borrowed / margin_asset_value) * 100
 
     # 获取当前所有逐仓资产
     isolated_asset = operator.get_all_asset_amount('ISOLATED')
@@ -360,13 +360,15 @@ def analyze_premium():
             new_dict[clear_symbol] = float(future_position[e])
     future_position = new_dict
 
-    # 计算期货风险率（期货余额 / 期货总市值)
+    # 计算期货风险率（期货总市值 / 期货余额) * 100
     future_position_value = 0
+    future_free = operator.get_asset_amount('USDT', 'FUTURE')
     for e in future_position.keys():
         price = operator.get_latest_price(e + 'USDT', 'FUTURE')
         future_position_value += price * abs(future_position[e])
-    future_free = operator.get_asset_amount('USDT', 'FUTURE')
-    future_risk = future_free / future_position_value
+    if future_free == 0:
+        future_free = 0.00000001        # 给期货一丁点数字避免除0错误
+    future_risk = (future_position_value / future_free) * 100
 
     # 将所有拥有的资产名取个并集
     all_asset_key = set(main_asset.keys()) | set(margin_asset.keys()) | set(isolated_asset.keys()) | set(
@@ -403,12 +405,14 @@ def analyze_premium():
         info['hedging'] = min(positive, negative)
 
         # 计算逐仓风险率
-        if info['isolated_borrowed'] + info['isolated_quote_borrowed'] == 0:
-            info['isolated_risk'] = 999
+        if info['isolated'] + info['isolated_quote'] == 0:
+            info['isolated_risk'] = 0
         else:
             price = operator.get_latest_price(key + 'USDT', 'MAIN')
-            risk = info['isolated'] * price + info['isolated_quote']
-            risk /= (info['isolated_borrowed'] * price + info['isolated_quote_borrowed'])
+
+            risk = (info['isolated_borrowed'] * price + info['isolated_quote_borrowed'])
+            risk /= info['isolated'] * price + info['isolated_quote']
+            risk *= 100
             info['isolated_risk'] = binance_api.float_to_str_ceil(risk, 2)
 
         usdt_asset[key] = info

@@ -54,7 +54,7 @@
           <span v-if="value['isolated_quote_borrowed'] != 0">{{ -value['isolated_quote_borrowed'] }}</span>
         </td>
         <td class="text-monospace align-middle">
-          <span v-if="value['isolated_risk'] != 999">{{ value['isolated_risk'] }}</span>
+          <span v-if="value['isolated_risk'] != 0">{{ value['isolated_risk'] }}%</span>
         </td>
         <td class="text-monospace align-middle">
           <span v-if="value['future'] != 0">{{ value['future'] }}</span>
@@ -68,8 +68,12 @@
       </tr>
       </tbody>
     </table>
-    <span class="font-weight-bold">全仓风险率 {{ margin_risk }}</span>
-    <span class="font-weight-bold">期货风险率 {{ future_risk }}</span>
+    <div class="d-flex justify-content-between">
+      <span class="font-weight-bold">全仓风险 {{ margin_risk }}%</span>
+      <span class="font-weight-bold">5倍杠杆警告 {{ margin_risk }}%</span>
+    </div>
+
+    <span class="font-weight-bold">期货风险 {{ future_risk }}%</span>
   </div>
 </template>
 
