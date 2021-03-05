@@ -308,19 +308,23 @@ def analyze_premium():
 
     # 获取当前所有全仓资产
     margin_asset = operator.get_all_asset_amount('MARGIN')
+    margin_asset_usdt = 0
     # 去除掉全仓资产的USDT
     if 'USDT' in margin_asset:
+        margin_asset_usdt = margin_asset['USDT']
         del margin_asset['USDT']
 
     # 获取所有全仓借贷资产
     margin_borrowed = operator.get_borrowed_asset_amount('MARGIN')
+    margin_borrowed_usdt = 0
     # 去除掉全仓资产的USDT
     if 'USDT' in margin_borrowed:
+        margin_borrowed_usdt = margin_borrowed['USDT']
         del margin_borrowed['USDT']
 
-    # 计算全仓风险率（借贷 / 资产总价值）* 100
-    margin_asset_value = 0
-    margin_asset_borrowed = 0
+    # 计算全仓风险率（借币市值 + 借U / 持币市值 + 持U）* 100
+    margin_asset_value = 0  # 全仓资产市值
+    margin_asset_borrowed = 0  # 全仓借贷资产市值
     for e in margin_asset.keys():
         price = operator.get_latest_price(e + 'USDT', 'MAIN')
         margin_asset_value += price * margin_asset[e]
@@ -330,7 +334,16 @@ def analyze_premium():
     if margin_asset_value == 0:
         margin_risk = 0
     else:
-        margin_risk = (margin_asset_borrowed / margin_asset_value) * 100
+        margin_risk = ((margin_asset_borrowed + margin_borrowed_usdt) / (margin_asset_value + margin_asset_usdt)) * 100
+
+    # 计算全仓触发风险警告所需的波动率
+    if margin_asset_borrowed - 0.8 * margin_asset_value == 0:
+        margin_warning = 99999
+    else:
+        margin_warning = ((0.8 * margin_asset_usdt - margin_borrowed_usdt
+                           ) / (margin_asset_borrowed - 0.8 * margin_asset_value)) * 100
+
+    print(margin_asset_borrowed, margin_asset_value)
 
     # 获取当前所有逐仓资产
     isolated_asset = operator.get_all_asset_amount('ISOLATED')
@@ -367,13 +380,16 @@ def analyze_premium():
         price = operator.get_latest_price(e + 'USDT', 'FUTURE')
         future_position_value += price * abs(future_position[e])
     if future_free == 0:
-        future_free = 0.00000001        # 给期货一丁点数字避免除0错误
+        future_free = 0.00000001  # 给期货一丁点数字避免除0错误
     future_risk = (future_position_value / future_free) * 100
 
     # 计算期货风险警报所需市值波动率（500%风险率）
-    future_warning = (future_position_value + (5 * future_free - future_position_value) / 6) / future_position_value
-    future_warning *= 100
-    future_warning -= 100
+    if future_position_value != 0:
+        future_warning = (future_position_value + (5 * future_free - future_position_value) / 6) / future_position_value
+        future_warning *= 100
+        future_warning -= 100
+    else:
+        future_warning = 99999
 
     # 将所有拥有的资产名取个并集
     all_asset_key = set(main_asset.keys()) | set(margin_asset.keys()) | set(isolated_asset.keys()) | set(
@@ -429,6 +445,7 @@ def analyze_premium():
     margin_risk = binance_api.float_to_str_round(margin_risk, 2)
     future_risk = binance_api.float_to_str_round(future_risk, 2)
     future_warning = binance_api.float_to_str_round(future_warning, 2)
+    margin_warning = binance_api.float_to_str_round(margin_warning)
 
     return {
         'msg': 'success',
@@ -436,7 +453,8 @@ def analyze_premium():
             'USDT': usdt_asset,
             'margin_risk': margin_risk,
             'future_risk': future_risk,
-            'future_warning': future_warning
+            'future_warning': future_warning,
+            'margin_warning': margin_warning
         }
     }
 

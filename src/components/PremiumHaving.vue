@@ -69,12 +69,15 @@
       </tbody>
     </table>
     <div class="d-flex justify-content-between">
-      <span class="font-weight-bold">全仓风险 {{ margin_risk }}%</span>
+      <span class="font-weight-bold">全仓风险 {{ margin_risk  }}%</span>
+      <span class="font-weight-bold" v-if="margin_warning != 99999">0.8倍杠杆警告 {{ margin_warning }}%</span>
+      <span class="font-weight-bold" v-if="margin_warning == 99999">0.8倍杠杆警告 安全</span>
 
     </div>
     <div class="d-flex justify-content-between">
       <span class="font-weight-bold">期货风险 {{ future_risk }}%</span>
-      <span class="font-weight-bold">5倍杠杆警告 {{ future_warning }}%</span>
+      <span class="font-weight-bold" v-if="future_warning != 99999">5倍杠杆警告 {{ future_warning > 0 ? '+' : ''}}{{ future_warning }}%</span>
+      <span class="font-weight-bold" v-if="future_warning == 99999">5倍杠杆警告 安全</span>
     </div>
 
   </div>
@@ -95,6 +98,7 @@ export default {
       margin_risk: '',
       future_risk: '',
       future_warning: '',
+      margin_warning: '',
 
       button_disabled: false,
 
@@ -118,6 +122,7 @@ export default {
             this.margin_risk = res['data']['margin_risk']
             this.future_risk = res['data']['future_risk']
             this.future_warning = res['data']['future_warning']
+            this.margin_warning = res['data']['margin_warning']
             // this.havingItemsSingle = res["data"]["single"];
 
             this.$toast.open({
