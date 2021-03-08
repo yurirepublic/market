@@ -17,11 +17,19 @@
               header="单方开仓金额"
               footer="USDT"
               v-model="want_money"
+              @input="ValueChanged('value')"
+          />
+          <TradeInput
+              class="mt-2"
+              header="每边开仓"
+              :footer="symbol"
+              v-model="quantity"
+              @input="ValueChanged('quantity')"
           />
         </div>
       </div>
       <div class="mt-3 d-flex flex-column">
-        <InfoItem header="每边开仓" :content="quantity" :footer="symbol"/>
+        <InfoItem header="货币精度" :content="pair_item['precision']"/>
         <InfoItem header="预计8小时收益" :content="benefit" footer="USDT"/>
         <InfoItem header="总开仓手续费" :content="total_tax" footer="USDT"/>
         <span class="text-muted small align-self-end"
@@ -95,36 +103,48 @@ export default {
 
   data: function () {
     return {
-      // wallet_usdt: 0, // 可用的usdt数量
-      // wallet_future_usdt: 0, // 可用的期货usdt数量
-
-      // wallet_bnb_value: 0, // 可用的bnb价值
-      // wallet_future_bnb_value: 0, // 可用的期货bnb价值
-
       want_money: "", // 想要开仓的总价值
+      quantity: 0, // 开仓的币数
 
       benefit: 0, // 计算的收益
       tax: 0, // 计算的手续费
       tax_future: 0,
       total_tax: 0, // 总开仓手续费
-      quantity: 0, // 开仓的币数(需要用于最终下单，所以是字符串)
       symbol: "", // 开仓的货币符号(仅用于显示)
       disabled_trade: true, // 是否将下单按钮无效化
 
       main_mode: 'MAIN',   // 现货下单模式，可能为MAIN、MARGIN、ISOLATED
+
+      dont_repeat: false,   // 表示不要重复计算的flag，用于侦听数量和价值变量时不重复计算
     };
   },
 
   watch: {
     pair_item: function (newItem, oldItem) {
-      this.ValueChanged();
+      this.ValueChanged('value');
     },
-    want_money: function (newItem, oldItem) {
-      this.ValueChanged();
-    },
+    // want_money: function (newItem, oldItem) {
+    //   if (!this.dont_repeat) {
+    //     this.ValueChanged('value');
+    //   }
+    //   else {
+    //     this.dont_repeat = false
+    //   }
+    // },
+    // quantity: function (newItem, oldItem) {
+    //   if (!this.dont_repeat) {
+    //     this.ValueChanged('quantity');
+    //   }
+    //   else {
+    //     this.dont_repeat = false
+    //   }
+    // }
   },
 
   methods: {
+    testFunc: function () {
+      console.log('shit')
+    },
     // 加仓下单
     OpenPosition: function () {
       // 取出要下单的交易对
@@ -168,51 +188,70 @@ export default {
     },
 
     // 交易对or开仓数改变时重新计算
-    ValueChanged: function () {
+    ValueChanged: function (mode) {
       // 没有交易对的情况下直接返回
       if (this.pair_item["symbol"] == null) {
+        console.log('无交易对')
         return;
       }
 
+      this.symbol = this.pair_item['symbol'].replace('USDT', '')
+
+      // 这个函数用来一键清除计算结果，适用于输入非法的情况
       const CLearOutput = () => {
         this.disabled_trade = true;
         this.benefit = 0;
         this.tax = 0;
         this.tax_future = 0;
         this.total_tax = 0;
-        this.quantity = 0;
-        this.symbol = "";
       };
 
       // 输入数字为空的情况下，清空计算结果
-      if (this.want_money === "") {
+      if (this.want_money === "" && this.quantity === "") {
+        console.log('输入数字为空')
         CLearOutput();
         return;
       }
 
       // 输入非法的情况下，清空计算结果
       if (
-          !(this.isNumber(this.want_money) && parseFloat(this.want_money) >= 0)
+          !(this.isNumber(this.want_money) && parseFloat(this.want_money) >= 0) &&
+          !(this.isNumber(this.quantity) && parseFloat(this.quantity) >= 0)
       ) {
+        console.log('输入非法')
+        CLearOutput();
+        return;
+      }
+
+      let precision = this.pair_item["precision"]; // 交易对精度
+      // 超精度的情况下清空计算结果
+      if (parseFloat(this.float2strRound(this.want_money, 8)) !== parseFloat(this.want_money)
+          && mode === 'value') {
+        CLearOutput();
+        return;
+      }
+      if (parseFloat(this.float2strRound(this.quantity, precision)) !== parseFloat(this.quantity)
+          && mode === 'quantity') {
         CLearOutput();
         return;
       }
 
       let side_money = parseFloat(this.want_money); // 单边开仓价值
       let price = parseFloat(this.pair_item["price"]); // 交易对单价
-      let precision = this.pair_item["precision"]; // 交易对精度
+
       let rate = parseFloat(this.pair_item["rate"]); // 交易对资金费率
+      let quantity = parseFloat(this.quantity)    // 欲下单的货币数量
 
-      let quantity = side_money / price;
-      // 将数字乘以精度
-      quantity *= Math.pow(10, precision);
-      // 向下取整
-      quantity = Math.floor(quantity);
-      // 将数字除以精度
-      // 为什么要这么弄？因为浮点数精度问题不可忽视，最终结果不能出现999999
-      quantity /= Math.pow(10, precision);
-
-      this.quantity = quantity.toString();
+      // 如果以数量为基准，计算开仓价值
+      if (mode === 'quantity') {
+        side_money = price * quantity
+        this.want_money = this.float2strFloor(side_money, 8)
+      }
+      // 如果以价值为基准，就计算数量
+      else if (mode === 'value') {
+        quantity = side_money / price;
+        this.quantity = this.float2strFloor(quantity, precision)
+      }
 
       // 计算收益和手续费
       let benefit = (side_money * rate) / 100;
@@ -220,15 +259,16 @@ export default {
       let tax_future = (side_money * 0.04) / 100;
       let total_tax = tax + tax_future;
 
-      benefit = Math.round(benefit * 1000) / 1000;
-      tax = Math.round(tax * 1000) / 1000;
+      benefit = this.float2strRound(benefit, 2)
+      tax = this.float2strRound(tax, 2)
+      tax_future = this.float2strRound(tax_future, 2)
+      total_tax = this.float2strRound(total_tax, 2)
 
       this.benefit = benefit;
       this.tax = tax;
       this.tax_future = tax_future;
       this.total_tax = total_tax;
 
-      this.symbol = this.pair_item["symbol"].replace("USDT", "");
       this.disabled_trade = false;
     },
 
