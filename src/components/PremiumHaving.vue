@@ -11,7 +11,11 @@
     <div class="mb-2 d-flex justify-content-between align-items-center">
       <span class="font-weight-bold">USDT交易对持仓</span>
       <div class="d-flex">
-        <no-border-button @click="ShowBNB">
+        <no-border-button @click="show_detail = !show_detail">
+          <input class="align-middle" type="checkbox" :checked="show_detail"/>
+          <span class="text-muted small ml-1 align-middle">显示详细信息</span>
+        </no-border-button>
+        <no-border-button @click="show_bnb = !show_bnb">
           <input class="align-middle" type="checkbox" :checked="show_bnb"/>
           <span class="text-muted small ml-1 align-middle">显示BNB</span>
         </no-border-button>
@@ -103,6 +107,7 @@ export default {
       button_disabled: false,
 
       show_bnb: false,
+      show_detail: false,
     }
         ;
   },
@@ -189,10 +194,6 @@ export default {
         })
       }
     },
-
-    ShowBNB: function () {
-      this.show_bnb = !this.show_bnb
-    }
   },
 
   components: {
