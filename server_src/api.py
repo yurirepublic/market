@@ -1,6 +1,7 @@
+"""
+此文件用于提供用于客户端的API
+"""
 # 导入http框架
-from typing import Union
-
 from flask import Flask, request
 from flask_cors import CORS
 
@@ -11,10 +12,12 @@ import multiprocessing
 from multiprocessing import Process, Manager
 import traceback
 import numpy as np
+from typing import Union, Dict
 
-# 导入币安api和脚本管理器
+# 导入币安api、脚本管理器、数据中心
 from scripts import binance_api
 from scripts import tools
+from scripts import data_center
 
 app = Flask(__name__)
 CORS(app, supports_credentials=True)  # 允许跨域
@@ -23,10 +26,11 @@ CORS(app, supports_credentials=True)  # 允许跨域
 operator = binance_api.SmartOperator()
 
 # 读取配置文件
-with open('config.json', 'r', encoding='utf-8') as f:
+with open('scripts/config.json', 'r', encoding='utf-8') as f:
     config = json.loads(f.read())
 
 
+# 用于客户端进行HTTP交互的端口
 @app.route('/', methods=['POST'])
 def root():
     print(request.form)
@@ -46,6 +50,68 @@ def root():
         return json.dumps({
             'msg': 'error',
             'exception': traceback.format_exc()
+        })
+
+
+# 用于存放数据中心的数据
+data_center_dict: Dict[str, data_center.Data] = {}
+
+
+# 用于数据中心进行交互的端口
+@app.route('/data', methods=['GET'])
+def data_center_api():
+    print(request.form)
+    # 取出数据
+    correct_password = config['password']
+    password = request.form['password']
+    mode = request.form['mode']
+
+    # 验证口令
+    if password != correct_password:
+        return json.dumps({
+            'msg': 'error',
+            'exception': 'password error'
+        })
+
+    # 验证操作模式
+    if mode != 'GET' and mode != 'SET' and mode != 'ALL':
+        return json.dumps({
+            'msg': 'error',
+            'exception': 'mode only allowed GET or SET or ALL'
+        })
+
+    # 根据不同操作模式执行
+    if mode == 'GET':
+        msg = json.loads(request.form['msg'])
+        key = msg['key']
+        try:
+            data = data_center_dict[key].get()
+        except KeyError:
+            data = None
+        return json.dumps({
+            'msg': 'success',
+            'data': data
+        })
+    elif mode == 'SET':
+        msg = json.loads(request.form['msg'])
+        key = msg['key']
+        value = msg['value']
+        try:
+            data_center_dict[key].update(value)
+        except KeyError:
+            data_center_dict[key] = data_center.Data()
+            data_center_dict[key].update(value)
+        return json.dumps({
+            'msg': 'success'
+        })
+    elif mode == 'ALL':
+        # 把所有数据都提取出来
+        res = {}
+        for key in data_center_dict.keys():
+            res[key] = data_center_dict[key].get()
+        return json.dumps({
+            'msg': 'success',
+            'data': res
         })
 
 
@@ -655,6 +721,13 @@ def request_premium():
 if __name__ == '__main__':
     # 运行脚本管理器
     script_server = tools.Server()
+
+    # 运行数据中心的脚本
+    time.sleep(0.5)     # 留时间让脚本管理器启动完毕
+    script_client = tools.Client()
+    script_client.exec('main_websocket', {})
+
+    # 特地用个函数每10s打印一次数据中心的数据
 
     # 在此主进程运行http服务器
     if config['use_ssl']:

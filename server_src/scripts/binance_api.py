@@ -1,11 +1,13 @@
 import json
 import hmac
 import time
-from typing import Union
+import traceback
+from typing import Union, Dict, List, Callable
 import requests
 import math
 import threading
 from hashlib import sha256
+import websocket
 
 """
 此脚本用于放置对币安API的封装
@@ -139,7 +141,7 @@ class BaseOperator(object):
         如果请求状态码不是200，会引发BinanceException\n
         :param area_url: 头部的地址，例如api、fapi、dapi
         :param path_url: 路径地址，例如/fapi/v2/account
-        :param method: 请求方法，仅限POST和GET
+        :param method: 请求方法，仅限POST、GET、PUT
         :param data: 发送的数据，dict会自动转换成http参数，str则不转换
         :param test: 是否添加/test路径，用于测试下单，默认False
         :param send_signature: 是否发送签名，有的api不接受多余的参数，就不能默认发送签名
@@ -147,8 +149,9 @@ class BaseOperator(object):
         :param retry_interval: 自动尝试的间隔(秒)
         :return: 返回的数据文本格式
         """
-        if method.upper() != 'POST' and method.upper() != 'GET':
-            raise Exception('请求方法必须为POST或者GET，大小写不限')
+        method = method.upper()
+        if method != 'POST' and method != 'GET' and method != 'PUT':
+            raise Exception('请求方法必须为POST、GET、PUT，大小写不限')
         headers = {
             'X-MBX-APIKEY': self.public_key
         }
@@ -172,10 +175,12 @@ class BaseOperator(object):
                 area_url, base_url, path_url, test_path, data)
 
         while True:
-            if method.upper() == 'GET':
+            if method == 'GET':
                 r = requests.get(url, headers=headers)
-            else:
+            elif method == 'POST':
                 r = requests.post(url, headers=headers)
+            else:
+                r = requests.put(url, headers=headers)
 
             if request_trace:
                 print('-----start-----')
@@ -193,179 +198,6 @@ class BaseOperator(object):
                 return r.text
             time.sleep(retry_interval)
 
-    # def subscribe_price(self, name: str):
-    #     # 订阅最新交易价格
-    #     data = {
-    #         'method': 'SUBSCRIBE',
-    #         'params': [
-    #             name.lower() + "@aggTrade",
-    #         ],
-    #         'id': self.subscribe_id
-    #     }
-    #     self.ws.send(json.dumps(data))
-    #     self.subscribe_id += 1
-
-
-# class Operator(BaseOperator):
-#     """
-#     现货API操作
-#     """
-
-#     def __init__(self):
-#         super(Operator, self).__init__()
-#         self.ws = None
-
-#     def connect_websocket(self):
-#         """
-#         调用此函数连接到websocket，以启用websocket相关api
-#         """
-#         self.ws = websocket.WebSocketApp(
-#             'wss://stream.' + base_url + ':9443/ws')
-#         self.ws.connect_completed = False  # 自己加的一个成员，用来外部等待连接成功再放行
-
-#         def on_open(ws):
-#             print('成功建立现货websocket连接')
-#             ws.connect_completed = True
-
-#         def on_message(ws, data):
-#             # 收到websocket时使用的处理函数
-#             data = json.loads(data)
-#             if 'e' in data.keys() and data['e'] == 'aggTrade':
-#                 self.price[data['s']] = float(data['p'])
-#             else:
-#                 print(data)
-
-#         self.ws.on_message = on_message
-#         self.ws.on_open = on_open
-#         # 额外开一个线程用来运行此websocket
-#         self.ws_handle = _thread.start_new_thread(
-#             lambda: self.ws.run_forever(ping_interval=300), ())
-
-#         # 等待直到websocket连接成功
-#         while not self.ws.connect_completed:
-#             time.sleep(0.1)
-
-#     def trade(self, symbol: str, quantity, side, test=False):
-#         """
-#         在现货下单
-#         """
-#         if test:
-#             test_trade = '/test'
-#         else:
-#             test_trade = ''
-#         headers = {
-#             'X-MBX-APIKEY': self.public_key
-#         }
-#         data = make_query_string(
-#             symbol=symbol.upper(),
-#             side=side,
-#             type='MARKET',
-#             quantity=quantity,
-#             timestamp=str(round(time.time() * 1000))
-#         )
-#         signature = hmac.new(self.private_key.encode('ascii'),
-#                              data.encode('ascii'), digestmod=sha256).hexdigest()
-#         url = 'https://api.' + base_url + '/api/v3/order' + \
-#             test_trade + '?' + data + '&signature=' + signature
-#         print(url)
-#         r = requests.post(url, headers=headers)
-#         print(r.status_code)
-#         print(r.text)
-
-
-# class OperatorFuture(BaseOperator):
-#     """
-#     期货API操作
-#     """
-
-#     def __init__(self):
-#         super(OperatorFuture, self).__init__()
-#         self.ws = None
-
-#     def connect_websocket(self):
-#         self.ws = websocket.WebSocketApp('wss://fstream.' + base_url + '/ws')
-#         self.ws.connect_completed = False  # 自己加的一个成员，用来外部等待连接成功再放行
-
-#         def on_open(ws):
-#             print('成功建立USDT期货websocket连接')
-#             ws.connect_completed = True
-
-#         def on_message(ws, data):
-#             # 收到websocket时使用的处理函数
-#             data = json.loads(data)
-#             if 'e' in data.keys() and data['e'] == 'aggTrade':
-#                 self.price[data['s']] = float(data['p'])
-#             else:
-#                 print(data)
-
-#         self.ws.on_message = on_message
-#         self.ws.on_open = on_open
-#         # 额外开一个线程用来运行此websocket
-#         self.ws_handle = _thread.start_new_thread(
-#             lambda: self.ws.run_forever(ping_interval=300), ())
-
-#         while not self.ws.connect_completed:
-#             time.sleep(0.1)
-
-#     def trade(self, symbol: str, quantity, side, test=True):
-#         headers = {
-#             'X-MBX-APIKEY': self.public_key
-#         }
-#         data = make_query_string(
-#             symbol=symbol.upper(),
-#             side=side,
-#             type='MARKET',
-#             quantity=quantity,
-#             timestamp=str(round(time.time() * 1000))
-#         )
-#         if test:
-#             test_trade = '/test'
-#         else:
-#             test_trade = ''
-#         signature = hmac.new(self.private_key.encode('ascii'),
-#                              data.encode('ascii'), digestmod=sha256).hexdigest()
-#         url = 'https://fapi.' + base_url + '/fapi/v1/order' + \
-#             test_trade + '?' + data + '&signature=' + signature
-#         print(url)
-#         r = requests.post(url, headers=headers)
-#         print(r.status_code)
-#         print(r.text)
-
-#     def close_out(self, symbol: str):
-#         """
-#         将某个货币对平仓
-#         """
-#         # 先获取货币对的持仓和方向
-#         headers = {
-#             'X-MBX-APIKEY': self.public_key
-#         }
-#         data = make_query_string(
-#             timestamp=str(round(time.time() * 1000))
-#         )
-#         signature = hmac.new(self.private_key.encode('ascii'),
-#                              data.encode('ascii'), digestmod=sha256).hexdigest()
-#         url = 'https://fapi.' + base_url + '/fapi/v2/account' + \
-#             '?' + data + '&signature=' + signature
-#         print(url)
-#         r = requests.get(url, headers=headers)
-#         print(r.status_code)
-#         print(r.text)
-#         if r.status_code != 200:
-#             raise Exception('获取持仓数量错误')
-#         # 遍历找到需要的货币对
-#         for x in json.loads(r.text)['positions']:
-#             if x['symbol'] == symbol.upper():
-#                 position_amt = x['positionAmt']
-#                 break
-#         else:
-#             raise Exception('未在返回的数据中找到持仓')
-#         # 下市价单平仓
-#         if float(position_amt) > 0:
-#             self.trade(symbol, position_amt, 'SELL')
-#         else:
-#             # 这里不转为float，怕有精度问题留个0.0000001没平仓，直接使用原始的字符串
-#             self.trade(symbol, position_amt.replace('-', ''), 'BUY')
-
 
 class SmartOperator(BaseOperator):
     """
@@ -378,8 +210,146 @@ class SmartOperator(BaseOperator):
     def __init__(self) -> None:
         super().__init__()
 
-        # # 实例化一个基本操作者，用来发出request
-        # self.operator = BaseOperator()
+        # 期货和现货的websocket连接
+        self.main_ws = None
+        self.future_ws = None
+        self.main_ws_connect_completed = False
+        self.future_ws_connect_completed = False
+
+        # websocket收到消息的回调，key是事件名，value是回调函数list
+        self.main_ws_callback: Dict[str, List[Callable]] = {}
+        self.future_ws_callback: Dict[str, List[Callable]] = {}
+
+    def ws_main_on_open(self):
+        print('成功建立现货websocket连接')
+        self.main_ws_connect_completed = True
+
+    def ws_future_on_open(self):
+        print('成功建立期货websocket连接')
+        self.future_ws_connect_completed = True
+
+    def ws_main_on_message(self, ws, message):
+        message = json.loads(message)
+        # 调用对应的callback
+        try:
+            for f in self.main_ws_callback[message['e']]:
+                # 在异常捕获里运行，免得把主线程给扬了
+                try:
+                    threading.Thread(target=f, args=(message,)).start()
+                except Exception:
+                    print(traceback.format_exc())
+        except KeyError:
+            # 没人接收就不调用了
+            print('无人认领的main数据', message)
+
+    def ws_future_on_message(self, ws, message):
+        message = json.loads(message)
+        # 调用对应的callback
+        try:
+            for f in self.future_ws_callback[message['e']]:
+                # 在异常捕获里运行，免得把主线程给扬了
+                try:
+                    threading.Thread(target=f, args=(message,)).start()
+                except Exception:
+                    print(traceback.format_exc())
+        except KeyError:
+            # 没人接收就不调用了
+            print('无人认领的future数据', message)
+
+    def ws_append_callback(self, key: str, mode: str, func: Callable):
+        """
+        向websocket添加消息回调\n
+        :param key: 接收回调的事件类型名称
+        :param mode: MAIN或者FUTURE，代表现货和期货
+        :param func: 接收回调的函数
+        """
+        if mode != 'MAIN' and mode != 'FUTURE':
+            raise Exception('mode只能为MAIN或者FUTURE')
+        if mode == 'MAIN':
+            try:
+                self.main_ws_callback[key].append(func)
+            except KeyError:
+                self.main_ws_callback[key] = []
+                self.main_ws_callback[key].append(func)
+        elif mode == 'FUTURE':
+            try:
+                self.future_ws_callback[key].append(func)
+            except KeyError:
+                self.future_ws_callback[key] = []
+                self.future_ws_callback[key].append(func)
+
+    def connect_websocket(self, mode: str, stream_name: str, callback: Callable):
+        """
+        连接一个websocket\n
+        :param mode: 只能为MAIN、FUTURE
+        :param stream_name: 要订阅的数据流名字
+        :param callback: 收到消息的回调函数，消息会以字符串形式传入参数
+        """
+        if mode != 'MAIN' and mode != 'FUTURE':
+            raise Exception('mode只能为MAIN、FUTURE')
+
+        # 创建websocket对象
+        def on_open(s):
+            s.connect_complete = True
+
+        def on_message(s, message):
+            try:
+                callback(message)
+            except Exception:
+                print(traceback.format_exc())
+
+        if mode == 'MAIN':
+            ws = websocket.WebSocketApp('wss://stream.{}:9443/ws/{}'.format(base_url, stream_name),
+                                        on_message=on_message,
+                                        on_open=on_open)
+        else:
+            ws = websocket.WebSocketApp('wss://fstream.{}/ws/{}'.format(base_url, stream_name),
+                                        on_message=on_message,
+                                        on_open=on_open)
+        ws.connect_complete = False
+
+        # 额外开线程用来运行websocket
+        handle = threading.Thread(target=lambda: ws.run_forever(ping_interval=300))
+        handle.start()
+
+        while not ws.connect_complete:
+            time.sleep(0.1)
+
+        print('ws名' + stream_name + '连接完毕')
+        return handle
+
+    def create_listen_key(self, mode) -> str:
+        """
+        创建一个listen_key用来订阅账户的websocket信息
+        :param mode: MAIN或者FUTURE，代表现货或者期货
+        :return: 返回的listen_key
+        """
+        if mode != 'MAIN' and mode != 'FUTURE':
+            raise Exception('mode必须为MAIN、FUTURE')
+        if mode == 'MAIN':
+            return json.loads(self.request('api', '/api/v3/userDataStream', 'POST', {},
+                                           send_signature=False))['listenKey']
+        else:
+            return json.loads(self.request('fapi', '/fapi/v1/listenKey', 'POST', {},
+                                           send_signature=False))['listenKey']
+
+    def overtime_listen_key(self, mode, key):
+        """
+        延长一个listen_key的有效时间\n
+        根据官网的说明，默认有效时间是60分钟，推荐30分钟延长一次\n
+        :param mode: MAIN或者FUTURE，代表现货或者期货
+        :param key: 要延长的listen_key
+        """
+        if mode != 'MAIN' and mode != 'FUTURE':
+            raise Exception('mode必须为MAIN、FUTURE')
+        if mode == 'MAIN':
+            self.request('api', '/api/v3/userDataStream', 'PUT', data={
+                'listenKey': key
+            }, send_signature=False)
+        else:
+            self.request('fapi', '/fapi/v1/listenKey', 'PUT', data={
+                'listenKey': key
+            }, send_signature=False)
 
     def get_symbol_precision(self, symbol: str, mode: str = None) -> int:
         """
