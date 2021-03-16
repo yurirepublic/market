@@ -15,7 +15,6 @@ class Script(tools.Script):
 
     def __init__(self):
         super(Script, self).__init__()
-        self.main_asset = None  # 现货资产
 
     def info(self):
         info = tools.ScriptInfo()
@@ -23,17 +22,19 @@ class Script(tools.Script):
         info.description = '最开始会调用普通api获取初始数据，以后就用websocket接收更新数据'
         info.inputs = []
 
-    def main_asset_update(self, data):
+    @staticmethod
+    def main_asset_update(data):
         """
         处理现货ws的回调函数
         """
         data = json.loads(data)
         if data['e'] == 'outboundAccountPosition':
+            # 扫描数据
             for x in data['B']:
                 symbol = x['a']
                 free = x['f']
-                self.main_asset[symbol] = float(free)
-            dc.set('main_asset', self.main_asset)
+                # 发送到数据中心
+                dc.update(['asset', 'main', symbol], free)
         elif data['e'] == 'balanceUpdate':
             pass
         else:
@@ -41,13 +42,13 @@ class Script(tools.Script):
 
     def main(self):
         # 获取现货的资产数量
-        self.main_asset = operator.get_all_asset_amount('MAIN')
+        asset = operator.get_all_asset_amount('MAIN')
         # 推送到数据中心
-        dc.set('main_asset', self.main_asset)
+        for key in asset.keys():
+            dc.update(['asset', 'main', key], asset[key])
 
         # 获取现货账户listen_key
         listen_key = operator.create_listen_key('MAIN')
         # 连接websocket
         handle = operator.connect_websocket('MAIN', listen_key, self.main_asset_update)
         handle.join()
-

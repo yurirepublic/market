@@ -12,7 +12,7 @@ import multiprocessing
 from multiprocessing import Process, Manager
 import traceback
 import numpy as np
-from typing import Union, Dict
+from typing import Union
 
 # 导入币安api、脚本管理器、数据中心
 from scripts import binance_api
@@ -53,8 +53,8 @@ def root():
         })
 
 
-# 用于存放数据中心的数据
-data_center_dict: Dict[str, data_center.Data] = {}
+# 数据中心服务端（暂时将网络接口放在此文件）
+data_server = data_center.Server()
 
 
 # 用于数据中心进行交互的端口
@@ -83,35 +83,26 @@ def data_center_api():
     # 根据不同操作模式执行
     if mode == 'GET':
         msg = json.loads(request.form['msg'])
-        key = msg['key']
-        try:
-            data = data_center_dict[key].get()
-        except KeyError:
-            data = None
+        tags = msg['tags']
+        data = data_server.get(tags)
         return json.dumps({
             'msg': 'success',
             'data': data
         })
     elif mode == 'SET':
         msg = json.loads(request.form['msg'])
-        key = msg['key']
+        tags = msg['tags']
         value = msg['value']
-        try:
-            data_center_dict[key].update(value)
-        except KeyError:
-            data_center_dict[key] = data_center.Data()
-            data_center_dict[key].update(value)
+        data_server.update(tags, value)
         return json.dumps({
             'msg': 'success'
         })
     elif mode == 'ALL':
         # 把所有数据都提取出来
-        res = {}
-        for key in data_center_dict.keys():
-            res[key] = data_center_dict[key].get()
+        data = data_server.get_all()
         return json.dumps({
             'msg': 'success',
-            'data': res
+            'data': data
         })
 
 
@@ -723,7 +714,7 @@ if __name__ == '__main__':
     script_server = tools.Server()
 
     # 运行数据中心的脚本
-    time.sleep(0.5)     # 留时间让脚本管理器启动完毕
+    time.sleep(0.5)  # 留时间让脚本管理器启动完毕
     script_client = tools.Client()
     script_client.exec('main_websocket', {})
 
