@@ -15,6 +15,7 @@ import websocket
 
 base_url = 'binance.com'  # 基本网址，用于快速切换国内地址和国际地址，国际地址是binance.com，国内地址是binancezh.pro
 request_trace = True  # 是否追踪请求，开启会打印出每次请求的url、状态码、返回的文本
+trace_to_file = True    # 是否将最终请求写入到文件，开启后控制台只会显示前50位，完整版在requests_trace.txt
 
 
 class BinanceException(Exception):
@@ -183,11 +184,26 @@ class BaseOperator(object):
                 r = requests.put(url, headers=headers)
 
             if request_trace:
-                print('-----start-----')
-                print(url)
-                print(r.status_code)
-                print(r.text)
-                print('-----ended-----')
+                if trace_to_file:
+                    with open('requests_trace.txt', 'w', encoding='utf-8') as f:
+                        f.writelines([
+                            '-----start-----',
+                            'URL: {}'.format(url),
+                            'STATUS CODE: {}'.format(r.status_code),
+                            'TEXT: {}'.format(r.text),
+                            '-----ended-----'
+                        ])
+                        print('-----start-----')
+                        print('URL:', url)
+                        print('STATUS CODE:', r.status_code)
+                        print('TEXT:', r.text[:50])
+                        print('-----ended-----')
+                else:
+                    print('-----start-----')
+                    print('URL:', url)
+                    print('STATUS CODE:', r.status_code)
+                    print('TEXT:', r.text)
+                    print('-----ended-----')
 
             if r.status_code != 200:
                 if retry_count > 0:
