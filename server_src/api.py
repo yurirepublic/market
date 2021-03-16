@@ -93,7 +93,8 @@ def data_center_api():
         msg = json.loads(request.form['msg'])
         tags = msg['tags']
         value = msg['value']
-        data_server.update(tags, value)
+        timestamp = msg['timestamp']
+        data_server.update(tags, value, timestamp)
         return json.dumps({
             'msg': 'success'
         })

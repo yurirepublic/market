@@ -9,6 +9,7 @@ import traceback
 import requests
 from typing import Dict, List, Set, Union, Callable
 import threading
+import time
 
 
 class DataCenterException(Exception):
@@ -22,12 +23,25 @@ class Data(object):
 
     def __init__(self):
         self._data = None  # 存储的数据
+        self._timestamp = 0  # 数据的timestamp
         self._tags = set()  # 此数据的tag
 
         self.callback: List[Callable] = []  # 更新数据后会触发的回调函数队列
 
-    def update(self, value):
-        self._data = value
+    def update(self, value, timestamp=None):
+        """
+        更新数据，如果不带timestamp，则会自动获取timestamp\n
+        如果欲更新的数据timestamp比当前的小，则会拒绝更新\n
+        """
+        now_timestamp = time.time() * 1000
+        if timestamp is not None and timestamp > self._timestamp:
+            self._data = value
+            self._timestamp = timestamp
+        elif timestamp is None and now_timestamp > self._timestamp:
+            self._data = value
+            self._timestamp = now_timestamp
+        else:
+            return
         for func in self.callback:
             try:
                 handle = threading.Thread(target=func, args=(value,))
@@ -74,7 +88,7 @@ class Server(object):
                 res = res & self.database[tag]
         return res
 
-    def update(self, tags: Union[List[str], Set[str]], value):
+    def update(self, tags: Union[List[str], Set[str]], value, timestamp=None):
         """
         依据tag更新值
         """
@@ -83,7 +97,7 @@ class Server(object):
         # 如果筛选出的数据为空，则新建一个对应tag的数据
         if len(data_set) == 0:
             data_obj = Data()
-            data_obj.update(value)
+            data_obj.update(value, timestamp=timestamp)
             data_obj.set_tags(tags)
             for tag in tags:
                 try:
@@ -94,7 +108,7 @@ class Server(object):
         else:
             # 为每个数据更新
             for e in data_set:
-                e.update(value)
+                e.update(value, timestamp=timestamp)
 
     def append_update_callback(self, tags: Union[List[str], Set[str]], func: Callable):
         """
@@ -180,13 +194,14 @@ class Client(object):
         )
         self.password = config['password']
 
-    def update(self, tags: List[str], value):
+    def update(self, tags: List[str], value, timestamp=None):
         data = {
             'password': self.password,
             'mode': 'SET',
             'msg': json.dumps({
                 'tags': tags,
-                'value': value
+                'value': value,
+                'timestamp': timestamp
             })
         }
         r = requests.post(self.url, data=data)
