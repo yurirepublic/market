@@ -58,7 +58,7 @@ class Client(object):
                 'value': value
             })
         }
-        r = requests.get(self.url, data=data)
+        r = requests.post(self.url, data=data)
         if r.status_code != 200:
             raise DataCenterException(r.text)
         if r.json()['msg'] != 'success':
@@ -72,7 +72,7 @@ class Client(object):
                 'key': key
             })
         }
-        r = requests.get(self.url, data=data)
+        r = requests.post(self.url, data=data)
         if r.status_code != 200:
             raise DataCenterException(r.text)
         if r.json()['msg'] != 'success':
@@ -84,7 +84,7 @@ class Client(object):
             'password': self.password,
             'mode': 'ALL'
         }
-        r = requests.get(self.url, data=data)
+        r = requests.post(self.url, data=data)
         if r.status_code != 200:
             raise DataCenterException(r.text)
         if r.json()['msg'] != 'success':

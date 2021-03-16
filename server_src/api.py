@@ -58,7 +58,7 @@ data_center_dict: Dict[str, data_center.Data] = {}
 
 
 # 用于数据中心进行交互的端口
-@app.route('/data', methods=['GET'])
+@app.route('/data', methods=['POST'])
 def data_center_api():
     print(request.form)
     # 取出数据
