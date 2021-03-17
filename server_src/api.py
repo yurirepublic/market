@@ -4,6 +4,7 @@
 # 导入http框架
 from flask import Flask, request
 from flask_cors import CORS
+import logging
 
 # 导入基本库
 import json
@@ -19,7 +20,12 @@ from scripts import binance_api
 from scripts import tools
 from scripts import data_center
 
+# 性能分析工具
+import cProfile
+
 app = Flask(__name__)
+log = logging.getLogger('werkzeug')
+log.setLevel(logging.ERROR)
 CORS(app, supports_credentials=True)  # 允许跨域
 
 # 创建公用币安api对象
@@ -60,7 +66,7 @@ data_server = data_center.Server()
 # 用于数据中心进行交互的端口
 @app.route('/data', methods=['POST'])
 def data_center_api():
-    print(request.form)
+    # print(request.form)
     # 取出数据
     correct_password = config['password']
     password = request.form['password']
@@ -710,16 +716,14 @@ def request_premium():
     }
 
 
-if __name__ == '__main__':
+def main():
     # 运行脚本管理器
     script_server = tools.Server()
 
     # 运行数据中心的脚本
     time.sleep(0.5)  # 留时间让脚本管理器启动完毕
     script_client = tools.Client()
-    script_client.exec('main_websocket', {})
-
-    # 特地用个函数每10s打印一次数据中心的数据
+    script_client.exec('dc_websocket', {})
 
     # 在此主进程运行http服务器
     if config['use_ssl']:
@@ -727,3 +731,8 @@ if __name__ == '__main__':
                 ssl_context=(config['ssl_pem'], config['ssl_key']))
     else:
         app.run(config['listen_ip'], config['listen_port'])
+
+
+if __name__ == '__main__':
+    main()
+    # cProfile.run('main()')

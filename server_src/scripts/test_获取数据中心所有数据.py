@@ -2,7 +2,7 @@ import data_center
 
 
 def main():
-    client = data_center.Client()
+    client = data_center.HTTPClient()
     print('所有数据', client.get_all())
     print('不存在的数据', client.get(['FUCK', 'BULLSHIT']))
     print('模糊数据', client.get(['main', 'asset']))

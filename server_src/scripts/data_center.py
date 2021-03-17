@@ -23,7 +23,7 @@ class Data(object):
 
     def __init__(self):
         self._data = None  # 存储的数据
-        self._timestamp = 0  # 数据的timestamp
+        self._timestamp: int = 0  # 数据的timestamp
         self._tags = set()  # 此数据的tag
 
         self.callback: List[Callable] = []  # 更新数据后会触发的回调函数队列
@@ -72,10 +72,17 @@ class Server(object):
 
     def __init__(self):
         self.database: Dict[str, Set[Data]] = {}  # 每个tag下都存放对应tag下的set
+        """
+        为了避免每次精确的update都要对集合进行各种操作
+        self.cache的职责就是将tag排序，加入横线，变成asset-main-usdt的形式作为key
+        以此来快速索引单个数据
+        """
+        self.cache: Dict[str, Data] = {}  # 对数据的哈希式缓存
 
     def _select(self, tags: Union[List[str], Set[str]]) -> Set[Data]:
         """
-        根据对应标签，选择出满足的对象
+        根据对应标签，选择出满足的对象\n
+        注！此操作极度消耗性能！尽可能用在模糊查询上，勿用在精确查询上
         """
         keys = self.database.keys()
         res = None
@@ -88,27 +95,61 @@ class Server(object):
                 res = res & self.database[tag]
         return res
 
+    @staticmethod
+    def tag2key(tags: Union[List[str], Set[str]]):
+        """
+        将tag排序后插入横线
+        """
+        tags = list(tags)
+        tags.sort(key=lambda x: x)
+        return '-'.join(tags)
+
+    def _cache_select(self, tags: Union[List[str], Set[str]]) -> Data:
+        """
+        会将tag转为缓存用的kay，并在cache查询Data对象\n
+        如果没有，则会引发KeyError异常
+        :return: 查询到的Data对象
+        """
+        key = self.tag2key(tags)
+        return self.cache[key]
+
     def update(self, tags: Union[List[str], Set[str]], value, timestamp=None):
         """
         依据tag更新值
         """
         # 根据tag筛选数据集合
-        data_set = self._select(tags)
-        # 如果筛选出的数据为空，则新建一个对应tag的数据
-        if len(data_set) == 0:
+        try:
+            self._cache_select(tags).update(value, timestamp=timestamp)
+        except KeyError:
+            # 还没有对应的数据则新建一个Data对象
             data_obj = Data()
             data_obj.update(value, timestamp=timestamp)
             data_obj.set_tags(tags)
+            # 将对象放入缓存索引和tag索引
+            self.cache[self.tag2key(tags)] = data_obj
             for tag in tags:
                 try:
                     self.database[tag].add(data_obj)
                 except KeyError:
                     self.database[tag] = set()
                     self.database[tag].add(data_obj)
-        else:
-            # 为每个数据更新
-            for e in data_set:
-                e.update(value, timestamp=timestamp)
+
+        # data_set = self._select(tags)
+        # # 如果筛选出的数据为空，则新建一个对应tag的数据
+        # if len(data_set) == 0:
+        #     data_obj = Data()
+        #     data_obj.update(value, timestamp=timestamp)
+        #     data_obj.set_tags(tags)
+        #     for tag in tags:
+        #         try:
+        #             self.database[tag].add(data_obj)
+        #         except KeyError:
+        #             self.database[tag] = set()
+        #             self.database[tag].add(data_obj)
+        # else:
+        #     # 为每个数据更新
+        #     for e in data_set:
+        #         e.update(value, timestamp=timestamp)
 
     def append_update_callback(self, tags: Union[List[str], Set[str]], func: Callable):
         """
@@ -175,12 +216,18 @@ class Server(object):
         for e in data_all:
             res.append({
                 'tags': list(e.get_tags()),
-                'data': e.get()
+                'data': e.get(),
+                'timestamp': e.get_timestamp()
             })
         return res
 
 
-class Client(object):
+class WebsocketClient(object):
+    """
+    数据中心的websocket接口客户端
+    """
+
+class HTTPClient(object):
     """
     数据中心的客户端服务
     """
@@ -194,7 +241,9 @@ class Client(object):
         )
         self.password = config['password']
 
-    def update(self, tags: List[str], value, timestamp=None):
+        self.session = requests.session()
+
+    def update(self, tags: List[str], value, timestamp: int = None):
         data = {
             'password': self.password,
             'mode': 'SET',
@@ -204,7 +253,7 @@ class Client(object):
                 'timestamp': timestamp
             })
         }
-        r = requests.post(self.url, data=data)
+        r = self.session.post(self.url, data=data)
         if r.status_code != 200:
             raise DataCenterException(r.text)
         if r.json()['msg'] != 'success':
@@ -218,7 +267,7 @@ class Client(object):
                 'tags': tags
             })
         }
-        r = requests.post(self.url, data=data)
+        r = self.session.post(self.url, data=data)
         if r.status_code != 200:
             raise DataCenterException(r.text)
         if r.json()['msg'] != 'success':
@@ -230,7 +279,7 @@ class Client(object):
             'password': self.password,
             'mode': 'ALL'
         }
-        r = requests.post(self.url, data=data)
+        r = self.session.post(self.url, data=data)
         if r.status_code != 200:
             raise DataCenterException(r.text)
         if r.json()['msg'] != 'success':

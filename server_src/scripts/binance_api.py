@@ -15,7 +15,7 @@ import websocket
 
 base_url = 'binance.com'  # 基本网址，用于快速切换国内地址和国际地址，国际地址是binance.com，国内地址是binancezh.pro
 request_trace = True  # 是否追踪请求，开启会打印出每次请求的url、状态码、返回的文本
-trace_to_file = True    # 是否将最终请求写入到文件，开启后控制台只会显示前50位，完整版在requests_trace.txt
+trace_to_file = True  # 是否将最终请求写入到文件，开启后控制台只会显示前50位，完整版在requests_trace.txt
 
 
 class BinanceException(Exception):
@@ -294,12 +294,15 @@ class SmartOperator(BaseOperator):
                 self.future_ws_callback[key] = []
                 self.future_ws_callback[key].append(func)
 
-    def connect_websocket(self, mode: str, stream_name: str, callback: Callable):
+    def connect_websocket(self, mode: str, stream_name: str, recv_callback: Callable,
+                          ping_callback: Callable = None, ping_interval: int = 300):
         """
         连接一个websocket\n
         :param mode: 只能为MAIN、FUTURE
         :param stream_name: 要订阅的数据流名字
-        :param callback: 收到消息的回调函数，消息会以字符串形式传入参数
+        :param recv_callback: 收到消息的回调函数，消息会以字符串形式传入参数
+        :param ping_callback: 间隔指定时间会调用一次该函数，用于处理ping的事务，不传入则默认使用ping
+        :param ping_interval: ping的间隔，秒，默认300
         """
         if mode != 'MAIN' and mode != 'FUTURE':
             raise Exception('mode只能为MAIN、FUTURE')
@@ -310,7 +313,7 @@ class SmartOperator(BaseOperator):
 
         def on_message(s, message):
             try:
-                callback(message)
+                recv_callback(message)
             except Exception:
                 print(traceback.format_exc())
 
@@ -325,7 +328,22 @@ class SmartOperator(BaseOperator):
         ws.connect_complete = False
 
         # 额外开线程用来运行websocket
-        handle = threading.Thread(target=lambda: ws.run_forever(ping_interval=300))
+        def _run_websocket():
+            # 创建ping线程
+            def _ping_thread():
+                while True:
+                    time.sleep(ping_interval)
+                    if ping_callback is not None:
+                        try:
+                            ping_callback()
+                        except Exception:
+                            print(traceback.format_exc())
+
+            ping_handle = threading.Thread(target=_ping_thread)
+            ping_handle.start()
+            ws.run_forever(ping_interval=ping_interval)
+
+        handle = threading.Thread(target=_run_websocket)
         handle.start()
 
         while not ws.connect_complete:
@@ -334,33 +352,57 @@ class SmartOperator(BaseOperator):
         print('ws名' + stream_name + '连接完毕')
         return handle
 
-    def create_listen_key(self, mode) -> str:
+    def create_listen_key(self, mode: str, symbol: str = None) -> str:
         """
         创建一个listen_key用来订阅账户的websocket信息
-        :param mode: MAIN或者FUTURE，代表现货或者期货
+        :param mode: MAIN、MARGIN、ISOLATED、FUTURE，代表现货、全仓、逐仓、期货
+        :param symbol: 仅逐仓需要传入，代表哪个逐仓
         :return: 返回的listen_key
         """
-        if mode != 'MAIN' and mode != 'FUTURE':
-            raise Exception('mode必须为MAIN、FUTURE')
+        if mode != 'MAIN' and mode != 'FUTURE' and mode != 'MARGIN' and mode != 'ISOLATED':
+            raise Exception('mode必须为MAIN、MARGIN、ISOLATED、FUTURE')
         if mode == 'MAIN':
             return json.loads(self.request('api', '/api/v3/userDataStream', 'POST', {},
                                            send_signature=False))['listenKey']
+        elif mode == 'MARGIN':
+            return json.loads(self.request('api', '/sapi/v1/userDataStream', 'POST', {},
+                                           send_signature=False))['listenKey']
+        elif mode == 'ISOLATED':
+            if symbol is None:
+                raise Exception('需要传入逐仓的symbol')
+            symbol = symbol.upper()
+            return json.loads(self.request('api', '/sapi/v1/userDataStream/isolated', 'POST', {
+                'symbol': symbol
+            }, send_signature=False))['listenKey']
         else:
             return json.loads(self.request('fapi', '/fapi/v1/listenKey', 'POST', {},
                                            send_signature=False))['listenKey']
 
-    def overtime_listen_key(self, mode, key):
+    def overtime_listen_key(self, mode: str, key: str, symbol: str = None):
         """
         延长一个listen_key的有效时间\n
         根据官网的说明，默认有效时间是60分钟，推荐30分钟延长一次\n
-        :param mode: MAIN或者FUTURE，代表现货或者期货
+        :param mode: MAIN、r，代表现货或者期货
         :param key: 要延长的listen_key
+        :param symbol: 仅逐仓需要传入，代表哪个逐仓
         """
-        if mode != 'MAIN' and mode != 'FUTURE':
-            raise Exception('mode必须为MAIN、FUTURE')
-        if mode == 'MAIN':
-            self.request('api', '/api/v3/userDataStream', 'PUT', data={
+        if mode != 'MAIN' and mode != 'FUTURE' and mode != 'MARGIN' and mode != 'ISOLATED':
+            raise Exception('mode必须为MAIN、MARGIN、ISOLATED、FUTURE')
+        elif mode == 'MAIN':
+            self.request('api', '/api/v3/userDataStream', 'PUT', {
                 'listenKey': key
+            }, send_signature=False)
+        elif mode == 'MARGIN':
+            self.request('api', '/sapi/v1/userDataStream', 'PUT', {
+                'listenKey': key
+            }, send_signature=False)
+        elif mode == 'ISOLATED':
+            if symbol is None:
+                raise Exception('需要传入逐仓的symbol')
+            symbol = symbol.upper()
+            self.request('api', '/sapi/v1/userDataStream/isolated', 'POST', {
+                'listenKey': key,
+                'symbol': symbol
             }, send_signature=False)
         else:
             self.request('fapi', '/fapi/v1/listenKey', 'PUT', data={
@@ -739,6 +781,27 @@ class SmartOperator(BaseOperator):
 
         price = float(price)
         return price
+
+    def get_all_latest_price(self, mode: str) -> Dict[str, float]:
+        """
+        获取市场所有货币对最新价格
+        :param mode: 查询模式，MAIN或者FUTURE，代表现货或者期货
+        """
+        mode = mode.upper()
+
+        # 判断mode是否填写正确
+        if mode != 'MAIN' and mode != 'FUTURE':
+            raise Exception('交易mode填写错误，只能为MAIN或者FUTURE')
+        res = {}
+        if mode == 'MAIN':
+            price = json.loads(self.request('api', '/api/v3/ticker/price', 'GET', {}, send_signature=False))
+            for e in price:
+                res[e['symbol']] = float(e['price'])
+        else:
+            price = json.loads(self.request('fapi', '/fapi/v1/ticker/price', 'GET', {}, send_signature=False))
+            for e in price:
+                res[e['symbol']] = float(e['price'])
+        return res
 
     def set_bnb_burn(self, spot_bnb_burn: bool, interest_bnb_burn: bool):
         """
