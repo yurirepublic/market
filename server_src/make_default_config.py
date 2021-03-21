@@ -19,11 +19,17 @@ default_config = {
     "listen_ip": "0.0.0.0",  # 中央服务器http监听ip和端口
     "listen_port": 11327,
 
-    "data_center_http_server_listen_ip": "0.0.0.0",     # 数据中心服务端监听ip和端口
+    "data_center_http_server_listen_ip": "0.0.0.0",  # 数据中心服务端监听ip和端口
     "data_center_http_server_listen_port": 11327,
 
-    "data_center_http_client_connect_ip": "us.pwp.today",   # 数据中心服务端监听ip和端口
+    "data_center_http_client_connect_ip": "us.pwp.today",  # 数据中心服务端监听ip和端口
     "data_center_http_client_connect_port": 11327,
+
+    # 数据中心服务端和客户端的websocket接口
+    "data_center_ws_server_listen_ip": "0.0.0.0",
+    "data_center_ws_server_listen_port": 11328,
+    "data_center_ws_client_connect_ip": "us.pwp.today",
+    "data_center_ws_client_connect_port": 11328,
 
     "password": "defaultPassword"  # 中央服务器认证口令
 }

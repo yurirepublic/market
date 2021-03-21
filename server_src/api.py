@@ -720,12 +720,16 @@ def main():
     # 运行脚本管理器
     script_server = tools.Server()
 
+    # 运行数据中心websocket服务器
+    data_center_websocket_server = data_center.WebsocketServerAdapter(data_server)
+
     # 运行数据中心的脚本
     time.sleep(0.5)  # 留时间让脚本管理器启动完毕
     script_client = tools.Client()
     script_client.exec('dc_websocket', {})
 
     # 在此主进程运行http服务器
+    print('即将运行http服务器{}:{}'.format(config['listen_ip'], config['listen_port']))
     if config['use_ssl']:
         app.run(config['listen_ip'], config['listen_port'],
                 ssl_context=(config['ssl_pem'], config['ssl_key']))

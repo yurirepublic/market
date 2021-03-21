@@ -11,6 +11,16 @@ from typing import Dict, List, Set, Union, Callable
 import threading
 import time
 
+# 引入websocket相关
+import websocket
+import websockets
+import asyncio
+import ssl
+
+# 读取配置文件
+with open('config.json', 'r', encoding='utf-8') as f:
+    config = json.loads(f.read())
+
 
 class DataCenterException(Exception):
     pass
@@ -58,6 +68,9 @@ class Data(object):
     def get_tags(self) -> Set[str]:
         return self._tags
 
+    def get_timestamp(self) -> int:
+        return self._timestamp
+
     def append_update_callback(self, func):
         self.callback.append(func)
 
@@ -67,7 +80,8 @@ class Data(object):
 
 class Server(object):
     """
-    数据中心的服务端
+    数据中心的服务端，纯Python对象，需要使用接口来远程使用
+    TODO: 非线程安全，需要加锁，避免出现RuntimeError: dictionary changed size during iteration
     """
 
     def __init__(self):
@@ -191,7 +205,6 @@ class Server(object):
             res = {}
             for e in data_set:
                 if len(tags) + 1 == len(e.get_tags()):
-                    print(e.get_tags())
                     unique_tag_set = e.get_tags() - tags
                     unique_tag = None
                     # 此时unique_tag虽然是set，但是必然只有一个值
@@ -222,14 +235,117 @@ class Server(object):
         return res
 
 
-class WebsocketClient(object):
+class WebsocketServerAdapter(object):
+    """
+    数据中心的websocket接口服务端
+    TODO: 现在是不加密的，加密后莫名其妙连不上
+    """
+
+    def __init__(self, data_center: Server):
+        self.data_center = data_center
+
+        # ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        # ssl_context.load_verify_locations(config['ssl_pem'])
+        loop = asyncio.get_event_loop()
+        server_ip = config['data_center_ws_server_listen_ip']
+        server_port = config['data_center_ws_server_listen_port']
+        loop.run_until_complete(
+            websockets.serve(self.recv, server_ip, server_port))
+        print('成功启动数据中心服务端websocket接口，运行在{}:{}'.format(server_ip, server_port))
+        threading.Thread(target=lambda: loop.run_forever()).start()
+
+    async def recv(self, ws: websockets.WebSocketServerProtocol, path):
+        """
+        用此函数处理websocket数据
+        """
+        print('新传入websocket连接')
+        await ws.send('hello')
+        # 传入连接后首先发送的必是口令
+        data = await ws.recv()
+        if config['password'] != data:
+            print(path, '的口令错误')
+            return
+        # 循环等待websocket发送消息
+        while True:
+            data = json.loads(await ws.recv())
+            if data['mode'] == 'GET':
+                tags = data['tags']
+                res = self.data_center.get(tags)
+                await ws.send(json.dumps({
+                    'data': res
+                }))
+            elif data['mode'] == 'SET':
+                tags = data['tags']
+                value = data['value']
+                timestamp = data['timestamp']
+                self.data_center.update(tags, value, timestamp)
+            elif data['mode'] == 'ALL':
+                res = self.data_center.get_all()
+                await ws.send(json.dumps({
+                    'data': res
+                }))
+
+
+class WebsocketClientAdapter(object):
     """
     数据中心的websocket接口客户端
     """
 
-class HTTPClient(object):
+    def __init__(self):
+        self.threading_lock = threading.Lock()
+        with self.threading_lock:
+            # 连接websocket
+            self.loop = asyncio.get_event_loop()
+            self.ws: websockets.WebSocketClientProtocol = \
+                self.loop.run_until_complete(self.connect_server())
+
+    @staticmethod
+    async def connect_server():
+        client_ip = config['data_center_ws_client_connect_ip']
+        client_port = config['data_center_ws_client_connect_port']
+        url = 'ws://{}:{}'.format(client_ip, client_port)
+        print('即将连接' + url)
+        ws = await websockets.connect(url)
+        print('成功连接数据中心websocket')
+        greeting = await ws.recv()
+        print('收到问候语' + greeting)
+        # 向数据中心发送口令验证身份
+        await ws.send(config['password'])
+        return ws
+
+    def close(self):
+        self.loop.run_until_complete(self.ws.close())
+
+    def update(self, tags: List[str], value, timestamp: int = None):
+        with self.threading_lock:
+            self.loop.run_until_complete(self.ws.send(json.dumps({
+                'mode': 'SET',
+                'tags': tags,
+                'value': value,
+                'timestamp': timestamp
+            })))
+
+    def get(self, tags: List[str]):
+        with self.threading_lock:
+            self.loop.run_until_complete(self.ws.send(json.dumps({
+                'mode': 'GET',
+                'tags': tags
+            })))
+            res = json.loads(self.loop.run_until_complete(self.ws.recv()))
+            return res['data']
+
+    def get_all(self):
+        with self.threading_lock:
+            self.loop.run_until_complete(self.ws.send(json.dumps({
+                'mode': 'ALL'
+            })))
+            res = json.loads(self.loop.run_until_complete(self.ws.recv()))
+            return res['data']
+
+
+class HTTPClientAdapter(object):
     """
-    数据中心的客户端服务
+    数据中心的客户端
     """
 
     def __init__(self):
