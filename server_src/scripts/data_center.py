@@ -151,23 +151,6 @@ class Server(object):
                         self.database[tag] = set()
                         self.database[tag].add(data_obj)
 
-        # data_set = self._select(tags)
-        # # 如果筛选出的数据为空，则新建一个对应tag的数据
-        # if len(data_set) == 0:
-        #     data_obj = Data()
-        #     data_obj.update(value, timestamp=timestamp)
-        #     data_obj.set_tags(tags)
-        #     for tag in tags:
-        #         try:
-        #             self.database[tag].add(data_obj)
-        #         except KeyError:
-        #             self.database[tag] = set()
-        #             self.database[tag].add(data_obj)
-        # else:
-        #     # 为每个数据更新
-        #     for e in data_set:
-        #         e.update(value, timestamp=timestamp)
-
     def append_update_callback(self, tags: Union[List[str], Set[str]], func: Callable):
         """
         依据tag更新刷新回调
