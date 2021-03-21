@@ -1,11 +1,13 @@
 import json
 import hmac
 import time
-from typing import Union
+import traceback
+from typing import Union, Dict, List, Callable
 import requests
 import math
 import threading
 from hashlib import sha256
+import websocket
 
 """
 此脚本用于放置对币安API的封装
@@ -13,6 +15,7 @@ from hashlib import sha256
 
 base_url = 'binance.com'  # 基本网址，用于快速切换国内地址和国际地址，国际地址是binance.com，国内地址是binancezh.pro
 request_trace = True  # 是否追踪请求，开启会打印出每次请求的url、状态码、返回的文本
+trace_to_file = True  # 是否将最终请求写入到文件，开启后控制台只会显示前50位，完整版在requests_trace.txt
 
 
 class BinanceException(Exception):
@@ -46,9 +49,16 @@ def get_timestamp():
 def float_to_str_floor(amount: float, precision: int = 8) -> str:
     """
     将float转为指定精度的str格式，一般用于对高精度计算结果下单，会向下取整避免多下\n
-    如不指定精度，则默认为币安最大精度8
+    如不指定精度，则默认为币安最大精度8\n
+    对于str格式，会自动转为float再进行精度转换
     """
-    return str(math.floor(amount * (10 ** precision)) / (10 ** precision))
+    if isinstance(amount, str):
+        amount = float(amount)
+    res = str(math.floor(amount * (10 ** precision)) / (10 ** precision))
+    # 如果最后结尾是.0，则把.0消除
+    if res[-2:] == '.0':
+        res = res[:-2]
+    return res
 
 
 def float_to_str_ceil(amount: float, precision: int = 8) -> str:
@@ -56,7 +66,13 @@ def float_to_str_ceil(amount: float, precision: int = 8) -> str:
     将float转为指定精度的str格式，一般用于对高精度计算结果下单，会向上取整避免少下\n
     如不指定精度，则默认币安最大精度8
     """
-    return str(math.ceil(amount * (10 ** precision)) / (10 ** precision))
+    if isinstance(amount, str):
+        amount = float(amount)
+    res = str(math.ceil(amount * (10 ** precision)) / (10 ** precision))
+    # 如果最后结尾是.0，则把.0消除
+    if res[-2:] == '.0':
+        res = res[:-2]
+    return res
 
 
 def float_to_str_round(amount: float, precision: int = 8) -> str:
@@ -64,7 +80,13 @@ def float_to_str_round(amount: float, precision: int = 8) -> str:
     将float转为指定精度的str格式，一般用于消除0.000000000001和0.9999999999\n
     会对指定精度四舍五入，如不指定精度，则默认币安最大精度8
     """
-    return str(round(amount * (10 ** precision)) / (10 ** precision))
+    if isinstance(amount, str):
+        amount = float(amount)
+    res = str(round(amount * (10 ** precision)) / (10 ** precision))
+    # 如果最后结尾是.0，则把.0消除
+    if res[-2:] == '.0':
+        res = res[:-2]
+    return res
 
 
 def make_query_string(**kwargs) -> str:
@@ -120,7 +142,7 @@ class BaseOperator(object):
         如果请求状态码不是200，会引发BinanceException\n
         :param area_url: 头部的地址，例如api、fapi、dapi
         :param path_url: 路径地址，例如/fapi/v2/account
-        :param method: 请求方法，仅限POST和GET
+        :param method: 请求方法，仅限POST、GET、PUT
         :param data: 发送的数据，dict会自动转换成http参数，str则不转换
         :param test: 是否添加/test路径，用于测试下单，默认False
         :param send_signature: 是否发送签名，有的api不接受多余的参数，就不能默认发送签名
@@ -128,8 +150,9 @@ class BaseOperator(object):
         :param retry_interval: 自动尝试的间隔(秒)
         :return: 返回的数据文本格式
         """
-        if method.upper() != 'POST' and method.upper() != 'GET':
-            raise Exception('请求方法必须为POST或者GET，大小写不限')
+        method = method.upper()
+        if method != 'POST' and method != 'GET' and method != 'PUT':
+            raise Exception('请求方法必须为POST、GET、PUT，大小写不限')
         headers = {
             'X-MBX-APIKEY': self.public_key
         }
@@ -153,17 +176,34 @@ class BaseOperator(object):
                 area_url, base_url, path_url, test_path, data)
 
         while True:
-            if method.upper() == 'GET':
+            if method == 'GET':
                 r = requests.get(url, headers=headers)
-            else:
+            elif method == 'POST':
                 r = requests.post(url, headers=headers)
+            else:
+                r = requests.put(url, headers=headers)
 
             if request_trace:
-                print('-----start-----')
-                print(url)
-                print(r.status_code)
-                print(r.text)
-                print('-----ended-----')
+                if trace_to_file:
+                    with open('requests_trace.txt', 'w', encoding='utf-8') as f:
+                        f.writelines([
+                            '-----start-----',
+                            'URL: {}'.format(url),
+                            'STATUS CODE: {}'.format(r.status_code),
+                            'TEXT: {}'.format(r.text),
+                            '-----ended-----'
+                        ])
+                        print('-----start-----')
+                        print('URL:', url)
+                        print('STATUS CODE:', r.status_code)
+                        print('TEXT:', r.text[:50])
+                        print('-----ended-----')
+                else:
+                    print('-----start-----')
+                    print('URL:', url)
+                    print('STATUS CODE:', r.status_code)
+                    print('TEXT:', r.text)
+                    print('-----ended-----')
 
             if r.status_code != 200:
                 if retry_count > 0:
@@ -173,179 +213,6 @@ class BaseOperator(object):
             else:
                 return r.text
             time.sleep(retry_interval)
-
-    # def subscribe_price(self, name: str):
-    #     # 订阅最新交易价格
-    #     data = {
-    #         'method': 'SUBSCRIBE',
-    #         'params': [
-    #             name.lower() + "@aggTrade",
-    #         ],
-    #         'id': self.subscribe_id
-    #     }
-    #     self.ws.send(json.dumps(data))
-    #     self.subscribe_id += 1
-
-
-# class Operator(BaseOperator):
-#     """
-#     现货API操作
-#     """
-
-#     def __init__(self):
-#         super(Operator, self).__init__()
-#         self.ws = None
-
-#     def connect_websocket(self):
-#         """
-#         调用此函数连接到websocket，以启用websocket相关api
-#         """
-#         self.ws = websocket.WebSocketApp(
-#             'wss://stream.' + base_url + ':9443/ws')
-#         self.ws.connect_completed = False  # 自己加的一个成员，用来外部等待连接成功再放行
-
-#         def on_open(ws):
-#             print('成功建立现货websocket连接')
-#             ws.connect_completed = True
-
-#         def on_message(ws, data):
-#             # 收到websocket时使用的处理函数
-#             data = json.loads(data)
-#             if 'e' in data.keys() and data['e'] == 'aggTrade':
-#                 self.price[data['s']] = float(data['p'])
-#             else:
-#                 print(data)
-
-#         self.ws.on_message = on_message
-#         self.ws.on_open = on_open
-#         # 额外开一个线程用来运行此websocket
-#         self.ws_handle = _thread.start_new_thread(
-#             lambda: self.ws.run_forever(ping_interval=300), ())
-
-#         # 等待直到websocket连接成功
-#         while not self.ws.connect_completed:
-#             time.sleep(0.1)
-
-#     def trade(self, symbol: str, quantity, side, test=False):
-#         """
-#         在现货下单
-#         """
-#         if test:
-#             test_trade = '/test'
-#         else:
-#             test_trade = ''
-#         headers = {
-#             'X-MBX-APIKEY': self.public_key
-#         }
-#         data = make_query_string(
-#             symbol=symbol.upper(),
-#             side=side,
-#             type='MARKET',
-#             quantity=quantity,
-#             timestamp=str(round(time.time() * 1000))
-#         )
-#         signature = hmac.new(self.private_key.encode('ascii'),
-#                              data.encode('ascii'), digestmod=sha256).hexdigest()
-#         url = 'https://api.' + base_url + '/api/v3/order' + \
-#             test_trade + '?' + data + '&signature=' + signature
-#         print(url)
-#         r = requests.post(url, headers=headers)
-#         print(r.status_code)
-#         print(r.text)
-
-
-# class OperatorFuture(BaseOperator):
-#     """
-#     期货API操作
-#     """
-
-#     def __init__(self):
-#         super(OperatorFuture, self).__init__()
-#         self.ws = None
-
-#     def connect_websocket(self):
-#         self.ws = websocket.WebSocketApp('wss://fstream.' + base_url + '/ws')
-#         self.ws.connect_completed = False  # 自己加的一个成员，用来外部等待连接成功再放行
-
-#         def on_open(ws):
-#             print('成功建立USDT期货websocket连接')
-#             ws.connect_completed = True
-
-#         def on_message(ws, data):
-#             # 收到websocket时使用的处理函数
-#             data = json.loads(data)
-#             if 'e' in data.keys() and data['e'] == 'aggTrade':
-#                 self.price[data['s']] = float(data['p'])
-#             else:
-#                 print(data)
-
-#         self.ws.on_message = on_message
-#         self.ws.on_open = on_open
-#         # 额外开一个线程用来运行此websocket
-#         self.ws_handle = _thread.start_new_thread(
-#             lambda: self.ws.run_forever(ping_interval=300), ())
-
-#         while not self.ws.connect_completed:
-#             time.sleep(0.1)
-
-#     def trade(self, symbol: str, quantity, side, test=True):
-#         headers = {
-#             'X-MBX-APIKEY': self.public_key
-#         }
-#         data = make_query_string(
-#             symbol=symbol.upper(),
-#             side=side,
-#             type='MARKET',
-#             quantity=quantity,
-#             timestamp=str(round(time.time() * 1000))
-#         )
-#         if test:
-#             test_trade = '/test'
-#         else:
-#             test_trade = ''
-#         signature = hmac.new(self.private_key.encode('ascii'),
-#                              data.encode('ascii'), digestmod=sha256).hexdigest()
-#         url = 'https://fapi.' + base_url + '/fapi/v1/order' + \
-#             test_trade + '?' + data + '&signature=' + signature
-#         print(url)
-#         r = requests.post(url, headers=headers)
-#         print(r.status_code)
-#         print(r.text)
-
-#     def close_out(self, symbol: str):
-#         """
-#         将某个货币对平仓
-#         """
-#         # 先获取货币对的持仓和方向
-#         headers = {
-#             'X-MBX-APIKEY': self.public_key
-#         }
-#         data = make_query_string(
-#             timestamp=str(round(time.time() * 1000))
-#         )
-#         signature = hmac.new(self.private_key.encode('ascii'),
-#                              data.encode('ascii'), digestmod=sha256).hexdigest()
-#         url = 'https://fapi.' + base_url + '/fapi/v2/account' + \
-#             '?' + data + '&signature=' + signature
-#         print(url)
-#         r = requests.get(url, headers=headers)
-#         print(r.status_code)
-#         print(r.text)
-#         if r.status_code != 200:
-#             raise Exception('获取持仓数量错误')
-#         # 遍历找到需要的货币对
-#         for x in json.loads(r.text)['positions']:
-#             if x['symbol'] == symbol.upper():
-#                 position_amt = x['positionAmt']
-#                 break
-#         else:
-#             raise Exception('未在返回的数据中找到持仓')
-#         # 下市价单平仓
-#         if float(position_amt) > 0:
-#             self.trade(symbol, position_amt, 'SELL')
-#         else:
-#             # 这里不转为float，怕有精度问题留个0.0000001没平仓，直接使用原始的字符串
-#             self.trade(symbol, position_amt.replace('-', ''), 'BUY')
 
 
 class SmartOperator(BaseOperator):
@@ -359,8 +226,188 @@ class SmartOperator(BaseOperator):
     def __init__(self) -> None:
         super().__init__()
 
-        # # 实例化一个基本操作者，用来发出request
-        # self.operator = BaseOperator()
+        # 期货和现货的websocket连接
+        self.main_ws = None
+        self.future_ws = None
+        self.main_ws_connect_completed = False
+        self.future_ws_connect_completed = False
+
+        # websocket收到消息的回调，key是事件名，value是回调函数list
+        self.main_ws_callback: Dict[str, List[Callable]] = {}
+        self.future_ws_callback: Dict[str, List[Callable]] = {}
+
+    def ws_main_on_open(self):
+        print('成功建立现货websocket连接')
+        self.main_ws_connect_completed = True
+
+    def ws_future_on_open(self):
+        print('成功建立期货websocket连接')
+        self.future_ws_connect_completed = True
+
+    def ws_main_on_message(self, ws, message):
+        message = json.loads(message)
+        # 调用对应的callback
+        try:
+            for f in self.main_ws_callback[message['e']]:
+                # 在异常捕获里运行，免得把主线程给扬了
+                try:
+                    threading.Thread(target=f, args=(message,)).start()
+                except Exception:
+                    print(traceback.format_exc())
+        except KeyError:
+            # 没人接收就不调用了
+            print('无人认领的main数据', message)
+
+    def ws_future_on_message(self, ws, message):
+        message = json.loads(message)
+        # 调用对应的callback
+        try:
+            for f in self.future_ws_callback[message['e']]:
+                # 在异常捕获里运行，免得把主线程给扬了
+                try:
+                    threading.Thread(target=f, args=(message,)).start()
+                except Exception:
+                    print(traceback.format_exc())
+        except KeyError:
+            # 没人接收就不调用了
+            print('无人认领的future数据', message)
+
+    def ws_append_callback(self, key: str, mode: str, func: Callable):
+        """
+        向websocket添加消息回调\n
+        :param key: 接收回调的事件类型名称
+        :param mode: MAIN或者FUTURE，代表现货和期货
+        :param func: 接收回调的函数
+        """
+        if mode != 'MAIN' and mode != 'FUTURE':
+            raise Exception('mode只能为MAIN或者FUTURE')
+        if mode == 'MAIN':
+            try:
+                self.main_ws_callback[key].append(func)
+            except KeyError:
+                self.main_ws_callback[key] = []
+                self.main_ws_callback[key].append(func)
+        elif mode == 'FUTURE':
+            try:
+                self.future_ws_callback[key].append(func)
+            except KeyError:
+                self.future_ws_callback[key] = []
+                self.future_ws_callback[key].append(func)
+
+    def connect_websocket(self, mode: str, stream_name: str, recv_callback: Callable,
+                          ping_callback: Callable = None, ping_interval: int = 300):
+        """
+        连接一个websocket\n
+        :param mode: 只能为MAIN、FUTURE
+        :param stream_name: 要订阅的数据流名字
+        :param recv_callback: 收到消息的回调函数，消息会以字符串形式传入参数
+        :param ping_callback: 间隔指定时间会调用一次该函数，用于处理ping的事务，不传入则默认使用ping
+        :param ping_interval: ping的间隔，秒，默认300
+        """
+        if mode != 'MAIN' and mode != 'FUTURE':
+            raise Exception('mode只能为MAIN、FUTURE')
+
+        # 创建websocket对象
+        def on_open(s):
+            s.connect_complete = True
+
+        def on_message(s, message):
+            try:
+                recv_callback(message)
+            except Exception:
+                print(traceback.format_exc())
+
+        if mode == 'MAIN':
+            ws = websocket.WebSocketApp('wss://stream.{}:9443/ws/{}'.format(base_url, stream_name),
+                                        on_message=on_message,
+                                        on_open=on_open)
+        else:
+            ws = websocket.WebSocketApp('wss://fstream.{}/ws/{}'.format(base_url, stream_name),
+                                        on_message=on_message,
+                                        on_open=on_open)
+        ws.connect_complete = False
+
+        # 额外开线程用来运行websocket
+        def _run_websocket():
+            # 创建ping线程
+            def _ping_thread():
+                while True:
+                    time.sleep(ping_interval)
+                    if ping_callback is not None:
+                        try:
+                            ping_callback()
+                        except Exception:
+                            print(traceback.format_exc())
+
+            ping_handle = threading.Thread(target=_ping_thread)
+            ping_handle.start()
+            ws.run_forever(ping_interval=ping_interval)
+
+        handle = threading.Thread(target=_run_websocket)
+        handle.start()
+
+        while not ws.connect_complete:
+            time.sleep(0.1)
+
+        print('ws名' + stream_name + '连接完毕')
+        return handle
+
+    def create_listen_key(self, mode: str, symbol: str = None) -> str:
+        """
+        创建一个listen_key用来订阅账户的websocket信息
+        :param mode: MAIN、MARGIN、ISOLATED、FUTURE，代表现货、全仓、逐仓、期货
+        :param symbol: 仅逐仓需要传入，代表哪个逐仓
+        :return: 返回的listen_key
+        """
+        if mode != 'MAIN' and mode != 'FUTURE' and mode != 'MARGIN' and mode != 'ISOLATED':
+            raise Exception('mode必须为MAIN、MARGIN、ISOLATED、FUTURE')
+        if mode == 'MAIN':
+            return json.loads(self.request('api', '/api/v3/userDataStream', 'POST', {},
+                                           send_signature=False))['listenKey']
+        elif mode == 'MARGIN':
+            return json.loads(self.request('api', '/sapi/v1/userDataStream', 'POST', {},
+                                           send_signature=False))['listenKey']
+        elif mode == 'ISOLATED':
+            if symbol is None:
+                raise Exception('需要传入逐仓的symbol')
+            symbol = symbol.upper()
+            return json.loads(self.request('api', '/sapi/v1/userDataStream/isolated', 'POST', {
+                'symbol': symbol
+            }, send_signature=False))['listenKey']
+        else:
+            return json.loads(self.request('fapi', '/fapi/v1/listenKey', 'POST', {},
+                                           send_signature=False))['listenKey']
+
+    def overtime_listen_key(self, mode: str, key: str, symbol: str = None):
+        """
+        延长一个listen_key的有效时间\n
+        根据官网的说明，默认有效时间是60分钟，推荐30分钟延长一次\n
+        :param mode: MAIN、r，代表现货或者期货
+        :param key: 要延长的listen_key
+        :param symbol: 仅逐仓需要传入，代表哪个逐仓
+        """
+        if mode != 'MAIN' and mode != 'FUTURE' and mode != 'MARGIN' and mode != 'ISOLATED':
+            raise Exception('mode必须为MAIN、MARGIN、ISOLATED、FUTURE')
+        elif mode == 'MAIN':
+            self.request('api', '/api/v3/userDataStream', 'PUT', {
+                'listenKey': key
+            }, send_signature=False)
+        elif mode == 'MARGIN':
+            self.request('api', '/sapi/v1/userDataStream', 'PUT', {
+                'listenKey': key
+            }, send_signature=False)
+        elif mode == 'ISOLATED':
+            if symbol is None:
+                raise Exception('需要传入逐仓的symbol')
+            symbol = symbol.upper()
+            self.request('api', '/sapi/v1/userDataStream/isolated', 'POST', {
+                'listenKey': key,
+                'symbol': symbol
+            }, send_signature=False)
+        else:
+            self.request('fapi', '/fapi/v1/listenKey', 'PUT', data={
+                'listenKey': key
+            }, send_signature=False)
 
     def get_symbol_precision(self, symbol: str, mode: str = None) -> int:
         """
@@ -419,7 +466,7 @@ class SmartOperator(BaseOperator):
         :param amount: 要下单的货币数量，默认是货币数量，如果开启成交额模式，则为成交额
         :param side: 下单方向，字符串格式，只能为SELL或者BUY
         :param test: 是否为测试下单，默认False。测试下单不会提交到撮合引擎，用于测试
-        :volume_mode: 是否用成交额模式下单，默认False，开启后amount代表成交额而不是货币数量
+        :param volume_mode: 是否用成交额模式下单，默认False，开启后amount代表成交额而不是货币数量
         :return: 下单请求提交后，币安返回的结果
         """
         # 转化字符串
@@ -481,7 +528,7 @@ class SmartOperator(BaseOperator):
         # 加入全仓或者逐仓参数
         if mode == 'MARGIN':
             data['isIsolated'] = 'FALSE'
-        if mode == 'ISOLATE':
+        if mode == 'ISOLATED':
             data['isIsolated'] = 'TRUE'
 
         # 根据期货现货不同，发出不同的请求
@@ -494,6 +541,102 @@ class SmartOperator(BaseOperator):
 
         return r
 
+    def get_borrowed_asset_amount(self, mode: str) -> dict:
+        """
+        获取某个模式下的已借入的货币数量\n
+        key为货币符号，值为借入数量
+        如果是逐仓，key为交易对，内容为dict，有base_asset和quote_asset两个float资产数\n
+        以及base_symbol和quote_asset两个资产符号\n
+        :param mode: 只能为MARGIN、ISOLATED，代表全仓逐仓
+        """
+        if mode != 'MARGIN' and mode != 'ISOLATED':
+            raise Exception('mode只能为MARGIN、ISOLATED')
+        # 根据mode调用不同API查询
+        asset_dict = {}
+        if mode == 'MARGIN':
+            # 获取当前所有的全仓资产
+            res = json.loads(self.request('api', '/sapi/v1/margin/account', 'GET', {
+                'timestamp': get_timestamp()
+            }))['userAssets']
+            # 遍历将非零借贷塞入字典
+            for e in res:
+                if float(e['borrowed']) != 0:
+                    asset_dict[e['asset']] = float(e['borrowed'])
+        elif mode == 'ISOLATED':
+            # 获取当前所有的逐仓资产
+            res = json.loads(self.request('api', '/sapi/v1/margin/isolated/account', 'GET', {
+                'timestamp': get_timestamp()
+            }))['assets']
+            # 遍历将非零资产塞入字典
+            for e in res:
+                if float(e['baseAsset']['borrowed']) != 0 or float(e['quoteAsset']['borrowed']) != 0:
+                    asset_dict[e['symbol']] = {}
+                    asset_dict[e['symbol']]['base_asset'] = float(e['baseAsset']['borrowed'])
+                    asset_dict[e['symbol']]['quote_asset'] = float(e['quoteAsset']['borrowed'])
+                    asset_dict[e['symbol']]['base_name'] = e['baseAsset']['asset']
+                    asset_dict[e['symbol']]['quote_name'] = e['quoteAsset']['asset']
+        else:
+            raise Exception('未知的mode', mode)
+        return asset_dict
+
+    def get_all_asset_amount(self, mode: str) -> dict:
+        """
+        获取某个模式下所有不为0的资产数量\n
+        期货使用此函数无法查询仓位，只能查询诸如USDT、BNB之类的资产\n
+        如果查询非逐仓，返回的key为资产名字，内容为float的资产数\n
+        如果查询逐仓，返回的key为交易对符号，内容为dict，有base_asset和quote_asset两个float资产数\n
+        以及base_symbol和quote_asset两个资产符号\n
+        :param mode: MAIN、MARGIN、ISOLATED、FUTURE 代表现货、全仓、逐仓、期货
+        """
+        if mode != 'MAIN' and mode != 'FUTURE' and mode != 'MARGIN' and mode != 'ISOLATED':
+            raise Exception('mode只能为MAIN、FUTURE、MARGIN、ISOLATED')
+
+        # 根据mode调用不同API查询
+        asset_dict = {}
+        if mode == 'MAIN':
+            # 获取当前所有现货资产
+            res = json.loads(self.request('api', '/api/v3/account', 'GET', {
+                'timestamp': get_timestamp()
+            }))['balances']
+            # 遍历将非零的资产塞入字典
+            for e in res:
+                if float(e['free']) != 0:
+                    asset_dict[e['asset']] = float(e['free'])
+        elif mode == 'FUTURE':
+            # 获取当前所有期货资产
+            res = json.loads(self.request('fapi', '/fapi/v2/balance', 'GET', {
+                'timestamp': get_timestamp()
+            }))
+            # 遍历将非零资产塞入字典
+            for e in res:
+                if float(e['maxWithdrawAmount']) != 0:
+                    asset_dict[e['asset']] = float(e['maxWithdrawAmount'])
+        elif mode == 'MARGIN':
+            # 获取当前所有的全仓资产
+            res = json.loads(self.request('api', '/sapi/v1/margin/account', 'GET', {
+                'timestamp': get_timestamp()
+            }))['userAssets']
+            # 遍历将非零资产塞入字典
+            for e in res:
+                if float(e['free']) != 0:
+                    asset_dict[e['asset']] = float(e['free'])
+        elif mode == 'ISOLATED':
+            # 获取当前所有的逐仓资产
+            res = json.loads(self.request('api', '/sapi/v1/margin/isolated/account', 'GET', {
+                'timestamp': get_timestamp()
+            }))['assets']
+            # 遍历将非零资产塞入字典
+            for e in res:
+                if float(e['baseAsset']['free']) != 0 or float(e['quoteAsset']['free']) != 0:
+                    asset_dict[e['symbol']] = {}
+                    asset_dict[e['symbol']]['base_asset'] = float(e['baseAsset']['free'])
+                    asset_dict[e['symbol']]['quote_asset'] = float(e['quoteAsset']['free'])
+                    asset_dict[e['symbol']]['base_name'] = e['baseAsset']['asset']
+                    asset_dict[e['symbol']]['quote_name'] = e['quoteAsset']['asset']
+        else:
+            raise Exception('未知的mode', mode)
+        return asset_dict
+
     def get_asset_amount(self, symbol: str, mode: str) -> float:
         """
         获取可用资产数量，已冻结的资产不会在里面\n
@@ -501,7 +644,8 @@ class SmartOperator(BaseOperator):
         :param symbol: 要查询的资产符号
         :param mode: MAIN、MARGIN、FUTURE 代表现货、全仓、期货
         """
-        symbol = symbol.upper()
+        if symbol is not None:
+            symbol = symbol.upper()
         mode = mode.upper()
 
         if mode != 'MAIN' and mode != 'FUTURE' and mode != 'MARGIN':
@@ -510,44 +654,35 @@ class SmartOperator(BaseOperator):
         # 根据mode调用不同API查询
         if mode == 'MAIN':
             # 获取当前所有现货资产
-            res = json.loads(self.request('api', '/api/v3/account', 'GET', {
-                'timestamp': get_timestamp()
-            }))['balances']
-            # 遍历查找查询的symbol
-            for e in res:
-                if e['asset'] == symbol:
-                    return float(e['free'])
+            asset_dict = self.get_all_asset_amount(mode)
+            # 查询可用资产数量
+            if symbol not in asset_dict.keys():
+                return 0
             else:
-                raise Exception('没有找到查询的symbol资产')
+                return asset_dict[symbol]
         elif mode == 'FUTURE':
             # 获取当前所有期货资产
-            res = json.loads(self.request('fapi', '/fapi/v2/balance', 'GET', {
-                'timestamp': get_timestamp()
-            }))
-            # 遍历查找查询的symbol
-            for e in res:
-                if e['asset'] == symbol:
-                    return float(e['maxWithdrawAmount'])
+            asset_dict = self.get_all_asset_amount(mode)
+            # 查询可用资产数量
+            if symbol not in asset_dict.keys():
+                return 0
             else:
-                raise Exception('没有找到查询的symbol资产')
+                return asset_dict[symbol]
         elif mode == 'MARGIN':
             # 获取当前所有全仓资产
-            res = json.loads(self.request('api', '/sapi/v1/margin/account', 'GET', {
-                'timestamp': get_timestamp()
-            }))['userAssets']
-            # 遍历查找查询的symbol
-            for e in res:
-                if e['asset'] == symbol:
-                    return float(e['free'])
+            asset_dict = self.get_all_asset_amount(mode)
+            # 查询可用资产数量
+            if symbol not in asset_dict.keys():
+                return 0
             else:
-                raise Exception('没有找到查询的symbol资产')
+                return asset_dict[symbol]
         else:
             raise Exception('未知的mode', mode)
 
     def get_future_position(self, symbol: str = None) -> Union[float, dict]:
         """
         获取期货仓位情况\n
-        如果不传入symbol，则返回字典类型的所有仓位，key为大写symbol\n
+        如果不传入symbol，则返回字典类型的所有仓位，key为大写symbol，且不会返回仓位为0的交易对\n
         :param symbol: 要查询的交易对
         :return: 返回持仓数量，多空使用正负表示
         """
@@ -566,7 +701,9 @@ class SmartOperator(BaseOperator):
             # 没有symbol的情况下返回交易对的仓位字典
             all_price = {}
             for e in res:
-                all_price[e['symbol']] = e['positionAmt']
+                # 过滤掉仓位为0的交易对
+                if float(e['positionAmt']) != 0:
+                    all_price[e['symbol']] = e['positionAmt']
             return all_price
 
     def transfer_asset(self, mode: str, asset_symbol: str, amount: Union[str, float, int]):
@@ -644,6 +781,27 @@ class SmartOperator(BaseOperator):
 
         price = float(price)
         return price
+
+    def get_all_latest_price(self, mode: str) -> Dict[str, float]:
+        """
+        获取市场所有货币对最新价格
+        :param mode: 查询模式，MAIN或者FUTURE，代表现货或者期货
+        """
+        mode = mode.upper()
+
+        # 判断mode是否填写正确
+        if mode != 'MAIN' and mode != 'FUTURE':
+            raise Exception('交易mode填写错误，只能为MAIN或者FUTURE')
+        res = {}
+        if mode == 'MAIN':
+            price = json.loads(self.request('api', '/api/v3/ticker/price', 'GET', {}, send_signature=False))
+            for e in price:
+                res[e['symbol']] = float(e['price'])
+        else:
+            price = json.loads(self.request('fapi', '/fapi/v1/ticker/price', 'GET', {}, send_signature=False))
+            for e in price:
+                res[e['symbol']] = float(e['price'])
+        return res
 
     def set_bnb_burn(self, spot_bnb_burn: bool, interest_bnb_burn: bool):
         """

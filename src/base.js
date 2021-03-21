@@ -47,6 +47,7 @@ async function method_request(func, args) {
           args: JSON.stringify(args),
           password: local_config['password'],
         },
+        timeout: 30000,
       },
       function (err, httpResponse, body) {
         if (err) {
@@ -117,11 +118,40 @@ function showToast() {
   }
 }
 
+// 用来将数字转换为指定精度的str格式
+function float2strFloor(amount, precision) {
+  amount *= Math.pow(10, precision);
+  // 向下取整
+  amount = Math.floor(amount);
+  // 将数字除以精度
+  amount /= Math.pow(10, precision);
+  return amount.toString()
+}
+function float2strRound(amount, precision) {
+  amount *= Math.pow(10, precision);
+  // 向下取整
+  amount = Math.round(amount);
+  // 将数字除以精度
+  amount /= Math.pow(10, precision);
+  return amount.toString()
+}
+function float2strCeil(amount, precision) {
+  amount *= Math.pow(10, precision);
+  // 向下取整
+  amount = Math.ceil(amount);
+  // 将数字除以精度
+  amount /= Math.pow(10, precision);
+  return amount.toString()
+}
+
 export default {
   install(Vue, option) {
     Vue.prototype.method_request = method_request
     Vue.prototype.isNumber = isNumber
     Vue.prototype.showToast = showToast
     Vue.prototype.reload_config = reload_config
+    Vue.prototype.float2strFloor = float2strFloor
+    Vue.prototype.float2strRound = float2strRound
+    Vue.prototype.float2strCeil = float2strCeil
   }
 }

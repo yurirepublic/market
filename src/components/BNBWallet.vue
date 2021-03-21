@@ -122,7 +122,6 @@ export default {
   },
   methods: {
     // 转账操作
-    // 转账操作
     Transfer: function (mode, amount) {
       this.disabled_transfer_button = true;
       this.showToast().info("开始转账");
@@ -153,7 +152,6 @@ export default {
     // 刷新余额操作
     RefreshWallet: function () {
       this.refresh_button_anime = true;
-
       this.method_request("bnb_asset", [])
           .then((res) => {
             this.main_bnb = res['data']['main_bnb']

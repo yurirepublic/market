@@ -24,7 +24,7 @@ import sys
 import time
 
 
-class ScriptInput():
+class ScriptInput(object):
     """
     脚本的输入描述信息\n
     """
@@ -35,7 +35,7 @@ class ScriptInput():
         self.default = default  # 展示给用户的时候，默认填充的内容
 
 
-class ScriptInfo():
+class ScriptInfo(object):
     """
     脚本的描述信息类\n
     """
@@ -46,7 +46,7 @@ class ScriptInfo():
         self.inputs: list[ScriptInput] = []  # 脚本的输入请求，列表里面放入ScriptInput
 
 
-class Script():
+class Script(object):
     """
     脚本类，为了让脚本能更好的跑在管理器上（不使用老套的exec去执行）
     同时也是更方便获取脚本状态，以及管理脚本的输出
@@ -107,7 +107,7 @@ class Script():
             print(time_str, text)
 
 
-class BaseHeader():
+class BaseHeader(object):
     """
     通信的基础header类
     """
@@ -117,7 +117,7 @@ class BaseHeader():
         self.commands = commands  # 指令列表
 
 
-class Base():
+class Base(object):
     """
     通信基础类，依照通信协议提供基本的功能
     """
