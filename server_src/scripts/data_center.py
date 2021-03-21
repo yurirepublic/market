@@ -85,13 +85,15 @@ class Server(object):
     """
 
     def __init__(self):
-        self.database: Dict[str, Set[Data]] = {}  # 每个tag下都存放对应tag下的set
-        """
-        为了避免每次精确的update都要对集合进行各种操作
-        self.cache的职责就是将tag排序，加入横线，变成asset-main-usdt的形式作为key
-        以此来快速索引单个数据
-        """
-        self.cache: Dict[str, Data] = {}  # 对数据的哈希式缓存
+        self.threading_lock = threading.Lock()
+        with self.threading_lock:
+            self.database: Dict[str, Set[Data]] = {}  # 每个tag下都存放对应tag下的set
+            """
+            为了避免每次精确的update都要对集合进行各种操作
+            self.cache的职责就是将tag排序，加入横线，变成asset-main-usdt的形式作为key
+            以此来快速索引单个数据
+            """
+            self.cache: Dict[str, Data] = {}  # 对数据的哈希式缓存
 
     def _select(self, tags: Union[List[str], Set[str]]) -> Set[Data]:
         """
@@ -132,21 +134,22 @@ class Server(object):
         依据tag更新值
         """
         # 根据tag筛选数据集合
-        try:
-            self._cache_select(tags).update(value, timestamp=timestamp)
-        except KeyError:
-            # 还没有对应的数据则新建一个Data对象
-            data_obj = Data()
-            data_obj.update(value, timestamp=timestamp)
-            data_obj.set_tags(tags)
-            # 将对象放入缓存索引和tag索引
-            self.cache[self.tag2key(tags)] = data_obj
-            for tag in tags:
-                try:
-                    self.database[tag].add(data_obj)
-                except KeyError:
-                    self.database[tag] = set()
-                    self.database[tag].add(data_obj)
+        with self.threading_lock:
+            try:
+                self._cache_select(tags).update(value, timestamp=timestamp)
+            except KeyError:
+                # 还没有对应的数据则新建一个Data对象
+                data_obj = Data()
+                data_obj.update(value, timestamp=timestamp)
+                data_obj.set_tags(tags)
+                # 将对象放入缓存索引和tag索引
+                self.cache[self.tag2key(tags)] = data_obj
+                for tag in tags:
+                    try:
+                        self.database[tag].add(data_obj)
+                    except KeyError:
+                        self.database[tag] = set()
+                        self.database[tag].add(data_obj)
 
         # data_set = self._select(tags)
         # # 如果筛选出的数据为空，则新建一个对应tag的数据
@@ -170,21 +173,22 @@ class Server(object):
         依据tag更新刷新回调
         """
         # 根据tag筛选数据集合
-        data_set = self._select(tags)
-        # 如果筛选出的数据为空，则新建一个对应tag的数据
-        if len(data_set) == 0:
-            data_obj = Data()
-            data_obj.set_tags(tags)
-            for tag in tags:
-                try:
-                    self.database[tag].add(data_obj)
-                except KeyError:
-                    self.database[tag] = set()
-                    self.database[tag].add(data_obj)
-        else:
-            # 为每个数据更新
-            for e in data_set:
-                e.append_update_callback(func)
+        with self.threading_lock:
+            data_set = self._select(tags)
+            # 如果筛选出的数据为空，则新建一个对应tag的数据
+            if len(data_set) == 0:
+                data_obj = Data()
+                data_obj.set_tags(tags)
+                for tag in tags:
+                    try:
+                        self.database[tag].add(data_obj)
+                    except KeyError:
+                        self.database[tag] = set()
+                        self.database[tag].add(data_obj)
+            else:
+                # 为每个数据更新
+                for e in data_set:
+                    e.append_update_callback(func)
 
     def get(self, tags: Union[List[str], Set[str]]):
         """
@@ -193,46 +197,48 @@ class Server(object):
         模糊值返回 {unique_tag: xxx, unique_tag2: xxx}\n
         没有多出来的tag则不返回这个数据
         """
-        tags = set(tags)
-        data_set = self._select(tags)
-        if len(data_set) == 0:
-            return None
-        elif len(data_set) == 1:
-            for e in data_set:
-                return e.get()
-        else:
-            # 若数据的tag比tags+1，则以多出的tag做键返回字典
-            res = {}
-            for e in data_set:
-                if len(tags) + 1 == len(e.get_tags()):
-                    unique_tag_set = e.get_tags() - tags
-                    unique_tag = None
-                    # 此时unique_tag虽然是set，但是必然只有一个值
-                    for x in unique_tag_set:
-                        unique_tag = x
-                    res[unique_tag] = e.get()
-            return res
+        with self.threading_lock:
+            tags = set(tags)
+            data_set = self._select(tags)
+            if len(data_set) == 0:
+                return None
+            elif len(data_set) == 1:
+                for e in data_set:
+                    return e.get()
+            else:
+                # 若数据的tag比tags+1，则以多出的tag做键返回字典
+                res = {}
+                for e in data_set:
+                    if len(tags) + 1 == len(e.get_tags()):
+                        unique_tag_set = e.get_tags() - tags
+                        unique_tag = None
+                        # 此时unique_tag虽然是set，但是必然只有一个值
+                        for x in unique_tag_set:
+                            unique_tag = x
+                        res[unique_tag] = e.get()
+                return res
 
     def get_all(self):
         """
         返回所有的数据\n
         格式为[{'tags': [], 'data': xxx}, ...]
         """
-        # 数据库所有的tag
-        tag_all = self.database.keys()
-        # 将所有的数据取个并集
-        data_all = set()
-        for tag in tag_all:
-            data_all = self.database[tag] | data_all
-        # 处理成返回格式
-        res = []
-        for e in data_all:
-            res.append({
-                'tags': list(e.get_tags()),
-                'data': e.get(),
-                'timestamp': e.get_timestamp()
-            })
-        return res
+        with self.threading_lock:
+            # 数据库所有的tag
+            tag_all = self.database.keys()
+            # 将所有的数据取个并集
+            data_all = set()
+            for tag in tag_all:
+                data_all = self.database[tag] | data_all
+            # 处理成返回格式
+            res = []
+            for e in data_all:
+                res.append({
+                    'tags': list(e.get_tags()),
+                    'data': e.get(),
+                    'timestamp': e.get_timestamp()
+                })
+            return res
 
 
 class WebsocketServerAdapter(object):
