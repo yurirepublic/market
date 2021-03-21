@@ -59,59 +59,6 @@ def root():
         })
 
 
-
-
-#
-# # 用于数据中心进行交互的端口
-# @app.route('/data', methods=['POST'])
-# def data_center_api():
-#     # print(request.form)
-#     # 取出数据
-#     correct_password = config['password']
-#     password = request.form['password']
-#     mode = request.form['mode']
-#
-#     # 验证口令
-#     if password != correct_password:
-#         return json.dumps({
-#             'msg': 'error',
-#             'exception': 'password error'
-#         })
-#
-#     # 验证操作模式
-#     if mode != 'GET' and mode != 'SET' and mode != 'ALL':
-#         return json.dumps({
-#             'msg': 'error',
-#             'exception': 'mode only allowed GET or SET or ALL'
-#         })
-#
-#     # 根据不同操作模式执行
-#     if mode == 'GET':
-#         msg = json.loads(request.form['msg'])
-#         tags = msg['tags']
-#         data = data_server.get(tags)
-#         return json.dumps({
-#             'msg': 'success',
-#             'data': data
-#         })
-#     elif mode == 'SET':
-#         msg = json.loads(request.form['msg'])
-#         tags = msg['tags']
-#         value = msg['value']
-#         timestamp = msg['timestamp']
-#         data_server.update(tags, value, timestamp)
-#         return json.dumps({
-#             'msg': 'success'
-#         })
-#     elif mode == 'ALL':
-#         # 把所有数据都提取出来
-#         data = data_server.get_all()
-#         return json.dumps({
-#             'msg': 'success',
-#             'data': data
-#         })
-
-
 def running_script():
     """
     获取运行中的脚本列表
