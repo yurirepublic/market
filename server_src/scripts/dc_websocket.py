@@ -4,7 +4,6 @@ import data_center
 import json
 
 operator = binance_api.SmartOperator()
-# dc = data_center.HTTPClientAdapter()
 dc = data_center.WebsocketClientAdapter()
 
 

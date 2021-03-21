@@ -10,23 +10,33 @@ import requests
 from typing import Dict, List, Set, Union, Callable
 import threading
 import time
+import queue
 
 # 引入websocket相关
-import websocket
 import websockets
 import asyncio
-import ssl
 
 # 读取配置文件
 with open('config.json', 'r', encoding='utf-8') as f:
     config = json.loads(f.read())
 
 
+def issubset(a: Set, b: Set):
+    """
+    判断参数1和参数2是否有子集关系
+    """
+    temp = a & b
+    if temp == a or temp == b:
+        return True
+    else:
+        return False
+
+
 class DataCenterException(Exception):
     pass
 
 
-class Data(object):
+class DataWrapper(object):
     """
     数据的抽象，数据中心存储的全是此对象
     """
@@ -36,14 +46,14 @@ class Data(object):
         self._timestamp: int = 0  # 数据的timestamp
         self._tags = set()  # 此数据的tag
 
-        self.callback: List[Callable] = []  # 更新数据后会触发的回调函数队列
-
     def update(self, value, timestamp=None):
         """
         更新数据，如果不带timestamp，则会自动获取timestamp\n
         如果欲更新的数据timestamp比当前的小，则会拒绝更新\n
         """
         now_timestamp = time.time() * 1000
+
+        # 根据时间戳判断是否要更新数据
         if timestamp is not None and timestamp > self._timestamp:
             self._data = value
             self._timestamp = timestamp
@@ -51,13 +61,8 @@ class Data(object):
             self._data = value
             self._timestamp = now_timestamp
         else:
+            # 数据没有更新旧就直接返回
             return
-        for func in self.callback:
-            try:
-                handle = threading.Thread(target=func, args=(value,))
-                handle.start()
-            except Exception:
-                print(traceback.format_exc())
 
     def set_tags(self, tags: Union[list, set]):
         """
@@ -71,31 +76,52 @@ class Data(object):
     def get_timestamp(self) -> int:
         return self._timestamp
 
-    def append_update_callback(self, func):
-        self.callback.append(func)
-
     def get(self):
         return self._data
+
+
+class CallbackWrapper(object):
+    """
+    回调的包装器，和DataWrapper是一个东西，只不过这里面装的是回调
+    """
+
+    def __init__(self, func: Callable[[DataWrapper], None], tags):
+        self.func = func
+        if not isinstance(tags, set):
+            tags = set(tags)
+        self.tags = tags
 
 
 class Server(object):
     """
     数据中心的服务端，纯Python对象，需要使用接口来远程使用
-    TODO: 非线程安全，需要加锁，避免出现RuntimeError: dictionary changed size during iteration
     """
 
     def __init__(self):
         self.threading_lock = threading.Lock()
         with self.threading_lock:
-            self.database: Dict[str, Set[Data]] = {}  # 每个tag下都存放对应tag下的set
             """
-            为了避免每次精确的update都要对集合进行各种操作
+            此字典以tag为key,set为value，set里放置DataWrapper
+            查询时将不同tag的set取交集，就可以获取查询到的DataWrapper
+            """
+            self.database: Dict[str, Set[DataWrapper]] = {}
+
+            """
+            为了避免每次精确的update都要对集合进行缓慢的交集操作
             self.cache的职责就是将tag排序，加入横线，变成asset-main-usdt的形式作为key
             以此来快速索引单个数据
             """
-            self.cache: Dict[str, Data] = {}  # 对数据的哈希式缓存
+            self.cache: Dict[str, DataWrapper] = {}
 
-    def _select(self, tags: Union[List[str], Set[str]]) -> Set[Data]:
+            """
+            此字典与database特别相似，但是存储的是CallbackWrapper
+            update时，取并集，再遍历结果查询其CallbackWrapper的tag是否为要update的tag的子集
+            以此来判断是否要触发此Callback
+            例如asset main usdt，此tag就可以触发asset main这个CallbackWrapper
+            """
+            self.callback: Dict[str, Set[CallbackWrapper]] = {}
+
+    def _select(self, tags: Set[str]) -> Set[DataWrapper]:
         """
         根据对应标签，选择出满足的对象\n
         注！此操作极度消耗性能！尽可能用在模糊查询上，勿用在精确查询上
@@ -111,8 +137,23 @@ class Server(object):
                 res = res & self.database[tag]
         return res
 
+    def _callback(self, tags: Set[str]) -> Set[CallbackWrapper]:
+        """
+        根据输入的tags，返回匹配到的CallbackWrapper
+        """
+        res: Set[CallbackWrapper] = set()
+        for tag in tags:
+            if tag in self.callback.keys():
+                res = res | self.callback[tag]
+        # 逐个判断是否为子集
+        temp = set()
+        for e in res:
+            if issubset(e.tags, tags):
+                temp.add(e)
+        return temp
+
     @staticmethod
-    def tag2key(tags: Union[List[str], Set[str]]):
+    def tag2key(tags: Set[str]):
         """
         将tag排序后插入横线
         """
@@ -120,7 +161,7 @@ class Server(object):
         tags.sort(key=lambda x: x)
         return '-'.join(tags)
 
-    def _cache_select(self, tags: Union[List[str], Set[str]]) -> Data:
+    def _cache_select(self, tags: Set[str]) -> DataWrapper:
         """
         会将tag转为缓存用的kay，并在cache查询Data对象\n
         如果没有，则会引发KeyError异常
@@ -129,17 +170,19 @@ class Server(object):
         key = self.tag2key(tags)
         return self.cache[key]
 
-    def update(self, tags: Union[List[str], Set[str]], value, timestamp=None):
+    def update(self, tags: Set[str], value, timestamp=None):
         """
         依据tag更新值
         """
         # 根据tag筛选数据集合
+        data_obj = None
         with self.threading_lock:
             try:
-                self._cache_select(tags).update(value, timestamp=timestamp)
+                data_obj = self._cache_select(tags)
+                data_obj.update(value, timestamp=timestamp)
             except KeyError:
                 # 还没有对应的数据则新建一个Data对象
-                data_obj = Data()
+                data_obj = DataWrapper()
                 data_obj.update(value, timestamp=timestamp)
                 data_obj.set_tags(tags)
                 # 将对象放入缓存索引和tag索引
@@ -150,30 +193,23 @@ class Server(object):
                     except KeyError:
                         self.database[tag] = set()
                         self.database[tag].add(data_obj)
+        # 使用多线程来异步触发回调
+        callbacks = self._callback(tags)
+        for e in callbacks:
+            try:
+                threading.Thread(target=lambda: e.func(data_obj)).start()
+            except Exception:
+                print(traceback.format_exc())
 
-    def append_update_callback(self, tags: Union[List[str], Set[str]], func: Callable):
+    def add_update_callback(self, tags: Set[str], callback: CallbackWrapper):
         """
-        依据tag更新刷新回调
+        添加对应tag的回调
         """
-        # 根据tag筛选数据集合
         with self.threading_lock:
-            data_set = self._select(tags)
-            # 如果筛选出的数据为空，则新建一个对应tag的数据
-            if len(data_set) == 0:
-                data_obj = Data()
-                data_obj.set_tags(tags)
-                for tag in tags:
-                    try:
-                        self.database[tag].add(data_obj)
-                    except KeyError:
-                        self.database[tag] = set()
-                        self.database[tag].add(data_obj)
-            else:
-                # 为每个数据更新
-                for e in data_set:
-                    e.append_update_callback(func)
+            for tag in tags:
+                self.callback[tag].add(callback)
 
-    def get(self, tags: Union[List[str], Set[str]]):
+    def get(self, tags: Set[str]):
         """
         依据tag获取值，如果有精确值则返回精确值，没有精确值则返回模糊值\n
         精确值返回 xxx\n
