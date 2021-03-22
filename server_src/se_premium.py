@@ -28,9 +28,9 @@ class Script(object):
         # 获取另一方的价格
         if mode == 'main':
             main_price = data.get()
-            future_price = self.dc.get({'price', 'future', symbol})
+            future_price = self.dc.get({'price', 'future', symbol}).get()
         else:
-            main_price = self.dc.get({'price', 'main', symbol})
+            main_price = self.dc.get({'price', 'main', symbol}).get()
             future_price = data.get()
         # 如果有数据为None则表示对方数据缺失，直接返回
         if main_price is None or future_price is None:
