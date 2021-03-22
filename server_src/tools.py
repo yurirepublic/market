@@ -384,8 +384,8 @@ class Server(Base):
             # 另开进程来避免污染主进程，返回值用manager传递
             def _check_script(file_name, return_dict):
                 try:
-                    os.chdir('./scripts')
-                    sys.path.append('./')
+                    # os.chdir('./scripts')
+                    # sys.path.append('./')
                     # 将脚本去掉.py，以模块形式导入
                     script_import = __import__(file_name.replace('.py', ''))
                     # 获取脚本的info信息
@@ -435,8 +435,8 @@ class Server(Base):
 
         # 执行脚本
         def _x(manager_dict, input_dict, script_path):
-            os.chdir('./scripts')
-            sys.path.append('./')
+            # os.chdir('./scripts')
+            # sys.path.append('./')
             # 导入脚本文件的类模块
             script_import = __import__(script_path.replace('.py', ''))
             script = script_import.Script()

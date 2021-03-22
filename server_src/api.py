@@ -16,9 +16,13 @@ import numpy as np
 from typing import Union
 
 # 导入币安api、脚本管理器、数据中心
-from scripts import binance_api
-from scripts import tools
-from scripts import data_center
+# from scripts import binance_api
+# from scripts import tools
+# from scripts import data_center
+# import scripts
+import binance_api
+import tools
+import data_center
 
 # 性能分析工具
 import cProfile
@@ -666,9 +670,15 @@ def main():
     # 运行脚本管理器
     script_server = tools.Server()
 
-    # 运行数据中心websocket服务器
+    # 运行数据中心
     data_server = data_center.Server()
+
+    # 给数据中心挂上websocket接口
     data_center_websocket_adapter = data_center.WebsocketServerAdapter(data_server)
+
+    # 给数据中心挂上回调函数
+    from scripts import se_premium
+    se_premium.Script(script_server)
 
     # 运行数据中心的脚本
     time.sleep(0.5)  # 留时间让脚本管理器启动完毕
