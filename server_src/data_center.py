@@ -207,7 +207,11 @@ class Server(object):
         """
         with self.threading_lock:
             for tag in callback.tags:
-                self.callback[tag].add(callback)
+                try:
+                    self.callback[tag].add(callback)
+                except KeyError:
+                    self.callback[tag] = set()
+                    self.callback[tag].add(callback)
 
     def get(self, tags: Set[str]):
         """
