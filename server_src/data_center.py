@@ -226,7 +226,7 @@ class Server(object):
             if len(data_set) == 0:
                 return None
             elif len(data_set) == 1:
-                return data_set.pop()
+                return data_set.pop().get()
             else:
                 # 若数据的tag比tags+1，则以多出的tag做键返回字典
                 res = {}
