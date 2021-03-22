@@ -36,7 +36,7 @@ CORS(app, supports_credentials=True)  # 允许跨域
 operator = binance_api.SmartOperator()
 
 # 读取配置文件
-with open('scripts/config.json', 'r', encoding='utf-8') as f:
+with open('config.json', 'r', encoding='utf-8') as f:
     config = json.loads(f.read())
 
 
@@ -677,8 +677,8 @@ def main():
     data_center_websocket_adapter = data_center.WebsocketServerAdapter(data_server)
 
     # 给数据中心挂上回调函数
-    from scripts import se_premium
-    se_premium.Script(script_server)
+    import se_premium
+    se_premium.Script(data_server)
 
     # 运行数据中心的脚本
     time.sleep(0.5)  # 留时间让脚本管理器启动完毕
