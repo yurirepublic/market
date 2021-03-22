@@ -295,13 +295,13 @@ class WebsocketServerAdapter(object):
         while True:
             data = json.loads(await ws.recv())
             if data['mode'] == 'GET':
-                tags = data['tags']
+                tags = set(data['tags'])
                 res = self.data_center.get(tags)
                 await ws.send(json.dumps({
                     'data': res
                 }))
             elif data['mode'] == 'SET':
-                tags = data['tags']
+                tags = set(data['tags'])
                 value = data['value']
                 timestamp = data['timestamp']
                 self.data_center.update(tags, value, timestamp)
@@ -342,20 +342,20 @@ class WebsocketClientAdapter(object):
     def close(self):
         self.loop.run_until_complete(self.ws.close())
 
-    def update(self, tags: List[str], value, timestamp: int = None):
+    def update(self, tags: Set[str], value, timestamp: int = None):
         with self.threading_lock:
             self.loop.run_until_complete(self.ws.send(json.dumps({
                 'mode': 'SET',
-                'tags': tags,
+                'tags': list(tags),
                 'value': value,
                 'timestamp': timestamp
             })))
 
-    def get(self, tags: List[str]):
+    def get(self, tags: Set[str]):
         with self.threading_lock:
             self.loop.run_until_complete(self.ws.send(json.dumps({
                 'mode': 'GET',
-                'tags': tags
+                'tags': list(tags)
             })))
             res = json.loads(self.loop.run_until_complete(self.ws.recv()))
             return res['data']
