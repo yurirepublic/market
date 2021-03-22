@@ -201,12 +201,12 @@ class Server(object):
             except Exception:
                 print(traceback.format_exc())
 
-    def add_update_callback(self, tags: Set[str], callback: CallbackWrapper):
+    def add_update_callback(self, callback: CallbackWrapper):
         """
         添加对应tag的回调
         """
         with self.threading_lock:
-            for tag in tags:
+            for tag in callback.tags:
                 self.callback[tag].add(callback)
 
     def get(self, tags: Set[str]):
@@ -222,18 +222,15 @@ class Server(object):
             if len(data_set) == 0:
                 return None
             elif len(data_set) == 1:
-                for e in data_set:
-                    return e.get()
+                return data_set.pop()
             else:
                 # 若数据的tag比tags+1，则以多出的tag做键返回字典
                 res = {}
                 for e in data_set:
                     if len(tags) + 1 == len(e.get_tags()):
                         unique_tag_set = e.get_tags() - tags
-                        unique_tag = None
-                        # 此时unique_tag虽然是set，但是必然只有一个值
-                        for x in unique_tag_set:
-                            unique_tag = x
+                        # 此时unique_tag_set虽然是set，但是必然只有一个值
+                        unique_tag = unique_tag_set.pop()
                         res[unique_tag] = e.get()
                 return res
 
