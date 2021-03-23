@@ -5,8 +5,6 @@ import json
 import math
 import multiprocessing
 
-operator = binance_api.SmartOperator()  # 实例化一个币安api的操作者
-
 
 class Script(tools.Script):
     def info(self):
@@ -17,6 +15,7 @@ class Script(tools.Script):
         return info
 
     def main(self):
+        operator = binance_api.SmartOperator()  # 实例化一个币安api的操作者
 
         while True:
             # 获取余额

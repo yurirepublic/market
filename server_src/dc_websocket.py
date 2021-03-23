@@ -3,9 +3,6 @@ import binance_api
 import data_center
 import json
 
-operator = binance_api.SmartOperator()
-dc = data_center.WebsocketClientAdapter()
-
 
 class Script(tools.Script):
     """
@@ -14,6 +11,72 @@ class Script(tools.Script):
 
     def __init__(self):
         super(Script, self).__init__()
+        self.dc = None
+        self.operator = None
+
+    def main(self):
+        self.dc = data_center.WebsocketClientAdapter()
+        self.operator = binance_api.SmartOperator()
+
+        handles = []
+
+        # 获取现货的资产数量
+        asset = self.operator.get_all_asset_amount('MAIN')
+        # 推送到数据中心
+        for key in asset.keys():
+            self.dc.update(['asset', 'main', key], asset[key])
+
+        # 获取全仓资产数量
+        asset = self.operator.get_all_asset_amount('MARGIN')
+        for key in asset.keys():
+            self.dc.update(['asset', 'margin', key], asset[key])
+
+        # 获取逐仓资产数量
+        asset = self.operator.get_all_asset_amount('ISOLATED')
+        for key in asset.keys():
+            self.dc.update(['asset', 'isolated', key], asset[key])
+
+        # 连接现货账户ws
+        def _main_ws_ping():
+            pass
+
+        listen_key = self.operator.create_listen_key('MAIN')
+        handle = self.operator.connect_websocket('MAIN', listen_key, self.main_account_update)
+        handles.append(handle)
+
+        # 连接全仓账户ws
+        listen_key = self.operator.create_listen_key('MARGIN')
+        handle = self.operator.connect_websocket('MAIN', listen_key, self.margin_account_update)
+        handles.append(handle)
+
+        # # 连接逐仓账户ws
+        # listen_key = operator.create_listen_key('ISOLATED')
+        # handle = operator.connect_websocket('ISOLATED', listen_key, self.isolated_account_update)
+        # handles.append(handle)
+
+        # 连接期货账户ws
+        listen_key = self.operator.create_listen_key('FUTURE')
+        handle = self.operator.connect_websocket('FUTURE', listen_key, self.future_account_update)
+        handles.append(handle)
+
+        # 获取现货所有价格
+        price = self.operator.get_all_latest_price('MAIN')
+        for key in price.keys():
+            self.dc.update(['price', 'main', key], price[key])
+        # 连接websocket获取推送价格
+        handle = self.operator.connect_websocket('MAIN', '!miniTicker@arr', self.main_price_update)
+        handles.append(handle)
+
+        # 获取期货所有价格
+        price = self.operator.get_all_latest_price('FUTURE')
+        for key in price.keys():
+            self.dc.update(['price', 'future', key], price[key])
+        # 连接websocket获取推送价格
+        handle = self.operator.connect_websocket('FUTURE', '!markPrice@arr', self.future_price_update)
+        handles.append(handle)
+
+        for e in handles:
+            e.join()
 
     def info(self):
         info = tools.ScriptInfo()
@@ -37,7 +100,7 @@ class Script(tools.Script):
                 free = float(x['f'])
                 timestamp = int(x['E'])
                 # 发送到数据中心
-                dc.update(['asset', mode, symbol], free, timestamp)
+                self.dc.update(['asset', mode, symbol], free, timestamp)
         elif data['e'] == 'balanceUpdate':
             pass
         else:
@@ -76,14 +139,14 @@ class Script(tools.Script):
             for asset in balance:
                 symbol = asset['a']
                 wb = float(asset['wb'])  # 钱包余额
-                dc.update(['asset', 'future', symbol], wb, timestamp)
+                self.dc.update(['asset', 'future', symbol], wb, timestamp)
             # 如果事件原因不是FUNDING FEE，则更新持仓
             if data['a']['m'] != 'FUNDING FEE':
                 position = data['a']['P']
                 for x in position:
                     symbol = x['s']
                     pa = float(x['pa'])  # 仓位
-                    dc.update(['position', 'future', symbol], pa, timestamp)
+                    self.dc.update(['position', 'future', symbol], pa, timestamp)
         # 追加保证金通知推送
         elif data['e'] == 'MARGIN_CALL':
             pass
@@ -106,7 +169,7 @@ class Script(tools.Script):
                 timestamp = int(x['E'])
                 symbol = x['s']
                 price = float(x['c'])  # 最新成交价格
-                dc.update(['main', 'price', symbol], price, timestamp)
+                self.dc.update(['main', 'price', symbol], price, timestamp)
             else:
                 self.log('无法识别的ws消息', x)
 
@@ -120,67 +183,6 @@ class Script(tools.Script):
                 timestamp = int(x['E'])
                 symbol = x['s']
                 price = float(x['p'])  # 标记价格
-                dc.update(['future', 'price', symbol], price, timestamp)
+                self.dc.update(['future', 'price', symbol], price, timestamp)
             else:
                 self.log('无法识别的ws消息', x)
-
-    def main(self):
-        handles = []
-
-        # 获取现货的资产数量
-        asset = operator.get_all_asset_amount('MAIN')
-        # 推送到数据中心
-        for key in asset.keys():
-            dc.update(['asset', 'main', key], asset[key])
-
-        # 获取全仓资产数量
-        asset = operator.get_all_asset_amount('MARGIN')
-        for key in asset.keys():
-            dc.update(['asset', 'margin', key], asset[key])
-
-        # 获取逐仓资产数量
-        asset = operator.get_all_asset_amount('ISOLATED')
-        for key in asset.keys():
-            dc.update(['asset', 'isolated', key], asset[key])
-
-        # 连接现货账户ws
-        def _main_ws_ping():
-            pass
-
-        listen_key = operator.create_listen_key('MAIN')
-        handle = operator.connect_websocket('MAIN', listen_key, self.main_account_update)
-        handles.append(handle)
-
-        # 连接全仓账户ws
-        listen_key = operator.create_listen_key('MARGIN')
-        handle = operator.connect_websocket('MAIN', listen_key, self.margin_account_update)
-        handles.append(handle)
-
-        # # 连接逐仓账户ws
-        # listen_key = operator.create_listen_key('ISOLATED')
-        # handle = operator.connect_websocket('ISOLATED', listen_key, self.isolated_account_update)
-        # handles.append(handle)
-
-        # 连接期货账户ws
-        listen_key = operator.create_listen_key('FUTURE')
-        handle = operator.connect_websocket('FUTURE', listen_key, self.future_account_update)
-        handles.append(handle)
-
-        # 获取现货所有价格
-        price = operator.get_all_latest_price('MAIN')
-        for key in price.keys():
-            dc.update(['price', 'main', key], price[key])
-        # 连接websocket获取推送价格
-        handle = operator.connect_websocket('MAIN', '!miniTicker@arr', self.main_price_update)
-        handles.append(handle)
-
-        # 获取期货所有价格
-        price = operator.get_all_latest_price('FUTURE')
-        for key in price.keys():
-            dc.update(['price', 'future', key], price[key])
-        # 连接websocket获取推送价格
-        handle = operator.connect_websocket('FUTURE', '!markPrice@arr', self.future_price_update)
-        handles.append(handle)
-
-        for e in handles:
-            e.join()
