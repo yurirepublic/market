@@ -11,6 +11,7 @@ from typing import Dict, List, Set, Union, Callable
 import threading
 import time
 import queue
+import random
 
 # 引入websocket相关
 import websockets
@@ -268,6 +269,9 @@ class WebsocketServerAdapter(object):
     """
 
     def __init__(self, data_center: Server):
+        self.connect_identify = 0  # 用于给传入连接分配识别码的
+        self.identify_lock = threading.Lock()  # 计算识别码的锁
+
         self.data_center = data_center
 
         # ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
@@ -284,35 +288,47 @@ class WebsocketServerAdapter(object):
         """
         用此函数处理websocket数据
         """
-        print('新传入websocket连接')
+        # 给此链接分配识别码，识别码会循环使用
+        with self.identify_lock:
+            identify = self.connect_identify
+            self.connect_identify += 1
+            if self.connect_identify > 1000000:
+                self.connect_identify = 0
+        try:
+            print('新传入websocket连接，分配识别码{}'.format(identify))
 
-        # await ws.send('welcome')
+            # await ws.send('welcome')
 
-        # 传入连接后首先发送的必是口令
-        data = await ws.recv()
-        if config['password'] != data:
-            print('口令验证错误')
-            return
-        print('口令验证成功')
-        # 循环等待websocket发送消息
-        while True:
-            data = json.loads(await ws.recv())
-            if data['mode'] == 'GET':
-                tags = set(data['tags'])
-                res = self.data_center.get(tags)
-                await ws.send(json.dumps({
-                    'data': res
-                }))
-            elif data['mode'] == 'SET':
-                tags = set(data['tags'])
-                value = data['value']
-                timestamp = data['timestamp']
-                self.data_center.update(tags, value, timestamp)
-            elif data['mode'] == 'ALL':
-                res = self.data_center.get_all()
-                await ws.send(json.dumps({
-                    'data': res
-                }))
+            # 传入连接后首先发送的必是口令
+            data = await ws.recv()
+            if config['password'] != data:
+                print('{}口令验证错误，接收到 {}'.format(identify, data))
+                await ws.close(1000, 'password error')
+                return
+            print('{}口令验证成功'.format(identify))
+            # 循环等待websocket发送消息
+            while True:
+                data = json.loads(await ws.recv())
+                if data['mode'] == 'GET':
+                    tags = set(data['tags'])
+                    res = self.data_center.get(tags)
+                    await ws.send(json.dumps({
+                        'data': res
+                    }))
+                elif data['mode'] == 'SET':
+                    tags = set(data['tags'])
+                    value = data['value']
+                    timestamp = data['timestamp']
+                    self.data_center.update(tags, value, timestamp)
+                elif data['mode'] == 'ALL':
+                    res = self.data_center.get_all()
+                    await ws.send(json.dumps({
+                        'data': res
+                    }))
+        except websockets.exceptions.ConnectionClosedOK:
+            print('{}连接正常关闭'.format(identify))
+        except websockets.exceptions.ConnectionClosed:
+            print('{}连接断开，且没有收到关闭代码'.format(identify))
 
 
 class WebsocketClientAdapter(object):
