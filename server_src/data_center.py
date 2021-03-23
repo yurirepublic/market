@@ -285,12 +285,15 @@ class WebsocketServerAdapter(object):
         用此函数处理websocket数据
         """
         print('新传入websocket连接')
-        await ws.send('hello')
+
+        # await ws.send('welcome')
+
         # 传入连接后首先发送的必是口令
         data = await ws.recv()
         if config['password'] != data:
-            print(path, '的口令错误')
+            print('口令验证错误')
             return
+        print('口令验证成功')
         # 循环等待websocket发送消息
         while True:
             data = json.loads(await ws.recv())
@@ -333,8 +336,10 @@ class WebsocketClientAdapter(object):
         print('即将连接' + url)
         ws = await websockets.connect(url)
         print('成功连接数据中心websocket')
-        greeting = await ws.recv()
-        print('收到问候语' + greeting)
+
+        # greeting = await ws.recv()
+        # print('收到问候语' + greeting)
+
         # 向数据中心发送口令验证身份
         await ws.send(config['password'])
         return ws
