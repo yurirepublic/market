@@ -684,6 +684,8 @@ def main():
     time.sleep(0.5)  # 留时间让脚本管理器启动完毕
     script_client = tools.Client()
     script_client.exec('dc_websocket', {})
+    script_client.exec('dc_static', {})
+    script_client.exec('dc_static_realtime', {})
 
     # 在此主进程运行http服务器
     print('即将运行http服务器{}:{}'.format(config['listen_ip'], config['listen_port']))
