@@ -10,7 +10,8 @@ class Script(tools.Script):
     def info(self):
         info = tools.ScriptInfo()
         info.title = "自动紧急平仓"
-        info.description = """需要手动改代码
+        info.description = """
+        需要手动改代码
         """
         return info
 

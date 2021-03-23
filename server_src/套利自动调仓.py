@@ -12,7 +12,8 @@ class Script(tools.Script):
     def info(self):
         info = tools.ScriptInfo()
         info.title = "套利自动调仓"
-        info.description = """初代版本，有待改进
+        info.description = """
+        初代版本，有待改进
         会自动将所有钱都划到期货，所以要对账户进行操作的时候，务必关闭脚本
         注意加仓限制和减仓限制，针对的都是期货账户的USDT余额
         加仓限制和减仓限制太过接近，将会频繁调仓导致亏损

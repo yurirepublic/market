@@ -9,6 +9,15 @@ class Script(tools.Script):
     用来爬取现货websocket相关数据
     """
 
+    def info(self):
+        info = tools.ScriptInfo()
+        info.title = '接收websocket相关数据'
+        info.description = """
+        最开始会调用普通api获取初始数据，以后就用websocket接收更新数据
+        期货价格调用的是标记价格
+        """
+        return info
+
     def __init__(self):
         super(Script, self).__init__()
         self.dc = None
@@ -77,16 +86,6 @@ class Script(tools.Script):
 
         for e in handles:
             e.join()
-
-    def info(self):
-        info = tools.ScriptInfo()
-        info.title = '接收websocket相关数据'
-        info.description = """
-        最开始会调用普通api获取初始数据，以后就用websocket接收更新数据
-        期货价格调用的是标记价格
-        """
-        info.inputs = []
-        return info
 
     def main_update(self, mode, data):
         """
