@@ -377,7 +377,8 @@ class Server(Base):
         """
         获取脚本目录的脚本列表
         """
-        file_list = os.listdir('scripts')
+        # file_list = os.listdir('scripts')
+        file_list = os.listdir('./')
         res = []
         # 将所有文件挨个导入，并检查是否符合规则可以返回
         for e in file_list:
