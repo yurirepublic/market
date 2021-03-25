@@ -7,7 +7,7 @@ import requests
 import math
 import threading
 from hashlib import sha256
-import websocket
+import websockets
 
 """
 此脚本用于放置对币安API的封装
@@ -293,64 +293,6 @@ class SmartOperator(BaseOperator):
             except KeyError:
                 self.future_ws_callback[key] = []
                 self.future_ws_callback[key].append(func)
-
-    def connect_websocket(self, mode: str, stream_name: str, recv_callback: Callable,
-                          ping_callback: Callable = None, ping_interval: int = 300):
-        """
-        连接一个websocket\n
-        :param mode: 只能为MAIN、FUTURE
-        :param stream_name: 要订阅的数据流名字
-        :param recv_callback: 收到消息的回调函数，消息会以字符串形式传入参数
-        :param ping_callback: 间隔指定时间会调用一次该函数，用于处理ping的事务，不传入则默认使用ping
-        :param ping_interval: ping的间隔，秒，默认300
-        """
-        if mode != 'MAIN' and mode != 'FUTURE':
-            raise Exception('mode只能为MAIN、FUTURE')
-
-        # 创建websocket对象
-        def on_open(s):
-            s.connect_complete = True
-
-        def on_message(s, message):
-            try:
-                recv_callback(message)
-            except Exception:
-                print(traceback.format_exc())
-
-        if mode == 'MAIN':
-            ws = websocket.WebSocketApp('wss://stream.{}:9443/ws/{}'.format(base_url, stream_name),
-                                        on_message=on_message,
-                                        on_open=on_open)
-        else:
-            ws = websocket.WebSocketApp('wss://fstream.{}/ws/{}'.format(base_url, stream_name),
-                                        on_message=on_message,
-                                        on_open=on_open)
-        ws.connect_complete = False
-
-        # 额外开线程用来运行websocket
-        def _run_websocket():
-            # 创建ping线程
-            def _ping_thread():
-                while True:
-                    time.sleep(ping_interval)
-                    if ping_callback is not None:
-                        try:
-                            ping_callback()
-                        except Exception:
-                            print(traceback.format_exc())
-
-            ping_handle = threading.Thread(target=_ping_thread)
-            ping_handle.start()
-            ws.run_forever(ping_interval=ping_interval)
-
-        handle = threading.Thread(target=_run_websocket)
-        handle.start()
-
-        while not ws.connect_complete:
-            time.sleep(0.1)
-
-        print('ws名' + stream_name + '连接完毕')
-        return handle
 
     def create_listen_key(self, mode: str, symbol: str = None) -> str:
         """
@@ -823,3 +765,20 @@ class SmartOperator(BaseOperator):
         return json.loads(self.request('api', '/sapi/v1/bnbBurn', 'GET', {
             'timestamp': get_timestamp()
         }))
+
+
+async def connect_websocket(mode: str, stream_name: str) -> websockets.WebSocketClientProtocol:
+    """
+    连接一个websocket\n
+    :param mode: 只能为MAIN、FUTURE
+    :param stream_name: 要订阅的数据流名字
+    """
+    if mode != 'MAIN' and mode != 'FUTURE':
+        raise Exception('mode只能为MAIN、FUTURE')
+
+    if mode == 'MAIN':
+        ws = await websockets.connect('wss://stream.{}:9443/ws/{}'.format(base_url, stream_name))
+    else:
+        ws = await websockets.connect('wss://fstream.{}/ws/{}'.format(base_url, stream_name))
+
+    return ws

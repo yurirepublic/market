@@ -309,43 +309,95 @@ class WebsocketServerAdapter(object):
     """
 
     def __init__(self, data_center: Server):
-        self.connect_identify = 0  # 用于给传入连接分配识别码的
-        self.identify_lock = threading.Lock()  # 计算识别码的锁
-
         self.data_center = data_center
 
-        # ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-        # ssl_context.load_verify_locations(config['ssl_pem'])
+        self.connect_identification = 0  # 用于给传入连接分配识别码的
+        self.identify_lock = threading.Lock()  # 计算识别码的锁
+        self.subscribe_send_lock = threading.Lock()  # 发送订阅的锁
+
         loop = asyncio.get_event_loop()
+
+        # websocket接口部分
         server_ip = config['data_center']['server_ip']
         server_port = config['data_center']['server_port']
-        loop.run_until_complete(
+        self.adapter = loop.run_until_complete(
             websockets.serve(self.recv, server_ip, server_port))
         print('成功启动数据中心服务端websocket接口，运行在{}:{}'.format(server_ip, server_port))
-        threading.Thread(target=lambda: loop.run_forever()).start()
+
+        # websocket订阅部分
+        subscribe_ip = config['data_center']['subscribe_server_ip']
+        subscribe_port = config['data_center']['subscribe_server_port']
+        self.subscribe_sockets: List[websockets.WebSocketServerProtocol] = []  # 用来存储传入订阅的列表
+        self.subscribe_adapter = loop.run_until_complete(
+            websockets.serve(self.subscribe_recv, subscribe_ip, subscribe_port))
+        print('成功启动数据中心订阅接口，运行在{}:{}'.format(subscribe_ip, subscribe_port))
+        self.data_center.subscribe_all(CallbackWrapper(self.subscribe_callback, set()))
+
+    def assign_identification(self):
+        """
+        分配线程识别码
+        """
+        with self.identify_lock:
+            identification = self.connect_identification
+            self.connect_identification += 1
+            if self.connect_identification > 1000000:
+                self.connect_identification = 0
+        return identification
+
+    def subscribe_callback(self, data: DataWrapper):
+        """
+        数据中心传达订阅的回调
+        """
+        # 将数据取出来，一个个发出去
+        with self.subscribe_send_lock:
+            data = {
+                'tags': list(data.get_tags()),
+                'data': data.get()
+            }
+            data = json.dumps(data)
+            want_remove = []
+            for ws in self.subscribe_sockets:
+                try:
+                    asyncio.get_event_loop().run_until_complete(ws.send(data))
+                except (websockets.exceptions.ConnectionClosedOK, websockets.exceptions.ConnectionClosed):
+                    print('尝试给订阅发送数据，但订阅连接已关闭。稍后会移除该连接')
+            for e in want_remove:
+                self.subscribe_sockets.remove(e)
+
+    async def subscribe_recv(self, ws: websockets.WebSocketServerProtocol, path):
+        """
+        用来处理传入的订阅连接
+        """
+        # 直接将ws塞进去
+        identification = self.assign_identification()
+        print('新增一个数据中心订阅，分配识别码{}'.format(identification))
+        self.subscribe_sockets.append(ws)
+        try:
+            while True:
+                print('数据中心订阅收到消息', await ws.recv())
+        except websockets.exceptions.ConnectionClosedOK:
+            print('{}连接正常关闭'.format(identification))
+        except websockets.exceptions.ConnectionClosed:
+            print('{}连接断开，且没有收到关闭代码'.format(identification))
 
     async def recv(self, ws: websockets.WebSocketServerProtocol, path):
         """
         用此函数处理websocket数据
         """
         # 给此链接分配识别码，识别码会循环使用
-        with self.identify_lock:
-            identify = self.connect_identify
-            self.connect_identify += 1
-            if self.connect_identify > 1000000:
-                self.connect_identify = 0
+        identification = self.assign_identification()
         try:
-            print('新传入websocket连接，分配识别码{}'.format(identify))
+            print('新传入websocket连接，分配识别码{}'.format(identification))
 
             # await ws.send('welcome')
 
             # 传入连接后首先发送的必是口令
             data = await ws.recv()
             if config['password'] != data:
-                print('{}口令验证错误，接收到 {}'.format(identify, data))
+                print('{}口令验证错误，接收到 {}'.format(identification, data))
                 await ws.close(1000, 'password error')
                 return
-            print('{}口令验证成功'.format(identify))
+            print('{}口令验证成功'.format(identification))
             # 循环等待websocket发送消息
             while True:
                 data = json.loads(await ws.recv())
@@ -373,9 +425,9 @@ class WebsocketServerAdapter(object):
                     }))
 
         except websockets.exceptions.ConnectionClosedOK:
-            print('{}连接正常关闭'.format(identify))
+            print('{}连接正常关闭'.format(identification))
         except websockets.exceptions.ConnectionClosed:
-            print('{}连接断开，且没有收到关闭代码'.format(identify))
+            print('{}连接断开，且没有收到关闭代码'.format(identification))
 
 
 class WebsocketClientAdapter(object):
@@ -386,61 +438,59 @@ class WebsocketClientAdapter(object):
     def __init__(self):
         self.threading_lock = threading.Lock()
         with self.threading_lock:
+            loop = asyncio.get_event_loop()
+
             # 连接websocket
-            self.loop = asyncio.get_event_loop()
-            self.ws: websockets.WebSocketClientProtocol = \
-                self.loop.run_until_complete(self.connect_server())
+            client_ip = config['data_center']['client_ip']
+            client_port = config['data_center']['client_port']
+            url = 'ws://{}:{}'.format(client_ip, client_port)
+            print('即将连接' + url)
+            self.ws = loop.run_until_complete(websockets.connect(url))
+            loop.run_until_complete(self.ws.send(config['password']))
+            print('成功连接数据中心websocket')
 
-    @staticmethod
-    async def connect_server():
-        client_ip = config['data_center']['client_ip']
-        client_port = config['data_center']['client_port']
-        url = 'ws://{}:{}'.format(client_ip, client_port)
-        print('即将连接' + url)
-        ws = await websockets.connect(url)
-        print('成功连接数据中心websocket')
+    async def close(self):
+        await self.ws.close()
 
-        # greeting = await ws.recv()
-        # print('收到问候语' + greeting)
-
-        # 向数据中心发送口令验证身份
-        await ws.send(config['password'])
-        return ws
-
-    def close(self):
-        self.loop.run_until_complete(self.ws.close())
-
-    def update(self, tags: Set[str], value, timestamp: int = None):
+    async def update(self, tags: Set[str], value, timestamp: int = None):
         with self.threading_lock:
-            self.loop.run_until_complete(self.ws.send(json.dumps({
+            await self.ws.send(json.dumps({
                 'mode': 'SET',
                 'tags': list(tags),
                 'value': value,
                 'timestamp': timestamp
-            })))
+            }))
 
-    def get(self, tags: Set[str]):
+    async def get(self, tags: Set[str]):
         with self.threading_lock:
-            self.loop.run_until_complete(self.ws.send(json.dumps({
+            await self.ws.send(json.dumps({
                 'mode': 'GET',
                 'tags': list(tags)
-            })))
-            res = json.loads(self.loop.run_until_complete(self.ws.recv()))
+            }))
+            res = json.loads(await self.ws.recv())
             return res['data']
 
-    def get_dict(self, tags: Set[str]):
+    async def get_dict(self, tags: Set[str]):
         with self.threading_lock:
-            self.loop.run_until_complete(self.ws.send(json.dumps({
+            await self.ws.send(json.dumps({
                 'mode': 'GET_DICT',
                 'tags': list(tags)
-            })))
-            res = json.loads(self.loop.run_until_complete(self.ws.recv()))
+            }))
+            res = json.loads(await self.ws.recv())
             return res['data']
 
-    def get_all(self):
+    async def get_all(self):
         with self.threading_lock:
-            self.loop.run_until_complete(self.ws.send(json.dumps({
+            await self.ws.send(json.dumps({
                 'mode': 'ALL'
-            })))
-            res = json.loads(self.loop.run_until_complete(self.ws.recv()))
+            }))
+            res = json.loads(await self.ws.recv())
             return res['data']
+
+
+async def create_server():
+    return Server()
+
+
+async def create_server_adapter(server):
+    return WebsocketServerAdapter(server)

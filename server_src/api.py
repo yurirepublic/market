@@ -14,6 +14,7 @@ from multiprocessing import Process, Manager
 import traceback
 import numpy as np
 from typing import Union
+import asyncio
 
 # 导入币安api、脚本管理器、数据中心
 # from scripts import binance_api
@@ -666,15 +667,15 @@ def request_premium():
     }
 
 
-def main():
+async def main():
     # 运行脚本管理器
     script_server = tools.Server()
 
     # 运行数据中心
-    data_server = data_center.Server()
+    data_server = await data_center.create_server()
 
     # 给数据中心挂上websocket接口
-    data_center_websocket_adapter = data_center.WebsocketServerAdapter(data_server)
+    await data_center.create_server_adapter(data_server)
 
     # 给数据中心挂上回调函数
     import se_premium
@@ -684,8 +685,8 @@ def main():
     time.sleep(0.5)  # 留时间让脚本管理器启动完毕
     script_client = tools.Client()
     script_client.exec('dc_websocket', {})
-    script_client.exec('dc_static', {})
-    script_client.exec('dc_static_realtime', {})
+    # script_client.exec('dc_static', {})
+    # script_client.exec('dc_static_realtime', {})
 
     # 在此主进程运行http服务器
     print('即将运行http服务器{}:{}'.format(config['api']['server_ip'], config['api']['server_port']))
@@ -695,7 +696,8 @@ def main():
     else:
         app.run(config['api']['server_ip'], config['api']['server_port'])
 
+    asyncio.get_event_loop().run_forever()
+
 
 if __name__ == '__main__':
-    main()
-    # cProfile.run('main()')
+    asyncio.run(main())
