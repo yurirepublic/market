@@ -355,6 +355,12 @@ class WebsocketServerAdapter(object):
                     await ws.send(json.dumps({
                         'data': res
                     }))
+                elif data['mode'] == 'GET_DICT':
+                    tags = set(data['tags'])
+                    res = self.data_center.get_dict(tags)
+                    await ws.send(json.dumps({
+                        'data': res
+                    }))
                 elif data['mode'] == 'SET':
                     tags = set(data['tags'])
                     value = data['value']
@@ -417,6 +423,15 @@ class WebsocketClientAdapter(object):
         with self.threading_lock:
             self.loop.run_until_complete(self.ws.send(json.dumps({
                 'mode': 'GET',
+                'tags': list(tags)
+            })))
+            res = json.loads(self.loop.run_until_complete(self.ws.recv()))
+            return res['data']
+
+    def get_dict(self, tags: Set[str]):
+        with self.threading_lock:
+            self.loop.run_until_complete(self.ws.send(json.dumps({
+                'mode': 'GET_DICT',
                 'tags': list(tags)
             })))
             res = json.loads(self.loop.run_until_complete(self.ws.recv()))
