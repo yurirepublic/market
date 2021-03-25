@@ -122,6 +122,11 @@ class Server(object):
             """
             self.callback: Dict[str, Set[CallbackWrapper]] = {}
 
+            """
+            此列表存储的是订阅所有数据的回调
+            """
+            self.subscribe: Set[CallbackWrapper] = set()
+
     def _select(self, tags: Set[str]) -> Set[DataWrapper]:
         """
         根据对应标签，选择出满足的对象\n
@@ -201,6 +206,11 @@ class Server(object):
                 threading.Thread(target=lambda: e.func(data_obj)).start()
             except Exception:
                 print(traceback.format_exc())
+        for e in self.subscribe:
+            try:
+                threading.Thread(target=lambda: e.func(data_obj)).start()
+            except Exception:
+                print(traceback.format_exc())
 
     def add_update_callback(self, callback: CallbackWrapper):
         """
@@ -214,30 +224,53 @@ class Server(object):
                     self.callback[tag] = set()
                     self.callback[tag].add(callback)
 
-    def get(self, tags: Set[str]):
+    def get_detail(self, tags: Set[str]) -> Union[DataWrapper, None]:
         """
-        依据tag获取值，如果有精确值则返回精确值，没有精确值则返回模糊值\n
-        精确值返回 xxx\n
-        模糊值返回 {unique_tag: xxx, unique_tag2: xxx}\n
-        没有多出来的tag则不返回这个数据
+        依据tag精确查询，会返回数据的包装对象\n
+        因此使用此方法可以获取到时间戳之类的额外数据\n
         """
         with self.threading_lock:
-            tags = set(tags)
             data_set = self._select(tags)
             if len(data_set) == 0:
                 return None
             elif len(data_set) == 1:
-                return data_set.pop().get()
-            else:
-                # 若数据的tag比tags+1，则以多出的tag做键返回字典
-                res = {}
-                for e in data_set:
-                    if len(tags) + 1 == len(e.get_tags()):
-                        unique_tag_set = e.get_tags() - tags
-                        # 此时unique_tag_set虽然是set，但是必然只有一个值
-                        unique_tag = unique_tag_set.pop()
-                        res[unique_tag] = e.get()
-                return res
+                return data_set.pop()
+
+    def get(self, tags: Set[str]):
+        """
+        依据tag精确查询，会返回拆箱后的数据\n
+        """
+        res = self.get_detail(tags)
+        if res is not None:
+            return res.get()
+        else:
+            return None
+
+    def get_dict_detail(self, tags: Set[str]) -> Dict[str, DataWrapper]:
+        """
+        依据tag模糊查询，会返回数据的包装对象\n
+        因此使用此方法可以获取到时间戳之类的额外数据\n
+        """
+        with self.threading_lock:
+            result = self._select(tags)
+            res = {}
+            for e in result:
+                if len(tags) + 1 == len(e.get_tags()):
+                    unique_tag_set = e.get_tags() - tags
+                    # 此时unique_tag_set虽然是set，但是必然只有一个值
+                    unique_tag = unique_tag_set.pop()
+                    res[unique_tag] = e
+            return res
+
+    def get_dict(self, tags: Set[str]) -> Dict:
+        """
+        依据tag获取值，但是只会获取模糊查询的结果\n
+        模糊值返回 {unique_tag: xxx, unique_tag2: xxx}\n
+        """
+        res = self.get_dict_detail(tags)
+        for key in res.keys():
+            res[key] = res[key].get()
+        return res
 
     def get_all(self):
         """
@@ -260,6 +293,13 @@ class Server(object):
                     'timestamp': e.get_timestamp()
                 })
             return res
+
+    def subscribe_all(self, func: CallbackWrapper):
+        """
+        传入一个回调，并且会在所有数据更新的时候，都触发该回调
+        """
+        with self.threading_lock:
+            self.subscribe.add(func)
 
 
 class WebsocketServerAdapter(object):
@@ -325,6 +365,7 @@ class WebsocketServerAdapter(object):
                     await ws.send(json.dumps({
                         'data': res
                     }))
+
         except websockets.exceptions.ConnectionClosedOK:
             print('{}连接正常关闭'.format(identify))
         except websockets.exceptions.ConnectionClosed:
