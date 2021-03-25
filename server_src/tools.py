@@ -506,12 +506,12 @@ class Server(Base):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.setsockopt(
             socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # 设置让程序关闭后立即释放端口
-        self.socket.bind((config['script_manager_listen_ip'],
-                          config['script_manager_listen_port']))
+        self.socket.bind((config['script_manager']['server_ip'],
+                          config['script_manager']['server_port']))
         self.socket.listen(100)
 
-        print('开始运行脚本管理器服务', config['script_manager_listen_ip'], ':',
-              config['script_manager_listen_port'])
+        print('开始运行脚本管理器服务', config['script_manager']['server_ip'], ':',
+              config['script_manager']['server_port'])
 
         # 开始接收数据
         while True:
@@ -531,8 +531,8 @@ class Client(Base):
         with open('config.json', 'r', encoding='utf-8') as f:
             config = json.loads(f.read())
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.connect((config['script_client_connect_ip'],
-                   config['script_client_connect_port']))
+        s.connect((config['script_manager']['client_ip'],
+                   config['script_manager']['client_port']))
         return s
 
     def upload(self, file_path: str, dst_file_name: str) -> None:

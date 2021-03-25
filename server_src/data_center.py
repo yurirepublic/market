@@ -277,8 +277,8 @@ class WebsocketServerAdapter(object):
         # ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         # ssl_context.load_verify_locations(config['ssl_pem'])
         loop = asyncio.get_event_loop()
-        server_ip = config['data_center_ws_server_listen_ip']
-        server_port = config['data_center_ws_server_listen_port']
+        server_ip = config['data_center']['server_ip']
+        server_port = config['data_center']['server_port']
         loop.run_until_complete(
             websockets.serve(self.recv, server_ip, server_port))
         print('成功启动数据中心服务端websocket接口，运行在{}:{}'.format(server_ip, server_port))
@@ -346,8 +346,8 @@ class WebsocketClientAdapter(object):
 
     @staticmethod
     async def connect_server():
-        client_ip = config['data_center_ws_client_connect_ip']
-        client_port = config['data_center_ws_client_connect_port']
+        client_ip = config['data_center']['client_ip']
+        client_port = config['data_center']['client_port']
         url = 'ws://{}:{}'.format(client_ip, client_port)
         print('即将连接' + url)
         ws = await websockets.connect(url)

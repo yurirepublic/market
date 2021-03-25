@@ -688,12 +688,12 @@ def main():
     script_client.exec('dc_static_realtime', {})
 
     # 在此主进程运行http服务器
-    print('即将运行http服务器{}:{}'.format(config['listen_ip'], config['listen_port']))
-    if config['use_ssl']:
-        app.run(config['listen_ip'], config['listen_port'],
-                ssl_context=(config['ssl_pem'], config['ssl_key']))
+    print('即将运行http服务器{}:{}'.format(config['api']['server_ip'], config['api']['server_port']))
+    if config['api']['use_ssl']:
+        app.run(config['api']['server_ip'], config['api']['server_port'],
+                ssl_context=(config['api']['ssl_pem'], config['api']['ssl_key']))
     else:
-        app.run(config['listen_ip'], config['listen_port'])
+        app.run(config['api']['server_ip'], config['api']['server_port'])
 
 
 if __name__ == '__main__':
