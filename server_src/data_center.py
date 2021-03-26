@@ -16,6 +16,7 @@ import random
 # 引入websocket相关
 import websockets
 import asyncio
+import functools
 
 # 读取配置文件
 with open('config.json', 'r', encoding='utf-8') as f:
@@ -272,6 +273,21 @@ class Server(object):
             res[key] = res[key].get()
         return res
 
+    def get_fuzzy(self, tags: Set[str]) -> List[Dict]:
+        """
+        满足tag就返回，但是不会返回成字典形式\n
+        返回形式为[{tags:[xxx, xxx], data:xxx}, ...]
+        """
+        with self.threading_lock:
+            result = self._select(tags)
+            res = []
+            for e in result:
+                res.append({
+                    'tags': list(e.get_tags()),
+                    'data': e.get()
+                })
+            return res
+
     def get_all(self):
         """
         返回所有的数据\n
@@ -315,23 +331,66 @@ class WebsocketServerAdapter(object):
         self.identify_lock = threading.Lock()  # 计算识别码的锁
         self.subscribe_send_lock = threading.Lock()  # 发送订阅的锁
 
-        loop = asyncio.get_event_loop()
+        self.subscribe_sockets: List[websockets.WebSocketServerProtocol] = []  # 用来存储传入订阅的列表
+        self.subscribe_queue = queue.Queue()  # 等待配布的订阅数据
 
+        self.adapter = None
+        self.subscribe_adapter = None
+
+    async def init(self):
         # websocket接口部分
         server_ip = config['data_center']['server_ip']
         server_port = config['data_center']['server_port']
-        self.adapter = loop.run_until_complete(
-            websockets.serve(self.recv, server_ip, server_port))
+
+        self.adapter = await websockets.serve(self.recv, server_ip, server_port)
         print('成功启动数据中心服务端websocket接口，运行在{}:{}'.format(server_ip, server_port))
 
         # websocket订阅部分
         subscribe_ip = config['data_center']['subscribe_server_ip']
         subscribe_port = config['data_center']['subscribe_server_port']
-        self.subscribe_sockets: List[websockets.WebSocketServerProtocol] = []  # 用来存储传入订阅的列表
-        self.subscribe_adapter = loop.run_until_complete(
-            websockets.serve(self.subscribe_recv, subscribe_ip, subscribe_port))
+
+        self.subscribe_adapter = await websockets.serve(self.subscribe_recv, subscribe_ip, subscribe_port)
         print('成功启动数据中心订阅接口，运行在{}:{}'.format(subscribe_ip, subscribe_port))
+
         self.data_center.subscribe_all(CallbackWrapper(self.subscribe_callback, set()))
+
+        # 启动配布协程
+        asyncio.get_event_loop().create_task(self.subscribe_sender())
+
+    def subscribe_callback(self, data: DataWrapper):
+        """
+        数据中心传达订阅的回调，收到数据就塞到queue等待配布
+        """
+        # 将数据取出来，一个个发出去
+        data = {
+            'tags': list(data.get_tags()),
+            'data': data.get()
+        }
+        data = json.dumps(data)
+        self.subscribe_queue.put(data)
+
+    async def subscribe_sender(self):
+        """
+        专用于向订阅者进行配布的协程
+        """
+        loop = asyncio.get_running_loop()
+        while True:
+            data = await loop.run_in_executor(None, functools.partial(self.subscribe_queue.get))
+            for ws in self.subscribe_sockets:
+                loop.create_task(self.subscribe_sender2(ws, data))
+
+    async def subscribe_sender2(self, ws, data):
+        """
+        为了解决发送时的异常，需要在这里再开一个协程
+        """
+        try:
+            await ws.send(data)
+        except (websockets.exceptions.ConnectionClosedOK, websockets.exceptions.ConnectionClosed):
+            try:
+                self.subscribe_sockets.remove(ws)
+            except ValueError:
+                # 对于重复删除直接无视。因为有可能被发现连接断开前，有多个协程开始拿着这个ws在运作
+                pass
 
     def assign_identification(self):
         """
@@ -344,26 +403,6 @@ class WebsocketServerAdapter(object):
                 self.connect_identification = 0
         return identification
 
-    def subscribe_callback(self, data: DataWrapper):
-        """
-        数据中心传达订阅的回调
-        """
-        # 将数据取出来，一个个发出去
-        with self.subscribe_send_lock:
-            data = {
-                'tags': list(data.get_tags()),
-                'data': data.get()
-            }
-            data = json.dumps(data)
-            want_remove = []
-            for ws in self.subscribe_sockets:
-                try:
-                    asyncio.get_event_loop().run_until_complete(ws.send(data))
-                except (websockets.exceptions.ConnectionClosedOK, websockets.exceptions.ConnectionClosed):
-                    print('尝试给订阅发送数据，但订阅连接已关闭。稍后会移除该连接')
-            for e in want_remove:
-                self.subscribe_sockets.remove(e)
-
     async def subscribe_recv(self, ws: websockets.WebSocketServerProtocol, path):
         """
         用来处理传入的订阅连接
@@ -374,7 +413,7 @@ class WebsocketServerAdapter(object):
         self.subscribe_sockets.append(ws)
         try:
             while True:
-                print('数据中心订阅收到消息', await ws.recv())
+                print('数据中心订阅收到消息（正常来讲不应该收到消息）', await ws.recv())
         except websockets.exceptions.ConnectionClosedOK:
             print('{}连接正常关闭'.format(identification))
         except websockets.exceptions.ConnectionClosed:
@@ -413,12 +452,18 @@ class WebsocketServerAdapter(object):
                     await ws.send(json.dumps({
                         'data': res
                     }))
+                elif data['mode'] == 'GET_FUZZY':
+                    tags = set(data['tags'])
+                    res = self.data_center.get_fuzzy(tags)
+                    await ws.send(json.dumps({
+                        'data': res
+                    }))
                 elif data['mode'] == 'SET':
                     tags = set(data['tags'])
                     value = data['value']
                     timestamp = data['timestamp']
                     self.data_center.update(tags, value, timestamp)
-                elif data['mode'] == 'ALL':
+                elif data['mode'] == 'GET_ALL':
                     res = self.data_center.get_all()
                     await ws.send(json.dumps({
                         'data': res
@@ -437,17 +482,18 @@ class WebsocketClientAdapter(object):
 
     def __init__(self):
         self.threading_lock = threading.Lock()
-        with self.threading_lock:
-            loop = asyncio.get_event_loop()
 
-            # 连接websocket
-            client_ip = config['data_center']['client_ip']
-            client_port = config['data_center']['client_port']
-            url = 'ws://{}:{}'.format(client_ip, client_port)
-            print('即将连接' + url)
-            self.ws = loop.run_until_complete(websockets.connect(url))
-            loop.run_until_complete(self.ws.send(config['password']))
-            print('成功连接数据中心websocket')
+        self.ws = None
+
+    async def init(self):
+        # 连接websocket
+        client_ip = config['data_center']['client_ip']
+        client_port = config['data_center']['client_port']
+        url = 'ws://{}:{}'.format(client_ip, client_port)
+        print('即将连接' + url)
+        self.ws = await websockets.connect(url)
+        await self.ws.send(config['password'])
+        print('成功连接')
 
     async def close(self):
         await self.ws.close()
@@ -493,4 +539,12 @@ async def create_server():
 
 
 async def create_server_adapter(server):
-    return WebsocketServerAdapter(server)
+    adapter = WebsocketServerAdapter(server)
+    await adapter.init()
+    return adapter
+
+
+async def create_client_adapter():
+    adapter = WebsocketClientAdapter()
+    await adapter.init()
+    return adapter

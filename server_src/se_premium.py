@@ -30,8 +30,6 @@ class Script(object):
         if main_price is None or future_price is None:
             return
         # 计算溢价并且放回去
-        premium_price = 1 - future_price / main_price
-        premium_price *= 100
-        self.dc.update({'premium', 'percent', symbol}, premium_price)
+        premium_price = future_price / main_price - 1
+        self.dc.update({'premium', 'rate', symbol}, premium_price)
         self.dc.update({'premium', 'dif', symbol}, future_price - main_price)
-

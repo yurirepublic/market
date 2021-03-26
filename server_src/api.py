@@ -17,16 +17,9 @@ from typing import Union
 import asyncio
 
 # 导入币安api、脚本管理器、数据中心
-# from scripts import binance_api
-# from scripts import tools
-# from scripts import data_center
-# import scripts
 import binance_api
-import tools
+import script_manager
 import data_center
-
-# 性能分析工具
-import cProfile
 
 app = Flask(__name__)
 log = logging.getLogger('werkzeug')
@@ -34,7 +27,10 @@ log.setLevel(logging.ERROR)
 CORS(app, supports_credentials=True)  # 允许跨域
 
 # 创建公用币安api对象
-operator = binance_api.SmartOperator()
+operator = asyncio.get_event_loop().run_until_complete(binance_api.create_operator())
+
+# 创建公用脚本管理器对象
+sm = script_manager.Server()
 
 # 读取配置文件
 with open('config.json', 'r', encoding='utf-8') as f:
@@ -53,83 +49,88 @@ def root():
             'msg': 'error',
             'exception': 'password error'
         })
+    # 新建一个loop
+    loop = asyncio.new_event_loop()
     try:
-        res = json.dumps(eval(request.form['function'])(
-            *json.loads(request.form['args'])))
+        func_name = request.form['function']
+        args = json.loads(request.form['args'])
+        res = loop.run_until_complete(_exec_function(func_name, args))
+        res = json.dumps(res)
         return res
     except Exception:
         return json.dumps({
             'msg': 'error',
             'exception': traceback.format_exc()
         })
+    finally:
+        loop.close()
 
 
-def running_script():
+async def _exec_function(func_name, args):
+    return await eval(func_name)(*args)
+
+
+async def running_script():
     """
     获取运行中的脚本列表
     """
     # 开启调用脚本管理器的客户端进行操作
-    client = tools.Client()
     return {
         'msg': 'success',
-        'data': client.status()
+        'data': sm.status()
     }
 
 
-def script_list():
+async def script_list():
     """
     获取本地的脚本列表
     """
-    client = tools.Client()
     return {
         'msg': 'success',
-        'data': client.ls()
+        'data': sm.ls()
     }
 
 
-def script_log(pid):
+async def script_log(pid):
     """
     获取运行中脚本的log信息
     """
     pid = int(pid)
-    client = tools.Client()
     return {
         'msg': 'success',
-        'data': client.get_log(pid)
+        'data': sm.get_log(pid)
     }
 
 
-def run_script(path, input_dict):
+async def run_script(path, input_dict):
     """
     运行服务器上某个脚本
     """
-    client = tools.Client()
-    client.exec(path, input_dict)
+    sm.exec(path, input_dict)
     return {
         'msg': 'success'
     }
 
 
-def stop_script(pid):
+async def stop_script(pid):
     """
     终止运行服务器上某个脚本
     """
     pid = int(pid)
-    client = tools.Client()
-    client.kill(pid)
+    sm.kill(pid)
     return {
         'msg': 'success'
     }
 
 
-def premium_history(symbol):
+async def premium_history(symbol):
     """
     查询资金费率历史
     :param symbol:  要查询的交易对
     """
-    res = json.loads(operator.request('fapi', '/fapi/v1/fundingRate', 'GET', {
+    res = await operator.request('fapi', '/fapi/v1/fundingRate', 'GET', {
         'symbol': symbol
-    }))
+    })
     # 清洗一下数据再发回去
     rate = [float(x['fundingRate']) for x in res]
     rate_time = [x['fundingTime'] for x in res]
@@ -143,7 +144,7 @@ def premium_history(symbol):
     }
 
 
-def transfer(trans_type, symbol, quantity):
+async def transfer(trans_type, symbol, quantity):
     """
     万向划转接口
     :param trans_type:  划转类型，看币安API
@@ -175,7 +176,7 @@ def transfer(trans_type, symbol, quantity):
     MARGIN_MINING 杠杆全仓钱包转向矿池钱包
     MINING_MARGIN 矿池钱包转向杠杆全仓钱包
     """
-    operator.request('api', '/sapi/v1/asset/transfer', 'POST', {
+    await operator.request('api', '/sapi/v1/asset/transfer', 'POST', {
         'type': trans_type,
         'asset': symbol,
         'amount': quantity,
@@ -187,20 +188,20 @@ def transfer(trans_type, symbol, quantity):
     }
 
 
-def bnb_asset():
+async def bnb_asset():
     """
     获取账户内BNB资产
     """
-    main_bnb = operator.get_asset_amount('BNB', 'MAIN')
+    main_bnb = await operator.get_asset_amount('BNB', 'MAIN')
 
     # 获取期货资产
-    future_bnb = operator.get_asset_amount('BNB', 'FUTURE')
+    future_bnb = await operator.get_asset_amount('BNB', 'FUTURE')
 
     # 获取全仓资产
-    margin_bnb = operator.get_asset_amount('BNB', 'MARGIN')
+    margin_bnb = await operator.get_asset_amount('BNB', 'MARGIN')
 
     # 获取BNB最新现货价格（用于估算USDT市值）
-    bnb_price = operator.get_latest_price('BNBUSDT', 'MAIN')
+    bnb_price = await operator.get_latest_price('BNBUSDT', 'MAIN')
 
     return {
         'msg': 'success',
@@ -213,15 +214,15 @@ def bnb_asset():
     }
 
 
-def wallet_money():
+async def wallet_money():
     """
     获取账户内余额信息
     """
     print('正在获取账户余额')
 
-    main_free = operator.get_asset_amount('USDT', 'MAIN')
-    future_free = operator.get_asset_amount('USDT', 'FUTURE')
-    margin_free = operator.get_asset_amount('USDT', 'MARGIN')
+    main_free = await operator.get_asset_amount('USDT', 'MAIN')
+    future_free = await operator.get_asset_amount('USDT', 'FUTURE')
+    margin_free = await operator.get_asset_amount('USDT', 'MARGIN')
 
     return {
         'msg': 'success',
@@ -233,18 +234,18 @@ def wallet_money():
     }
 
 
-def trade_market(symbol: str, mode: str, amount: Union[str, float, int], side: str):
+async def trade_market(symbol: str, mode: str, amount: Union[str, float, int], side: str):
     """
     单向下单\n
     """
-    operator.trade_market(symbol, mode, amount, side)
+    await operator.trade_market(symbol, mode, amount, side)
 
     return {
         'msg': 'success'
     }
 
 
-def trade_premium(symbol: str, amount: float, side: str, main_mode: str):
+async def trade_premium(symbol: str, amount: float, side: str, main_mode: str):
     """
     创建套利交易\n
     :param symbol: 创建套利交易的符号
@@ -257,49 +258,33 @@ def trade_premium(symbol: str, amount: float, side: str, main_mode: str):
     if main_mode != 'MAIN' and main_mode != 'MARGIN' and main_mode != 'ISOLATED':
         raise Exception('main_mode只能为MAIN、MARGIN、ISOLATED')
     if side == 'OPEN':
-        def a():
-            operator.trade_market(symbol, main_mode, amount, 'BUY')
-
-        def b():
+        await asyncio.gather(
+            operator.trade_market(symbol, main_mode, amount, 'BUY'),
             operator.trade_market(symbol, 'FUTURE', amount, 'SELL')
-
-        handle_a = multiprocessing.Process(target=a, args=())
-        handle_b = multiprocessing.Process(target=b, args=())
-        handle_a.start()
-        handle_b.start()
-        handle_a.join()
-        handle_b.join()
+        )
 
     elif side == 'CLOSE':
-        def a():
-            operator.trade_market(symbol, main_mode, amount, 'SELL')
-
-        def b():
+        await asyncio.gather(
+            operator.trade_market(symbol, main_mode, amount, 'SELL'),
             operator.trade_market(symbol, 'FUTURE', amount, 'BUY')
-
-        handle_a = multiprocessing.Process(target=a, args=())
-        handle_b = multiprocessing.Process(target=b, args=())
-        handle_a.start()
-        handle_b.start()
-        handle_a.join()
-        handle_b.join()
+        )
 
     return {
         'msg': 'success'
     }
 
 
-def get_bnb_burn():
+async def get_bnb_burn():
     """
     获取BNB燃烧状态
     """
     return {
         'msg': 'success',
-        'data': operator.get_bnb_burn()
+        'data': await operator.get_bnb_burn()
     }
 
 
-def set_bnb_burn(spot_bnb_burn: bool, interest_bnb_burn: bool):
+async def set_bnb_burn(spot_bnb_burn: bool, interest_bnb_burn: bool):
     """
     设置BNB燃烧状态\n
     会顺带返回设置后的新状态
@@ -307,22 +292,22 @@ def set_bnb_burn(spot_bnb_burn: bool, interest_bnb_burn: bool):
     operator.set_bnb_burn(spot_bnb_burn, interest_bnb_burn)
     return {
         'msg': 'success',
-        'data': operator.get_bnb_burn()
+        'data': await operator.get_bnb_burn()
     }
 
 
-def analyze_premium():
+async def analyze_premium():
     """
     分析并返回当前所有的套利交易对，还顺带返回孤立仓位
     """
     # 获取当前所有现货资产
-    main_asset = operator.get_all_asset_amount('MAIN')
+    main_asset = await operator.get_all_asset_amount('MAIN')
     # 去除掉现货资产的USDT
     if 'USDT' in main_asset.keys():
         del main_asset['USDT']
 
     # 获取当前所有全仓资产
-    margin_asset = operator.get_all_asset_amount('MARGIN')
+    margin_asset = await operator.get_all_asset_amount('MARGIN')
     margin_asset_usdt = 0
     # 去除掉全仓资产的USDT
     if 'USDT' in margin_asset:
@@ -330,7 +315,7 @@ def analyze_premium():
         del margin_asset['USDT']
 
     # 获取所有全仓借贷资产
-    margin_borrowed = operator.get_borrowed_asset_amount('MARGIN')
+    margin_borrowed = await operator.get_borrowed_asset_amount('MARGIN')
     margin_borrowed_usdt = 0
     # 去除掉全仓资产的USDT
     if 'USDT' in margin_borrowed:
@@ -341,10 +326,10 @@ def analyze_premium():
     margin_asset_value = 0  # 全仓资产市值
     margin_asset_borrowed = 0  # 全仓借贷资产市值
     for e in margin_asset.keys():
-        price = operator.get_latest_price(e + 'USDT', 'MAIN')
+        price = await operator.get_latest_price(e + 'USDT', 'MAIN')
         margin_asset_value += price * margin_asset[e]
     for e in margin_borrowed.keys():
-        price = operator.get_latest_price(e + 'USDT', 'MAIN')
+        price = await operator.get_latest_price(e + 'USDT', 'MAIN')
         margin_asset_borrowed += price * margin_borrowed[e]
     if margin_asset_value == 0:
         margin_risk = 0
@@ -361,7 +346,7 @@ def analyze_premium():
     print(margin_asset_borrowed, margin_asset_value)
 
     # 获取当前所有逐仓资产
-    isolated_asset = operator.get_all_asset_amount('ISOLATED')
+    isolated_asset = await operator.get_all_asset_amount('ISOLATED')
     # 仅保留计价单位是USDT的逐仓，且将逐仓名字仅保留币名
     new_dict = {}
     for e in isolated_asset.keys():
@@ -370,7 +355,7 @@ def analyze_premium():
     isolated_asset = new_dict
 
     # 获取当前所有逐仓借贷资产
-    isolated_borrowed = operator.get_borrowed_asset_amount('ISOLATED')
+    isolated_borrowed = await operator.get_borrowed_asset_amount('ISOLATED')
     # 仅保留计价单位是USDT的逐仓，且仅将逐仓名字仅保留币名
     new_dict = {}
     for e in isolated_borrowed.keys():
@@ -379,7 +364,7 @@ def analyze_premium():
     isolated_borrowed = new_dict
 
     # 获取当前所有的期货仓位（不是资产）
-    future_position = operator.get_future_position()
+    future_position = await operator.get_future_position()
     # 将期货符号的USDT去掉，而且仅保留USDT计价的期货
     new_dict = {}
     for e in future_position.keys():
@@ -390,9 +375,9 @@ def analyze_premium():
 
     # 计算期货风险率 (期货总市值 / 期货余额) * 100
     future_position_value = 0
-    future_free = operator.get_asset_amount('USDT', 'FUTURE')
+    future_free = await operator.get_asset_amount('USDT', 'FUTURE')
     for e in future_position.keys():
-        price = operator.get_latest_price(e + 'USDT', 'FUTURE')
+        price = await operator.get_latest_price(e + 'USDT', 'FUTURE')
         future_position_value += price * abs(future_position[e])
     if future_free == 0:
         future_free = 0.00000001  # 给期货一丁点数字避免除0错误
@@ -444,7 +429,7 @@ def analyze_premium():
         if info['isolated'] + info['isolated_quote'] == 0:
             info['isolated_risk'] = 0
         else:
-            price = operator.get_latest_price(key + 'USDT', 'MAIN')
+            price = await operator.get_latest_price(key + 'USDT', 'MAIN')
 
             risk = (info['isolated_borrowed'] * price + info['isolated_quote_borrowed'])
             risk /= info['isolated'] * price + info['isolated_quote']
@@ -513,15 +498,16 @@ def analyze_premium():
     # single = list(filter(lambda x: float(x['quantity']) != 0 and x['symbol'] != 'USDTUSDT', single))
 
 
-def request_premium():
+async def request_premium():
     """
     获取资金费率交易所需要的表格数据
     """
     res = []  # 里面放的是字典
 
     # 获取每个 现货 交易对的规则（下单精度）
-    info = json.loads(operator.request(
-        'api', '/api/v3/exchangeInfo', 'GET', {}, send_signature=False))['symbols']
+    info = await operator.request(
+        'api', '/api/v3/exchangeInfo', 'GET', {}, send_signature=False)
+    info = info['symbols']
     precision = {}
     for e in info:
         # 只需要报价单位是USDT的(排除掉BUSD之类的)
@@ -529,8 +515,9 @@ def request_premium():
             precision[e['symbol']] = e['baseAssetPrecision']
 
     # 获取每个 期货 交易对的规则（下单精度）
-    info = json.loads(operator.request(
-        'fapi', '/fapi/v1/exchangeInfo', 'GET', {}, send_signature=False))['symbols']
+    info = await operator.request(
+        'fapi', '/fapi/v1/exchangeInfo', 'GET', {}, send_signature=False)
+    info = info['symbols']
     precision_future = {}
     for e in info:
         precision_future[e['symbol']] = e['quantityPrecision']
@@ -547,8 +534,8 @@ def request_premium():
 
     # 获取期货所有交易对的资金费率（这东西可能有假的，没上市的合约也能查出资金费率）
     print('正在获取期货所有交易对的资金费率')
-    premium_index = json.loads(operator.request(
-        'fapi', '/fapi/v1/premiumIndex', 'GET', {}))
+    premium_index = await operator.request(
+        'fapi', '/fapi/v1/premiumIndex', 'GET', {})
     premium = {}
     premium_time = {}
     for e in premium_index:
@@ -562,22 +549,9 @@ def request_premium():
 
     manager_dict = Manager().dict()
 
-    def _x():
-        # 查询现货价格
-        manager_dict['prices'] = json.loads(operator.request(
-            'api', '/api/v3/ticker/price', 'GET', {}, send_signature=False))
-
-    def _y():
-        # 查询期货价格
-        manager_dict['prices_future'] = json.loads(operator.request(
-            'fapi', '/fapi/v1/ticker/price', 'GET', {}, send_signature=False))
-
-    handle1 = Process(target=_x)
-    handle2 = Process(target=_y)
-    handle1.start()
-    handle2.start()
-    handle1.join()
-    handle2.join()
+    manager_dict['prices'] = await operator.request('api', '/api/v3/ticker/price', 'GET', {}, send_signature=False)
+    manager_dict['prices_future'] = await operator.request(
+        'fapi', '/fapi/v1/ticker/price', 'GET', {}, send_signature=False)
 
     price_dict = {}
     prices = manager_dict['prices']
@@ -658,37 +632,16 @@ def request_premium():
             e['premium_history']['time'] = list(
                 np.zeros(100 - len(e['premium_history']['rate']))) + e['premium_history']['time']
 
-    # # 统计平均资金费率
-    # for e in res:
-
     return {
         'msg': 'success',
         'data': res
     }
 
 
-async def main():
-    # 运行脚本管理器
-    script_server = tools.Server()
-
-    # 运行数据中心
-    data_server = await data_center.create_server()
-
-    # 给数据中心挂上websocket接口
-    await data_center.create_server_adapter(data_server)
-
-    # 给数据中心挂上回调函数
-    import se_premium
-    se_premium.Script(data_server)
-
-    # 运行数据中心的脚本
-    time.sleep(0.5)  # 留时间让脚本管理器启动完毕
-    script_client = tools.Client()
-    script_client.exec('dc_websocket', {})
-    # script_client.exec('dc_static', {})
-    # script_client.exec('dc_static_realtime', {})
-
-    # 在此主进程运行http服务器
+def run_http_server():
+    """
+    注意，此函数会阻塞主线程
+    """
     print('即将运行http服务器{}:{}'.format(config['api']['server_ip'], config['api']['server_port']))
     if config['api']['use_ssl']:
         app.run(config['api']['server_ip'], config['api']['server_port'],
@@ -696,8 +649,28 @@ async def main():
     else:
         app.run(config['api']['server_ip'], config['api']['server_port'])
 
-    asyncio.get_event_loop().run_forever()
+
+async def main():
+    # 运行数据中心
+    data_center_server = await data_center.create_server()
+
+    # 给数据中心挂上websocket接口
+    await data_center.create_server_adapter(data_center_server)
+
+    # 给数据中心挂上回调函数
+    import se_premium
+    se_premium.Script(data_center_server)
+
+    # 运行数据中心的脚本
+    sm.exec('dc_websocket', {})
+    sm.exec('dc_static', {})
+    sm.exec('dc_static_realtime', {})
+
+    # 这东西能直接把主进程给阻塞了，搞得loop也中断，所以丢去executor运行
+    asyncio.get_event_loop().run_in_executor(None, run_http_server)
 
 
 if __name__ == '__main__':
-    asyncio.run(main())
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(main())
+    loop.run_forever()

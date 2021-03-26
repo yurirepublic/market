@@ -1,13 +1,13 @@
-import tools
+import script_manager
 import binance_api
 import data_center
 import json
-import time
+import asyncio
 
 
-class Script(tools.Script):
+class Script(script_manager.Script):
     def info(self):
-        info = tools.ScriptInfo()
+        info = script_manager.ScriptInfo()
         info.title = '接收交易所的实时静态数据'
         info.description = """
         虽然是静态数据，交易所不提供websocket进行推送
@@ -17,25 +17,21 @@ class Script(tools.Script):
         """
         return info
 
-    def __init__(self):
-        super(Script, self).__init__()
-        self.dc = None
-        self.operator = None
-
     def main(self):
-        self.operator = binance_api.SmartOperator()
+        loop = asyncio.new_event_loop()
+        loop.run_until_complete(self._main())
+        loop.run_forever()
+
+    async def _main(self):
+        self.operator = await binance_api.create_operator()
+        self.dc = await data_center.create_client_adapter()
+
         while True:
-            self.dc = data_center.WebsocketClientAdapter()
-            self.work()
-            self.dc.close()
-            time.sleep(60)
+            premium = await self.operator.request('fapi', '/fapi/v1/premiumIndex', 'GET', {})
+            for e in premium:
+                symbol = e['symbol']
+                rate = float(e['lastFundingRate'])
+                server_time = e['time']
+                asyncio.create_task(self.dc.update({'premium', 'fundingRate', symbol}, rate, server_time))
 
-    def work(self):
-        premium = json.loads(self.operator.request(
-            'fapi', '/fapi/v1/premiumIndex', 'GET', {}))
-        for e in premium:
-            symbol = e['symbol']
-            rate = float(e['lastFundingRate'])
-            server_time = e['time']
-            self.dc.update({'premium', 'fundingRate', symbol}, rate, server_time)
-
+            await asyncio.sleep(60)

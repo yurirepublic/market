@@ -1,14 +1,14 @@
 import binance_api
 import time
-import tools
+import script_manager
 import json
 import math
 import multiprocessing
 
 
-class Script(tools.Script):
+class Script(script_manager.Script):
     def info(self):
-        info = tools.ScriptInfo()
+        info = script_manager.ScriptInfo()
         info.title = "自动紧急平仓"
         info.description = """
         需要手动改代码

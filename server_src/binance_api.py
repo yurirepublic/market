@@ -166,7 +166,7 @@ class Operator(object):
             else:
                 func = requests.put
             r: requests.Response = \
-                await asyncio.get_running_loop().run_in_executor(None, functools.partial(func, headers=headers))
+                await asyncio.get_running_loop().run_in_executor(None, functools.partial(func, url, headers=headers))
             if request_trace:
                 if trace_to_file:
                     with open('requests_trace.txt', 'w', encoding='utf-8') as f:
@@ -692,3 +692,6 @@ class Operator(object):
             ws = await websockets.connect('wss://fstream.{}/ws/{}'.format(base_url, stream_name))
 
         return ws
+
+async def create_operator():
+    return Operator()

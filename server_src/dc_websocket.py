@@ -1,17 +1,17 @@
-import tools
+import script_manager
 import binance_api
 import data_center
 import json
 import asyncio
 
 
-class Script(tools.Script):
+class Script(script_manager.Script):
     """
     用来爬取现货websocket相关数据
     """
 
     def info(self):
-        info = tools.ScriptInfo()
+        info = script_manager.ScriptInfo()
         info.title = '接收websocket相关数据'
         info.description = """
         最开始会调用普通api获取初始数据，以后就用websocket接收更新数据
@@ -19,29 +19,28 @@ class Script(tools.Script):
         """
         return info
 
-    def __init__(self):
-        super(Script, self).__init__()
-        self.dc = data_center.WebsocketClientAdapter()
-        self.operator = binance_api.SmartOperator()
-
     def main(self):
-        loop = asyncio.get_event_loop()
+        loop = asyncio.new_event_loop()
         loop.run_until_complete(self._main())
+        loop.run_forever()
 
     async def _main(self):
+        self.dc = await data_center.create_client_adapter()
+        self.operator = await binance_api.create_operator()
+
         # 获取现货的资产数量
-        asset = self.operator.get_all_asset_amount('MAIN')
+        asset = await self.operator.get_all_asset_amount('MAIN')
         # 推送到数据中心
         for key in asset.keys():
             asyncio.create_task(self.dc.update({'asset', 'main', key}, asset[key]))
 
         # 获取全仓资产数量
-        asset = self.operator.get_all_asset_amount('MARGIN')
+        asset = await self.operator.get_all_asset_amount('MARGIN')
         for key in asset.keys():
             asyncio.create_task(self.dc.update({'asset', 'margin', key}, asset[key]))
 
         # 获取逐仓资产数量
-        asset = self.operator.get_all_asset_amount('ISOLATED')
+        asset = await self.operator.get_all_asset_amount('ISOLATED')
         for key in asset.keys():
             asyncio.create_task(self.dc.update({'asset', 'isolated', key}, asset[key]))
 
@@ -50,16 +49,16 @@ class Script(tools.Script):
         asyncio.create_task(self.future_account_update())
 
         # 获取现货所有价格
-        price = self.operator.get_all_latest_price('MAIN')
+        price = await self.operator.get_all_latest_price('MAIN')
         for key in price.keys():
-            await self.dc.update({'price', 'main', key}, price[key])
+            asyncio.create_task(self.dc.update({'price', 'main', key}, price[key]))
         # 连接websocket获取推送价格
         asyncio.create_task(self.main_price_update())
 
         # 获取期货所有价格
-        price = self.operator.get_all_latest_price('FUTURE')
+        price = await self.operator.get_all_latest_price('FUTURE')
         for key in price.keys():
-            await self.dc.update({'price', 'future', key}, price[key])
+            asyncio.create_task(self.dc.update({'price', 'future', key}, price[key]))
         # 连接websocket获取推送价格
         asyncio.create_task(self.future_price_update())
 
@@ -75,7 +74,7 @@ class Script(tools.Script):
                 free = float(x['f'])
                 timestamp = int(x['E'])
                 # 发送到数据中心
-                await self.dc.update({'asset', mode, symbol}, free, timestamp)
+                asyncio.create_task(self.dc.update({'asset', mode, symbol}, free, timestamp))
         elif data['e'] == 'balanceUpdate':
             pass
         else:
@@ -85,8 +84,8 @@ class Script(tools.Script):
         """
         处理现货账户更新
         """
-        listen_key = self.operator.create_listen_key('MAIN')
-        ws = await binance_api.connect_websocket('MAIN', listen_key)
+        listen_key = await self.operator.create_listen_key('MAIN')
+        ws = await self.operator.connect_websocket('MAIN', listen_key)
         while True:
             data = await ws.recv()
             await self.main_update('main', data)
@@ -96,29 +95,19 @@ class Script(tools.Script):
         处理全仓账户更新
         """
         # 连接全仓账户ws
-        listen_key = self.operator.create_listen_key('MARGIN')
-        ws = await binance_api.connect_websocket('MAIN', listen_key)
+        listen_key = await self.operator.create_listen_key('MARGIN')
+        ws = await self.operator.connect_websocket('MAIN', listen_key)
         while True:
             data = await ws.recv()
             await self.main_update('margin', data)
-
-    # async def isolated_account_update(self, data):
-    #     """
-    #     处理逐仓账户更新
-    #     """
-    # # 连接逐仓账户ws
-    # listen_key = operator.create_listen_key('ISOLATED')
-    # handle = operator.connect_websocket('ISOLATED', listen_key, self.isolated_account_update)
-    # handles.append(handle)
-    #     self.main_update('isolated', data)
 
     async def future_account_update(self):
         """
         处理期货账户更新
         """
         # 连接期货账户ws
-        listen_key = self.operator.create_listen_key('FUTURE')
-        ws = await binance_api.connect_websocket('FUTURE', listen_key)
+        listen_key = await self.operator.create_listen_key('FUTURE')
+        ws = await self.operator.connect_websocket('FUTURE', listen_key)
         while True:
             data = await ws.recv()
             data = json.loads(data)
@@ -156,7 +145,7 @@ class Script(tools.Script):
         """
         处理现货价格更新
         """
-        ws = await binance_api.connect_websocket('MAIN', '!miniTicker@arr')
+        ws = await self.operator.connect_websocket('MAIN', '!miniTicker@arr')
         while True:
             data = await ws.recv()
             data = json.loads(data)
@@ -165,7 +154,7 @@ class Script(tools.Script):
                     timestamp = int(x['E'])
                     symbol = x['s']
                     price = float(x['c'])  # 最新成交价格
-                    await self.dc.update({'main', 'price', symbol}, price, timestamp)
+                    asyncio.create_task(self.dc.update({'main', 'price', symbol}, price, timestamp))
                 else:
                     self.log('无法识别的ws消息', x)
 
@@ -173,7 +162,7 @@ class Script(tools.Script):
         """
         处理期货价格更新
         """
-        ws = await binance_api.connect_websocket('FUTURE', '!markPrice@arr')
+        ws = await self.operator.connect_websocket('FUTURE', '!markPrice@arr')
         while True:
             data = await ws.recv()
             data = json.loads(data)
@@ -182,6 +171,6 @@ class Script(tools.Script):
                     timestamp = int(x['E'])
                     symbol = x['s']
                     price = float(x['p'])  # 标记价格
-                    await self.dc.update({'future', 'price', symbol}, price, timestamp)
+                    asyncio.create_task(self.dc.update({'future', 'price', symbol}, price, timestamp))
                 else:
                     self.log('无法识别的ws消息', x)
