@@ -616,7 +616,7 @@ async def request_premium():
 
     # 查询资金费率
     for e in res:
-        e['premium_history'] = premium_history(e['symbol'])['data']
+        e['premium_history'] = (await premium_history(e['symbol']))['data']
 
         # 计算平均资金费率
         if len(e['premium_history']['rate']) == 0:
