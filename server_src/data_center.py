@@ -25,10 +25,21 @@ with open('config.json', 'r', encoding='utf-8') as f:
 
 def issubset(a: Set, b: Set):
     """
-    判断参数1和参数2是否有子集关系
+    判断a是否是b的子集
     """
     temp = a & b
-    if temp == a or temp == b:
+    if temp == b:
+        return True
+    else:
+        return False
+
+
+def is_proper_subset(a: Set, b: Set):
+    """
+    判断a是否是b的真子集
+    """
+    temp = a & b
+    if temp == b and a != b:
         return True
     else:
         return False
@@ -125,13 +136,14 @@ class Server(object):
 
             """
             此列表存储的是订阅所有数据的回调
+            如果要订阅可选回调，直接用callback功能就好了
             """
-            self.subscribe: Set[CallbackWrapper] = set()
+            self.subscribe_all: Set[CallbackWrapper] = set()
 
     def _select(self, tags: Set[str]) -> Set[DataWrapper]:
         """
         根据对应标签，选择出满足的对象\n
-        注！此操作极度消耗性能！尽可能用在模糊查询上，勿用在精确查询上
+        注！此操作极度消耗性能！尽可能用在模糊查询上，精确查询请使用cache！
         """
         keys = self.database.keys()
         res = None
@@ -146,7 +158,8 @@ class Server(object):
 
     def _callback(self, tags: Set[str]) -> Set[CallbackWrapper]:
         """
-        根据输入的tags，返回匹配到的CallbackWrapper
+        根据输入的tags，返回匹配到的CallbackWrapper\n
+        需要回调包装器的标签是
         """
         res: Set[CallbackWrapper] = set()
         for tag in tags:
@@ -200,14 +213,16 @@ class Server(object):
                     except KeyError:
                         self.database[tag] = set()
                         self.database[tag].add(data_obj)
-        # 使用多线程来异步触发回调
+        # 多线程触发更新回调
         callbacks = self._callback(tags)
         for e in callbacks:
             try:
                 threading.Thread(target=lambda: e.func(data_obj)).start()
             except Exception:
                 print(traceback.format_exc())
-        for e in self.subscribe:
+
+        # 多线程触发所有订阅的回调
+        for e in self.subscribe_all:
             try:
                 threading.Thread(target=lambda: e.func(data_obj)).start()
             except Exception:
@@ -315,7 +330,7 @@ class Server(object):
         传入一个回调，并且会在所有数据更新的时候，都触发该回调
         """
         with self.threading_lock:
-            self.subscribe.add(func)
+            self.subscribe_all.add(func)
 
 
 class WebsocketServerAdapter(object):
