@@ -98,10 +98,18 @@ class CallbackWrapper(object):
     回调的包装器，和DataWrapper是一个东西，只不过这里面装的是回调
     """
 
-    def __init__(self, func: Callable[[DataWrapper], None], tags):
+    def __init__(self, func: Callable[[DataWrapper], None], tags: Set):
         self.func = func
-        if not isinstance(tags, set):
-            tags = set(tags)
+        self.tags = tags
+
+
+class SubscriberWrapper(object):
+    """
+    订阅的包装器，只不过里面包装的不是回调函数，而是socket
+    """
+
+    def __init__(self, ws, tags: Set):
+        self.ws = ws
         self.tags = tags
 
 
@@ -344,10 +352,12 @@ class WebsocketServerAdapter(object):
 
         self.connect_identification = 0  # 用于给传入连接分配识别码的
         self.identify_lock = threading.Lock()  # 计算识别码的锁
-        self.subscribe_send_lock = threading.Lock()  # 发送订阅的锁
 
-        self.subscribe_sockets: List[websockets.WebSocketServerProtocol] = []  # 用来存储传入订阅的列表
-        self.subscribe_queue = queue.Queue()  # 等待配布的订阅数据
+        self.subscribe_queue: queue.Queue[DataWrapper] = queue.Queue()  # 等待配布的订阅数据，由数据中心通过回调发送
+
+        self.subscribe_send_lock = threading.Lock()  # 发送订阅的锁
+        self.subscribe_all_sockets: Set[websockets.WebSocketServerProtocol] = set()  # 用来存储订阅所有消息的列表
+        self.subscribe_wrapper: Set[SubscriberWrapper] = set()  # 用来存储订阅可选消息的列表
 
         self.adapter = None
         self.subscribe_adapter = None
@@ -372,17 +382,12 @@ class WebsocketServerAdapter(object):
         # 启动配布协程
         asyncio.get_event_loop().create_task(self.subscribe_sender())
 
-    def subscribe_callback(self, data: DataWrapper):
+    def subscribe_callback(self, wrp: DataWrapper):
         """
         数据中心传达订阅的回调，收到数据就塞到queue等待配布
         """
-        # 将数据取出来，一个个发出去
-        data = {
-            'tags': list(data.get_tags()),
-            'data': data.get()
-        }
-        data = json.dumps(data)
-        self.subscribe_queue.put(data)
+        # 将原始的DataWrapper塞进去
+        self.subscribe_queue.put(wrp)
 
     async def subscribe_sender(self):
         """
@@ -390,19 +395,45 @@ class WebsocketServerAdapter(object):
         """
         loop = asyncio.get_running_loop()
         while True:
-            data = await loop.run_in_executor(None, functools.partial(self.subscribe_queue.get))
-            for ws in self.subscribe_sockets:
-                loop.create_task(self.subscribe_sender2(ws, data))
+            data: DataWrapper = await loop.run_in_executor(None, functools.partial(self.subscribe_queue.get))
 
-    async def subscribe_sender2(self, ws, data):
+            # 转义出直接配布的json
+            msg = json.dumps({
+                'tags': list(data.get_tags()),
+                'data': data.get()
+            })
+
+            # 先向订阅所有的进行配布
+            for ws in self.subscribe_all_sockets:
+                loop.create_task(self.subscribe_sender2(ws, msg))
+
+            # 然后向可选订阅的进行配布
+            for wrp in self.subscribe_wrapper:
+                if issubset(wrp.tags, data.get_tags()):
+                    loop.create_task(self.subscribe_sender3(wrp, msg))
+
+    async def subscribe_sender2(self, ws, msg):
         """
         为了解决发送时的异常，需要在这里再开一个协程
         """
         try:
-            await ws.send(data)
+            await ws.send(msg)
         except (websockets.exceptions.ConnectionClosedOK, websockets.exceptions.ConnectionClosed):
             try:
-                self.subscribe_sockets.remove(ws)
+                self.subscribe_all_sockets.remove(ws)
+            except ValueError:
+                # 对于重复删除直接无视。因为有可能被发现连接断开前，有多个协程开始拿着这个ws在运作
+                pass
+
+    async def subscribe_sender3(self, wrp: SubscriberWrapper, msg):
+        """
+        和上面那个sender2的功能一样，只不过这个用于负责可选订阅的配布
+        """
+        try:
+            await wrp.ws.send(msg)
+        except (websockets.exceptions.ConnectionClosedOK, websockets.exceptions.ConnectionClosed):
+            try:
+                self.subscribe_wrapper.remove(wrp)
             except ValueError:
                 # 对于重复删除直接无视。因为有可能被发现连接断开前，有多个协程开始拿着这个ws在运作
                 pass
@@ -431,11 +462,20 @@ class WebsocketServerAdapter(object):
             pwd = await ws.recv()
             if config['password'] != pwd:
                 print('{}口令验证错误，接收到 {}'.format(identification, pwd))
+                await ws.close(1000, 'password error')
+                return
             while True:
-                msg = ws.recv()
+                msg = json.loads(await ws.recv())
                 print('数据中心订阅收到消息', msg)
                 # 判断用户的指令
-
+                if msg['mode'] == 'SUBSCRIBE':
+                    tags = set(msg['tags'])
+                    # 将socket封装好，添加到可选订阅的列表
+                    wrapper = SubscriberWrapper(ws, tags)
+                    self.subscribe_wrapper.append(wrapper)
+                elif msg['mode'] == 'SUBSCRIBE_ALL':
+                    # 将socket添加到所有订阅的列表
+                    self.subscribe_all_sockets.append(ws)
         except websockets.exceptions.ConnectionClosedOK:
             print('{}连接正常关闭'.format(identification))
         except websockets.exceptions.ConnectionClosed:
@@ -450,39 +490,39 @@ class WebsocketServerAdapter(object):
         try:
             print('新传入websocket连接，分配识别码{}'.format(identification))
             # 传入连接后首先发送的必是口令
-            data = await ws.recv()
-            if config['password'] != data:
-                print('{}口令验证错误，接收到 {}'.format(identification, data))
+            msg = await ws.recv()
+            if config['password'] != msg:
+                print('{}口令验证错误，接收到 {}'.format(identification, msg))
                 await ws.close(1000, 'password error')
                 return
             print('{}口令验证成功'.format(identification))
             # 循环等待websocket发送消息
             while True:
-                data = json.loads(await ws.recv())
-                if data['mode'] == 'GET':
-                    tags = set(data['tags'])
+                msg = json.loads(await ws.recv())
+                if msg['mode'] == 'GET':
+                    tags = set(msg['tags'])
                     res = self.data_center.get(tags)
                     await ws.send(json.dumps({
                         'data': res
                     }))
-                elif data['mode'] == 'GET_DICT':
-                    tags = set(data['tags'])
+                elif msg['mode'] == 'GET_DICT':
+                    tags = set(msg['tags'])
                     res = self.data_center.get_dict(tags)
                     await ws.send(json.dumps({
                         'data': res
                     }))
-                elif data['mode'] == 'GET_FUZZY':
-                    tags = set(data['tags'])
+                elif msg['mode'] == 'GET_FUZZY':
+                    tags = set(msg['tags'])
                     res = self.data_center.get_fuzzy(tags)
                     await ws.send(json.dumps({
                         'data': res
                     }))
-                elif data['mode'] == 'SET':
-                    tags = set(data['tags'])
-                    value = data['value']
-                    timestamp = data['timestamp']
+                elif msg['mode'] == 'SET':
+                    tags = set(msg['tags'])
+                    value = msg['value']
+                    timestamp = msg['timestamp']
                     self.data_center.update(tags, value, timestamp)
-                elif data['mode'] == 'GET_ALL':
+                elif msg['mode'] == 'GET_ALL':
                     res = self.data_center.get_all()
                     await ws.send(json.dumps({
                         'data': res
@@ -509,10 +549,10 @@ class WebsocketClientAdapter(object):
         client_ip = config['data_center']['client_ip']
         client_port = config['data_center']['client_port']
         url = 'ws://{}:{}'.format(client_ip, client_port)
-        print('即将连接' + url)
+        print('即将连接数据中心接口' + url)
         self.ws = await websockets.connect(url)
         await self.ws.send(config['password'])
-        print('成功连接')
+        print('成功连接数据中心接口')
 
     async def close(self):
         await self.ws.close()
