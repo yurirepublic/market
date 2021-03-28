@@ -6,12 +6,10 @@
 """
 import json
 import traceback
-import requests
 from typing import Dict, List, Set, Union, Callable
 import threading
 import time
 import queue
-import random
 
 # 引入websocket相关
 import websockets
@@ -377,6 +375,7 @@ class WebsocketServerAdapter(object):
         self.subscribe_adapter = await websockets.serve(self.subscribe_recv, subscribe_ip, subscribe_port)
         print('成功启动数据中心订阅接口，运行在{}:{}'.format(subscribe_ip, subscribe_port))
 
+        # 向数据中心挂一个全局更新回调
         self.data_center.subscribe_all(CallbackWrapper(self.subscribe_callback, set()))
 
         # 启动配布协程
@@ -456,7 +455,6 @@ class WebsocketServerAdapter(object):
         # 直接将ws塞进去
         identification = self.assign_identification()
         print('新增一个数据中心订阅，分配识别码{}'.format(identification))
-        # self.subscribe_sockets.append(ws)
         try:
             # 检验连接的口令
             pwd = await ws.recv()
@@ -472,10 +470,12 @@ class WebsocketServerAdapter(object):
                     tags = set(msg['tags'])
                     # 将socket封装好，添加到可选订阅的列表
                     wrapper = SubscriberWrapper(ws, tags)
-                    self.subscribe_wrapper.append(wrapper)
+                    self.subscribe_wrapper.add(wrapper)
                 elif msg['mode'] == 'SUBSCRIBE_ALL':
                     # 将socket添加到所有订阅的列表
-                    self.subscribe_all_sockets.append(ws)
+                    self.subscribe_all_sockets.add(ws)
+                else:
+                    print('订阅接口收到未知mode', msg['mode'])
         except websockets.exceptions.ConnectionClosedOK:
             print('{}连接正常关闭'.format(identification))
         except websockets.exceptions.ConnectionClosed:
@@ -527,6 +527,8 @@ class WebsocketServerAdapter(object):
                     await ws.send(json.dumps({
                         'data': res
                     }))
+                else:
+                    print('数据接口收到未知mode', msg['mode'])
 
         except websockets.exceptions.ConnectionClosedOK:
             print('{}连接正常关闭'.format(identification))
