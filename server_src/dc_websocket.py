@@ -72,7 +72,10 @@ class Script(script_manager.Script):
             for x in data['B']:
                 symbol = x['a']
                 free = float(x['f'])
-                timestamp = int(x['E'])
+                try:
+                    timestamp = int(x['E'])
+                except KeyError:
+                    timestamp = None
                 # 发送到数据中心
                 asyncio.create_task(self.dc.update({'asset', mode, symbol}, free, timestamp))
         elif data['e'] == 'balanceUpdate':
