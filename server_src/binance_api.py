@@ -15,9 +15,10 @@ import functools
 此脚本用于放置对币安API的封装
 """
 
-base_url = 'binance.com'  # 基本网址，用于快速切换国内地址和国际地址，国际地址是binance.com，国内地址是binancezh.pro
-request_trace = True  # 是否追踪请求，开启会打印出每次请求的url、状态码、返回的文本
-trace_to_file = True  # 是否将最终请求写入到文件，开启后控制台只会显示前50位，完整版在requests_trace.txt
+base_url = 'binance.com'  # 基本网址，用于快速切换国内地址和国际地址，国际地址是binance.com
+only_trace_error = True  # 是否始终追踪错误请求，开启后只会打印出错误请求，不会影响追踪文件写入
+trace_to_file = True  # 是否将追踪请求写入到文件
+show_simple_trace = True  # 开启后只会在控制台显示精简请求，但是错误请求会永远显示完整版
 
 
 class BinanceException(Exception):
@@ -167,29 +168,35 @@ class Operator(object):
                 func = requests.put
             r: requests.Response = \
                 await asyncio.get_running_loop().run_in_executor(None, functools.partial(func, url, headers=headers))
-            if request_trace:
-                if trace_to_file:
-                    with open('requests_trace.txt', 'w', encoding='utf-8') as f:
-                        f.writelines([
-                            '-----start-----',
-                            'URL: {}'.format(url),
-                            'STATUS CODE: {}'.format(r.status_code),
-                            'TEXT: {}'.format(r.text),
-                            '-----ended-----'
-                        ])
-                        print('-----start-----')
-                        print('URL:', url)
-                        print('STATUS CODE:', r.status_code)
-                        print('TEXT:', r.text[:50])
-                        print('-----ended-----')
+            if not only_trace_error:
+                if show_simple_trace:
+                    print('-----start-----')
+                    print('URL:', url)
+                    print('STATUS CODE:', r.status_code)
+                    print('TEXT:', r.text[:50])
+                    print('-----ended-----')
                 else:
                     print('-----start-----')
                     print('URL:', url)
                     print('STATUS CODE:', r.status_code)
                     print('TEXT:', r.text)
                     print('-----ended-----')
-
+            if trace_to_file:
+                with open('requests_trace.txt', 'a+', encoding='utf-8') as f:
+                    f.writelines([
+                        '-----start-----',
+                        'URL: {}'.format(url),
+                        'STATUS CODE: {}'.format(r.status_code),
+                        'TEXT: {}'.format(r.text),
+                        '-----ended-----'
+                    ])
             if r.status_code != 200:
+                if only_trace_error:
+                    print('-----start-----')
+                    print('URL:', url)
+                    print('STATUS CODE:', r.status_code)
+                    print('TEXT:', r.text)
+                    print('-----ended-----')
                 if retry_count > 0:
                     retry_count -= 1
                 else:
@@ -692,6 +699,7 @@ class Operator(object):
             ws = await websockets.connect('wss://fstream.{}/ws/{}'.format(base_url, stream_name))
 
         return ws
+
 
 async def create_operator():
     return Operator()
