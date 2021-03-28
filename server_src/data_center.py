@@ -25,7 +25,7 @@ def issubset(a: Set, b: Set):
     """
     判断a是否是b的子集
     """
-    temp = a & b
+    temp = a | b
     if temp == b:
         return True
     else:
@@ -36,7 +36,7 @@ def is_proper_subset(a: Set, b: Set):
     """
     判断a是否是b的真子集
     """
-    temp = a & b
+    temp = a | b
     if temp == b and a != b:
         return True
     else:
@@ -589,7 +589,7 @@ class WebsocketClientAdapter(object):
     async def get_all(self):
         with self.threading_lock:
             await self.ws.send(json.dumps({
-                'mode': 'ALL'
+                'mode': 'GET_ALL'
             }))
             res = json.loads(await self.ws.recv())
             return res['data']
