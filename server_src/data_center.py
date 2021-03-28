@@ -353,9 +353,12 @@ class WebsocketServerAdapter(object):
 
         self.subscribe_queue: queue.Queue[DataWrapper] = queue.Queue()  # 等待配布的订阅数据，由数据中心通过回调发送
 
-        self.subscribe_send_lock = threading.Lock()  # 发送订阅的锁
+        self.subscribe_send_lock = threading.Lock()  # 发送订阅时的锁
+
         self.subscribe_all_sockets: Set[websockets.WebSocketServerProtocol] = set()  # 用来存储订阅所有消息的列表
-        self.subscribe_wrapper: Set[SubscriberWrapper] = set()  # 用来存储订阅可选消息的列表
+        self.subscribe_precise: Set[SubscriberWrapper] = set()  # 精确订阅列表
+        self.subscribe_dict: Set[SubscriberWrapper] = set()  # 字典订阅列表
+        self.subscribe_fuzzy: Set[SubscriberWrapper] = set()  # 模糊订阅列表
 
         self.adapter = None
         self.subscribe_adapter = None
@@ -397,21 +400,37 @@ class WebsocketServerAdapter(object):
             data: DataWrapper = await loop.run_in_executor(None, functools.partial(self.subscribe_queue.get))
 
             # 转义出直接配布的json
+            tags = data.get_tags()
+            list_tags = list(tags)  # 写个缓存优化
             msg = json.dumps({
-                'tags': list(data.get_tags()),
+                'tags': list_tags,
                 'data': data.get()
             })
 
             # 先向订阅所有的进行配布
             for ws in self.subscribe_all_sockets:
-                loop.create_task(self.subscribe_sender2(ws, msg))
+                loop.create_task(self.subscribe_sender_all(ws, msg))
 
-            # 然后向可选订阅的进行配布
-            for wrp in self.subscribe_wrapper:
-                if issubset(wrp.tags, data.get_tags()):
-                    loop.create_task(self.subscribe_sender3(wrp, msg))
+            # 向可选订阅进行配布
+            for wrp in self.subscribe_precise:
+                if wrp.tags == tags:
+                    loop.create_task(self.subscribe_sender_precise(wrp, msg))
+            for wrp in self.subscribe_dict:
+                if issubset(wrp.tags, tags) and len(wrp.tags) + 1 == len(tags):
+                    # 筛选出特殊的tag
+                    special = tags - wrp.tags
+                    special = special.pop()
+                    special_msg = json.dumps({
+                        'tags': list(tags),
+                        'special': special,
+                        'data': data.get()
+                    })
+                    loop.create_task(self.subscribe_sender_dict(wrp, special_msg))
+            for wrp in self.subscribe_fuzzy:
+                if issubset(wrp.tags, tags):
+                    loop.create_task(self.subscribe_sender_fuzzy(wrp, msg))
 
-    async def subscribe_sender2(self, ws, msg):
+    async def subscribe_sender_all(self, ws, msg):
         """
         为了解决发送时的异常，需要在这里再开一个协程
         """
@@ -424,15 +443,41 @@ class WebsocketServerAdapter(object):
                 # 对于重复删除直接无视。因为有可能被发现连接断开前，有多个协程开始拿着这个ws在运作
                 pass
 
-    async def subscribe_sender3(self, wrp: SubscriberWrapper, msg):
+    async def subscribe_sender_precise(self, wrp: SubscriberWrapper, msg):
         """
-        和上面那个sender2的功能一样，只不过这个用于负责可选订阅的配布
+        和上面那个功能一样，只不过这个用于负责精确订阅的配布
         """
         try:
             await wrp.ws.send(msg)
         except (websockets.exceptions.ConnectionClosedOK, websockets.exceptions.ConnectionClosed):
             try:
-                self.subscribe_wrapper.remove(wrp)
+                self.subscribe_precise.remove(wrp)
+            except ValueError:
+                # 对于重复删除直接无视。因为有可能被发现连接断开前，有多个协程开始拿着这个ws在运作
+                pass
+
+    async def subscribe_sender_dict(self, wrp: SubscriberWrapper, msg):
+        """
+        和上面那个功能一样，只不过这个用于字典订阅的配布
+        """
+        try:
+            await wrp.ws.send(msg)
+        except (websockets.exceptions.ConnectionClosedOK, websockets.exceptions.ConnectionClosed):
+            try:
+                self.subscribe_dict.remove(wrp)
+            except ValueError:
+                # 对于重复删除直接无视。因为有可能被发现连接断开前，有多个协程开始拿着这个ws在运作
+                pass
+
+    async def subscribe_sender_fuzzy(self, wrp: SubscriberWrapper, msg):
+        """
+        和上面那个功能一样，只不过这个用于模糊订阅的配布
+        """
+        try:
+            await wrp.ws.send(msg)
+        except (websockets.exceptions.ConnectionClosedOK, websockets.exceptions.ConnectionClosed):
+            try:
+                self.subscribe_fuzzy.remove(wrp)
             except ValueError:
                 # 对于重复删除直接无视。因为有可能被发现连接断开前，有多个协程开始拿着这个ws在运作
                 pass
@@ -466,11 +511,19 @@ class WebsocketServerAdapter(object):
                 msg = json.loads(await ws.recv())
                 print('数据中心订阅收到消息', msg)
                 # 判断用户的指令
-                if msg['mode'] == 'SUBSCRIBE':
+                if msg['mode'] == 'SUBSCRIBE_PRECISE':
                     tags = set(msg['tags'])
                     # 将socket封装好，添加到可选订阅的列表
                     wrapper = SubscriberWrapper(ws, tags)
-                    self.subscribe_wrapper.add(wrapper)
+                    self.subscribe_precise.add(wrapper)
+                elif msg['mode'] == 'SUBSCRIBE_DICT':
+                    tags = set(msg['tags'])
+                    wrapper = SubscriberWrapper(ws, tags)
+                    self.subscribe_dict.add(wrapper)
+                elif msg['mode'] == 'SUBSCRIBE_FUZZY':
+                    tags = set(msg['tags'])
+                    wrapper = SubscriberWrapper(ws, tags)
+                    self.subscribe_fuzzy.add(wrapper)
                 elif msg['mode'] == 'SUBSCRIBE_ALL':
                     # 将socket添加到所有订阅的列表
                     self.subscribe_all_sockets.add(ws)
