@@ -138,7 +138,7 @@ class Server(object):
             此列表存储的是订阅所有数据的回调
             如果要订阅可选回调，直接用callback功能就好了
             """
-            self.subscribe_all: Set[CallbackWrapper] = set()
+            self.subscribe: Set[CallbackWrapper] = set()
 
     def _select(self, tags: Set[str]) -> Set[DataWrapper]:
         """
@@ -222,7 +222,7 @@ class Server(object):
                 print(traceback.format_exc())
 
         # 多线程触发所有订阅的回调
-        for e in self.subscribe_all:
+        for e in self.subscribe:
             try:
                 threading.Thread(target=lambda: e.func(data_obj)).start()
             except Exception:
@@ -330,7 +330,7 @@ class Server(object):
         传入一个回调，并且会在所有数据更新的时候，都触发该回调
         """
         with self.threading_lock:
-            self.subscribe_all.add(func)
+            self.subscribe.add(func)
 
 
 class WebsocketServerAdapter(object):
@@ -425,10 +425,17 @@ class WebsocketServerAdapter(object):
         # 直接将ws塞进去
         identification = self.assign_identification()
         print('新增一个数据中心订阅，分配识别码{}'.format(identification))
-        self.subscribe_sockets.append(ws)
+        # self.subscribe_sockets.append(ws)
         try:
+            # 检验连接的口令
+            pwd = await ws.recv()
+            if config['password'] != pwd:
+                print('{}口令验证错误，接收到 {}'.format(identification, pwd))
             while True:
-                print('数据中心订阅收到消息（正常来讲不应该收到消息）', await ws.recv())
+                msg = ws.recv()
+                print('数据中心订阅收到消息', msg)
+                # 判断用户的指令
+
         except websockets.exceptions.ConnectionClosedOK:
             print('{}连接正常关闭'.format(identification))
         except websockets.exceptions.ConnectionClosed:
@@ -442,9 +449,6 @@ class WebsocketServerAdapter(object):
         identification = self.assign_identification()
         try:
             print('新传入websocket连接，分配识别码{}'.format(identification))
-
-            # await ws.send('welcome')
-
             # 传入连接后首先发送的必是口令
             data = await ws.recv()
             if config['password'] != data:
