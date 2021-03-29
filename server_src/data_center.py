@@ -106,9 +106,10 @@ class SubscriberWrapper(object):
     订阅的包装器，只不过里面包装的不是回调函数，而是socket
     """
 
-    def __init__(self, ws, tags: Set):
-        self.ws = ws
+    def __init__(self, ws, tags: Set[str], comment: str):
+        self.ws: websockets.WebSocketClientProtocol = ws
         self.tags = tags
+        self.comment = comment  # 用户对于该订阅的备注，传输订阅时会一起发送，用于连接复用时区分消息
 
 
 class Server(object):
@@ -402,33 +403,38 @@ class WebsocketServerAdapter(object):
             # 转义出直接配布的json
             tags = data.get_tags()
             list_tags = list(tags)  # 写个缓存优化
+
+            # 先向订阅所有的进行配布
             msg = json.dumps({
                 'tags': list_tags,
                 'data': data.get()
             })
-
-            # 先向订阅所有的进行配布
             for ws in self.subscribe_all_sockets:
                 loop.create_task(self.subscribe_sender_all(ws, msg))
 
             # 向可选订阅进行配布
+            msg = {
+                'tags': list_tags,
+                'data': data.get()
+            }
             for wrp in self.subscribe_precise:
                 if wrp.tags == tags:
-                    loop.create_task(self.subscribe_sender_precise(wrp, msg))
+                    msg['comment'] = wrp.comment
+                    loop.create_task(self.subscribe_sender_precise(wrp, json.dumps(msg)))
+
+            for wrp in self.subscribe_fuzzy:
+                if issubset(wrp.tags, tags):
+                    msg['comment'] = wrp.comment
+                    loop.create_task(self.subscribe_sender_fuzzy(wrp, json.dumps(msg)))
+
             for wrp in self.subscribe_dict:
                 if issubset(wrp.tags, tags) and len(wrp.tags) + 1 == len(tags):
                     # 筛选出特殊的tag
                     special = tags - wrp.tags
                     special = special.pop()
-                    special_msg = json.dumps({
-                        'tags': list(tags),
-                        'special': special,
-                        'data': data.get()
-                    })
-                    loop.create_task(self.subscribe_sender_dict(wrp, special_msg))
-            for wrp in self.subscribe_fuzzy:
-                if issubset(wrp.tags, tags):
-                    loop.create_task(self.subscribe_sender_fuzzy(wrp, msg))
+                    msg['comment'] = wrp.comment
+                    msg['special'] = special
+                    loop.create_task(self.subscribe_sender_dict(wrp, json.dumps(msg)))
 
     async def subscribe_sender_all(self, ws, msg):
         """
@@ -510,19 +516,24 @@ class WebsocketServerAdapter(object):
             while True:
                 msg = json.loads(await ws.recv())
                 print('数据中心订阅收到消息', msg)
+                # 获取用户备注
+                try:
+                    comment = msg['comment']
+                except KeyError:
+                    comment = ''
                 # 判断用户的指令
                 if msg['mode'] == 'SUBSCRIBE_PRECISE':
                     tags = set(msg['tags'])
                     # 将socket封装好，添加到可选订阅的列表
-                    wrapper = SubscriberWrapper(ws, tags)
+                    wrapper = SubscriberWrapper(ws, tags, comment)
                     self.subscribe_precise.add(wrapper)
                 elif msg['mode'] == 'SUBSCRIBE_DICT':
                     tags = set(msg['tags'])
-                    wrapper = SubscriberWrapper(ws, tags)
+                    wrapper = SubscriberWrapper(ws, tags, comment)
                     self.subscribe_dict.add(wrapper)
                 elif msg['mode'] == 'SUBSCRIBE_FUZZY':
                     tags = set(msg['tags'])
-                    wrapper = SubscriberWrapper(ws, tags)
+                    wrapper = SubscriberWrapper(ws, tags, comment)
                     self.subscribe_fuzzy.add(wrapper)
                 elif msg['mode'] == 'SUBSCRIBE_ALL':
                     # 将socket添加到所有订阅的列表
