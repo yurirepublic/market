@@ -258,7 +258,7 @@ class Operator(object):
             if symbol is None:
                 raise Exception('需要传入逐仓的symbol')
             symbol = symbol.upper()
-            await self.request('api', '/sapi/v1/userDataStream/isolated', 'POST', {
+            await self.request('api', '/sapi/v1/userDataStream/isolated', 'PUT', {
                 'listenKey': key,
                 'symbol': symbol
             }, send_signature=False)

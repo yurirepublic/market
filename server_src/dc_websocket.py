@@ -8,6 +8,7 @@ import asyncio
 class Script(script_manager.Script):
     """
     用来爬取现货websocket相关数据
+    TODO 还差逐仓的ws数据更新，但是逐仓需要每个账户都开一个ws，有点难搞
     """
 
     def info(self):
@@ -89,9 +90,18 @@ class Script(script_manager.Script):
         """
         listen_key = await self.operator.create_listen_key('MAIN')
         ws = await self.operator.connect_websocket('MAIN', listen_key)
+        asyncio.create_task(self.ping_main(listen_key))
         while True:
             data = await ws.recv()
             await self.main_update('main', data)
+
+    async def ping_main(self, key):
+        """
+        每30分钟发送一个ping来延长ws有效时间
+        """
+        while True:
+            await asyncio.sleep(1800)
+            await self.operator.overtime_listen_key('MAIN', key)
 
     async def margin_account_update(self):
         """
@@ -100,9 +110,15 @@ class Script(script_manager.Script):
         # 连接全仓账户ws
         listen_key = await self.operator.create_listen_key('MARGIN')
         ws = await self.operator.connect_websocket('MAIN', listen_key)
+        asyncio.create_task(self.ping_margin(listen_key))
         while True:
             data = await ws.recv()
             await self.main_update('margin', data)
+
+    async def ping_margin(self, key):
+        while True:
+            await asyncio.sleep(1800)
+            await self.operator.overtime_listen_key('MARGIN', key)
 
     async def future_account_update(self):
         """
@@ -111,6 +127,7 @@ class Script(script_manager.Script):
         # 连接期货账户ws
         listen_key = await self.operator.create_listen_key('FUTURE')
         ws = await self.operator.connect_websocket('FUTURE', listen_key)
+        asyncio.create_task(self.ping_future(listen_key))
         while True:
             data = await ws.recv()
             data = json.loads(data)
@@ -143,6 +160,11 @@ class Script(script_manager.Script):
                 pass
             else:
                 self.log('无法识别的ws消息', data)
+
+    async def ping_future(self, key):
+        while True:
+            await asyncio.sleep(1800)
+            await self.operator.overtime_listen_key('FUTURE', key)
 
     async def main_price_update(self):
         """
