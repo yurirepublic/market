@@ -55,7 +55,7 @@ export default {
     },
   },
   created: function () {
-    this.reload_config();
+
   },
   mounted: function () {},
   components: {

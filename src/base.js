@@ -1,56 +1,17 @@
 import request from 'request'
 import Vue from 'vue'
 
-// 读取服务器配置
-let global_config = null
-
-// 获取配置文件
-async function readConfig(arg) {
-  if (global_config === null) {
-    // await new Promise(resolve => {
-    //   ipcRenderer.on('read-config-reply', function (event, arg) {
-    //     global_config = arg
-    //     console.log('配置文件读取完毕')
-    //     console.log(global_config)
-    //     resolve()
-    //   })
-    //   ipcRenderer.send('read-config')
-    // })
-  }
-  if (arg !== undefined) {
-    return global_config[arg]
-  } else {
-    return global_config
-  }
-}
-
-// 写入配置文件
-async function saveConfig(config) {
-  global_config = config
-  // await new Promise((resolve, reject) => {
-  //   ipcRenderer.on("save-config-reply", function (event, arg) {
-  //     if (arg === 'success') {
-  //       resolve()
-  //     } else {
-  //       reject()
-  //     }
-  //   })
-  //   ipcRenderer.send("save-config", global_config);
-  // })
-}
 
 async function method_request(func, args) {
-  // 等待配置文件准备好
-  let config = await readConfig()
   // 发送请求
   return await new Promise((resolve, reject) => {
     request.post(
       {
-        url: config['server_url'],
+        url: localStorage.serverUrl,
         form: {
           function: func,
           args: JSON.stringify(args),
-          password: config['password'],
+          password: localStorage.password,
         },
         timeout: 30000,
       },
@@ -89,7 +50,6 @@ function isNumber(value) {
   }
   return !isNaN(value - 0);
 }
-
 
 
 // 用来快速显示toast
@@ -158,7 +118,5 @@ export default {
     Vue.prototype.float2strFloor = float2strFloor
     Vue.prototype.float2strRound = float2strRound
     Vue.prototype.float2strCeil = float2strCeil
-    Vue.prototype.readConfig = readConfig
-    Vue.prototype.saveConfig = saveConfig
   }
 }

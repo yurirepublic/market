@@ -2,7 +2,7 @@
   <div class="p-2" style="background-color: #fafafa">
     <div class="mb-2 d-flex justify-content-between align-items-center">
       <span class="font-weight-bold">套利行情</span>
-      <RefreshButton :anime="refresh_button_anime" @click="refresh"/>
+<!--      <RefreshButton :anime="refresh_button_anime" @click="refresh"/>-->
     </div>
     <div style="overflow: auto; max-height: 15rem">
       <table class="table table-hover table-borderless table-sm small">
@@ -178,7 +178,7 @@ export default {
     ws.onopen = async function (msg) {
       console.log('ws成功打开', msg)
       // 向服务器发送自己的密码和订阅内容
-      await ws.send('abcdefgaa')
+      
       await ws.send(JSON.stringify({
         tags: ['premium', 'rate'],
         mode: 'SUBSCRIBE_DICT',
