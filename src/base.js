@@ -134,6 +134,137 @@ let localConfig = {
   }
 }
 
+// 默认的websocket连接
+async function connectDataCenter(nickname) {
+  let buf = {}
+  let order = 0
+  // 创建websocket
+  let ws = new WebSocket(this.localConfig.dataUrl)
+  // 等待websocket连接完毕
+  await new Promise(resolve => {
+    ws.onopen = async msg => {
+      console.log(nickname, '数据连接成功打开', msg)
+      await ws.send(this.localConfig.password)
+      resolve()
+    }
+    ws.onmessage = msg => {
+      // 将消息提取出来，根据buf
+      msg = JSON.parse(msg.data)
+      let comment = msg['comment']
+      let data = msg['data']
+      // 触发回调
+      buf[comment](data)
+      // 删除字典元素
+      delete buf[comment]
+    }
+    ws.onclose = msg => {
+      console.log(nickname, '数据连接被关闭', msg)
+    }
+  })
+  let getOrder = function () {
+    return order++
+  }
+  let generateGetPromise = function (order) {
+    return new Promise(resolve => {
+      buf[order] = function (data) {
+        resolve(data)
+      }
+    })
+  }
+  return {
+    getData: async function (tags) {
+      let promise = generateGetPromise(getOrder())
+      ws.send(JSON.stringify({
+        mode: 'GET',
+        tags: tags
+      }))
+      return await promise
+    },
+    getDict: async function (tags) {
+      let promise = generateGetPromise(getOrder())
+      ws.send(JSON.stringify({
+        mode: 'GET_DICT',
+        tags: tags
+      }))
+      return await promise
+    },
+    getFuzzy: async function (tags) {
+      let promise = generateGetPromise(getOrder())
+      ws.send(JSON.stringify({
+        mode: 'GET_FUZZY',
+        tags: tags
+      }))
+      return await promise
+    },
+    getAll: async function (tags) {
+      let promise = generateGetPromise(getOrder())
+      ws.send(JSON.stringify({
+        mode: 'GET_ALL',
+        tags: tags
+      }))
+      return await promise
+    },
+    setData: async function (tags, val) {
+      ws.send(JSON.stringify({
+        mode: 'SET',
+        tags: tags,
+        value: val
+      }))
+    },
+    close: async function (code = 1000) {
+      await ws.close(code)
+    }
+  }
+}
+
+async function connectSubscribe(nickname) {
+  let ws = new WebSocket(this.localConfig.subscribeUrl)
+  await new Promise(resolve => {
+    ws.onopen = async msg => {
+      console.log(nickname, '订阅连接成功打开', msg)
+      await ws.send(this.localConfig.password)
+      resolve()
+    }
+    ws.onmessage = msg => {
+      console.log(nickname, '收到消息', msg)
+    }
+    ws.onclose = msg => {
+      console.log(nickname, '订阅连接被关闭', msg)
+    }
+  })
+  return {
+    precise: async function (tags) {
+      await ws.send(JSON.stringify({
+        mode: 'SUBSCRIBE_PRECISE',
+        tags: tags
+      }))
+    },
+    dict: async function (tags) {
+      await ws.send(JSON.stringify({
+        mode: 'SUBSCRIBE_DICT',
+        tags: tags
+      }))
+    },
+    fuzzy: async function (tags) {
+      await ws.send(JSON.stringify({
+        mode: 'SUBSCRIBE_FUZZY',
+        tags: tags
+      }))
+    },
+    all: async function () {
+      await ws.send(JSON.stringify({
+        mode: 'SUBSCRIBE_ALL'
+      }))
+    },
+    set onmessage(func) {
+      ws.onmessage = func
+    },
+    close: async function (code = 1000) {
+      ws.close(code)
+    }
+  }
+}
+
 export default {
   install(Vue, option) {
     Vue.prototype.method_request = method_request
@@ -143,5 +274,7 @@ export default {
     Vue.prototype.float2strRound = float2strRound
     Vue.prototype.float2strCeil = float2strCeil
     Vue.prototype.localConfig = localConfig
+    Vue.prototype.connectDataCenter = connectDataCenter
+    Vue.prototype.connectSubscribe = connectSubscribe
   }
 }
