@@ -106,6 +106,15 @@ function float2strCeil(amount, precision) {
   return amount.toString()
 }
 
+function toPrecision(amount, precision) {
+  amount *= Math.pow(10, precision)
+  // 向下取整
+  amount = Math.round(amount)
+  // 除以精度
+  amount /= Math.pow(10, precision)
+  return amount
+}
+
 // 为了出代码提示来减少错误以及方便重构，本地设置需要在这里获取
 let localConfig = {
   get serverUrl() {
@@ -173,34 +182,42 @@ async function connectDataCenter(nickname) {
   }
   return {
     getData: async function (tags) {
-      let promise = generateGetPromise(getOrder())
+      let order = getOrder()
+      let promise = generateGetPromise(order)
       ws.send(JSON.stringify({
         mode: 'GET',
-        tags: tags
+        tags: tags,
+        comment: order
       }))
       return await promise
     },
     getDict: async function (tags) {
-      let promise = generateGetPromise(getOrder())
+      let order = getOrder()
+      let promise = generateGetPromise(order)
       ws.send(JSON.stringify({
         mode: 'GET_DICT',
-        tags: tags
+        tags: tags,
+        comment: order
       }))
       return await promise
     },
     getFuzzy: async function (tags) {
-      let promise = generateGetPromise(getOrder())
+      let order = getOrder()
+      let promise = generateGetPromise(order)
       ws.send(JSON.stringify({
         mode: 'GET_FUZZY',
-        tags: tags
+        tags: tags,
+        comment: order
       }))
       return await promise
     },
     getAll: async function (tags) {
-      let promise = generateGetPromise(getOrder())
+      let order = getOrder()
+      let promise = generateGetPromise(order)
       ws.send(JSON.stringify({
         mode: 'GET_ALL',
-        tags: tags
+        tags: tags,
+        comment: order
       }))
       return await promise
     },
@@ -273,6 +290,7 @@ export default {
     Vue.prototype.float2strFloor = float2strFloor
     Vue.prototype.float2strRound = float2strRound
     Vue.prototype.float2strCeil = float2strCeil
+    Vue.prototype.toPrecision = toPrecision
     Vue.prototype.localConfig = localConfig
     Vue.prototype.connectDataCenter = connectDataCenter
     Vue.prototype.connectSubscribe = connectSubscribe
