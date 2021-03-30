@@ -1,6 +1,5 @@
 <template>
   <div class="d-flex flex-column" style="height: 100%">
-    <TitleBar style="-webkit-app-region: drag" />
     <div class="d-flex" style="height: 100%">
       <FuncSwitchBar :focus_page="focus_page" @click="switchPage" />
       <div v-show="focus_page == 'premium'">
