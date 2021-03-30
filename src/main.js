@@ -2,15 +2,11 @@ import Vue from 'vue'
 
 // 导入Bootstrap样式库
 import 'bootstrap/dist/css/bootstrap.css'
-import 'bootstrap-vue/dist/bootstrap-vue.css'
 
+// 导入一点官方组件
 import App from './App.vue'
-import './registerServiceWorker'
 import router from './router'
 import store from './store'
-
-// 导入BootstrapVue (我觉得这玩意太垃圾了，考虑删掉)
-import { BootstrapVue, IconsPlugin } from 'bootstrap-vue'
 
 // 导入VueToast
 // 可以自选主题
@@ -18,19 +14,16 @@ import VueToast from 'vue-toast-notification'
 import 'vue-toast-notification/dist/theme-default.css';
 //import 'vue-toast-notification/dist/theme-sugar.css';
 
-
-
 Vue.config.productionTip = false
 
-Vue.use(BootstrapVue)
-Vue.use(IconsPlugin)
 Vue.use(VueToast)
 
+// 导入自制基本组件
 import base from './base.js'
-
 Vue.use(base)
 
-import OhVueIcon from 'oh-vue-icons/components/Icon'
+// 导入oh-vue-icons
+import OhVueIcon from 'oh-vue-icons'
 
 import { RiCloseLine } from 'oh-vue-icons/icons'
 import { FaRegularWindowMaximize } from 'oh-vue-icons/icons'

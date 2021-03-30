@@ -116,65 +116,77 @@ export default {
     return {
       items: [],
       refresh_button_anime: false,
+      ws: null,   // 当前正在连接的websocket
     };
   },
   methods: {
-    refresh: function () {
-      // let ws = new WebSocket('ws://us.pwp.today:11328')
-      // ws.onmessage = function (msg) {
-      //   console.log('ws收到数据', msg)
-      //   console.log(JSON.parse(msg.data))
-      //   ws.close(1000)
-      // }
-      // ws.onclose = function (msg) {
-      //   console.log('ws被关闭', msg)
-      // }
-      // ws.onopen = function (msg) {
-      //   console.log('ws成功打开', msg)
-      //   ws.send('abcdefgaa')
-      //   ws.send(JSON.stringify({
-      //     'mode': 'GET_DICT',
-      //     'tags': ['premium', 'rate']
-      //   }))
-      // }
-
-      let ws = new WebSocket('ws://us.pwp.today:11329')
-      ws.onmessage = function (msg) {
-        console.log('ws收到数据', msg)
-      }
-      ws.onclose = function (msg) {
-        console.log('ws被关闭', msg)
-      }
-      ws.onopen = function (msg) {
-        console.log('ws成功打开', msg)
-        // 设置5秒后自动关闭websocket
-        setTimeout(() => {
-          ws.close(1000)
-        }, 20000)
-      }
-      //
-      //   this.refresh_button_anime = true;
-      //   this.method_request("request_premium", [])
-      //       .then((res) => {
-      //         this.items = res["data"];
-      //         this.$toast.open({
-      //           message: "资金费率表格加载成功",
-      //           type: "success",
-      //         });
-      //       })
-      //       .catch((error) => {
-      //         this.$toast.open({
-      //           message: "资金费率表格加载失败",
-      //           type: "error",
-      //         });
-      //       })
-      //       .finally(() => {
-      //         this.refresh_button_anime = false;
-      //       });
-    },
+    // refresh: function () {
+    //   this.refresh_button_anime = true;
+    //
+    //   // 如果连接的ws不是空，那么就要直接断开之前的ws
+    //   if (this.ws !== null) {
+    //     this.ws.close(1000)
+    //   }
+    //
+    //   // 开始新的一轮刷新
+    //   this.method_request("request_premium", [])
+    //       .then((res) => {
+    //         this.items = res["data"];
+    //         this.$toast.open({
+    //           message: "资金费率表格加载成功",
+    //           type: "success",
+    //         });
+    //       })
+    //       .catch((error) => {
+    //         this.$toast.open({
+    //           message: "资金费率表格加载失败",
+    //           type: "error",
+    //         });
+    //       })
+    //       .finally(() => {
+    //         this.refresh_button_anime = false;
+    //       });
+    // },
   },
   mounted: function () {
-    this.refresh();
+    // 关闭之前的旧连接
+    if (this.ws !== null) {
+      this.ws.close(1000)
+    }
+    // 打开新连接
+    let ws = new WebSocket('ws://us.pwp.today:11329')
+    this.ws = ws
+    ws.onmessage = msg => {
+      let data = JSON.parse(msg.data)
+      let tags = data.tags
+      let special = data.special
+      data = Math.round(data.data * 10000) / 100
+      if (tags.includes('premium') && tags.includes('rate')) {
+        // 查找表格项目有没有对应的symbol
+        for (let i = 0; i < this.items.length; i++) {
+          let e = this.items[i]
+          if (e.symbol === special) {
+            this.items[i].future_premium = data
+          }
+        }
+        this.items = this.items
+      }
+    }
+    ws.onclose = function (msg) {
+      console.log('ws被关闭', msg)
+    }
+    ws.onopen = async function (msg) {
+      console.log('ws成功打开', msg)
+      // 向服务器发送自己的密码和订阅内容
+      await ws.send('abcdefgaa')
+      await ws.send(JSON.stringify({
+        tags: ['premium', 'rate'],
+        mode: 'SUBSCRIBE_DICT',
+        comment: 'rate'
+      }))
+    }
+
+
   },
   components: {
     RefreshButton,

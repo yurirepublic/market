@@ -1,51 +1,56 @@
 import request from 'request'
-import { ipcRenderer } from 'electron'
+import Vue from 'vue'
 
 // 读取服务器配置
-let configReady = false;      // 配置文件是否已准备好
-let local_config = {}
-async function reload_config() {
-  await new Promise(resolve => {
-    ipcRenderer.on('read-config-reply', function (event, arg) {
-      local_config = arg
-      configReady = true
-      console.log('配置文件读取完毕')
-      console.log(local_config)
-      resolve()
-    })
-    ipcRenderer.send('read-config')
-  })
-  return
+let global_config = null
+
+// 获取配置文件
+async function readConfig(arg) {
+  if (global_config === null) {
+    // await new Promise(resolve => {
+    //   ipcRenderer.on('read-config-reply', function (event, arg) {
+    //     global_config = arg
+    //     console.log('配置文件读取完毕')
+    //     console.log(global_config)
+    //     resolve()
+    //   })
+    //   ipcRenderer.send('read-config')
+    // })
+  }
+  if (arg !== undefined) {
+    return global_config[arg]
+  } else {
+    return global_config
+  }
+}
+
+// 写入配置文件
+async function saveConfig(config) {
+  global_config = config
+  // await new Promise((resolve, reject) => {
+  //   ipcRenderer.on("save-config-reply", function (event, arg) {
+  //     if (arg === 'success') {
+  //       resolve()
+  //     } else {
+  //       reject()
+  //     }
+  //   })
+  //   ipcRenderer.send("save-config", global_config);
+  // })
 }
 
 async function method_request(func, args) {
   // 等待配置文件准备好
-  while (true) {
-    if (!configReady) {
-      await new Promise(resolve => {
-        setTimeout(() => {
-          resolve()
-        }, 1000)
-      })
-      if (configReady) {
-        console.log('配置文件已读取完毕')
-      }
-
-    }
-    else {
-      break;
-    }
-  }
+  let config = await readConfig()
   // 发送请求
   return await new Promise((resolve, reject) => {
     request.post(
       {
-        url: local_config['server_url'],
-        proxy: local_config['proxy_url'] == '' ? null : local_config['proxy_url'],
+        url: config['server_url'],
         form: {
           function: func,
           args: JSON.stringify(args),
-          password: local_config['password'],
+          password: config['password'],
         },
         timeout: 30000,
       },
@@ -55,20 +60,19 @@ async function method_request(func, args) {
           reject(err)
           return
         }
-        if (httpResponse.statusCode != 200) {
+        if (httpResponse.statusCode !== 200) {
           console.error(httpResponse)
           reject(httpResponse)
           return
         }
         let res = JSON.parse(body);
-        if (res["msg"] != "success") {
+        if (res["msg"] !== "success") {
           console.error(res)
           reject(res)
           return
         }
         console.log(res)
         resolve(res)
-        return
       }
     );
   })
@@ -86,7 +90,7 @@ function isNumber(value) {
   return !isNaN(value - 0);
 }
 
-import Vue from 'vue'
+
 
 // 用来快速显示toast
 function showToast() {
@@ -127,6 +131,7 @@ function float2strFloor(amount, precision) {
   amount /= Math.pow(10, precision);
   return amount.toString()
 }
+
 function float2strRound(amount, precision) {
   amount *= Math.pow(10, precision);
   // 向下取整
@@ -135,6 +140,7 @@ function float2strRound(amount, precision) {
   amount /= Math.pow(10, precision);
   return amount.toString()
 }
+
 function float2strCeil(amount, precision) {
   amount *= Math.pow(10, precision);
   // 向下取整
@@ -149,9 +155,10 @@ export default {
     Vue.prototype.method_request = method_request
     Vue.prototype.isNumber = isNumber
     Vue.prototype.showToast = showToast
-    Vue.prototype.reload_config = reload_config
     Vue.prototype.float2strFloor = float2strFloor
     Vue.prototype.float2strRound = float2strRound
     Vue.prototype.float2strCeil = float2strCeil
+    Vue.prototype.readConfig = readConfig
+    Vue.prototype.saveConfig = saveConfig
   }
 }
