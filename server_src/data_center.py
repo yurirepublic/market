@@ -563,23 +563,30 @@ class WebsocketServerAdapter(object):
             # 循环等待websocket发送消息
             while True:
                 msg = json.loads(await ws.recv())
+                try:
+                    comment = msg['comment']
+                except KeyError:
+                    comment = ''
                 if msg['mode'] == 'GET':
                     tags = set(msg['tags'])
                     res = self.data_center.get(tags)
                     await ws.send(json.dumps({
-                        'data': res
+                        'data': res,
+                        'comment': comment
                     }))
                 elif msg['mode'] == 'GET_DICT':
                     tags = set(msg['tags'])
                     res = self.data_center.get_dict(tags)
                     await ws.send(json.dumps({
-                        'data': res
+                        'data': res,
+                        'comment': comment
                     }))
                 elif msg['mode'] == 'GET_FUZZY':
                     tags = set(msg['tags'])
                     res = self.data_center.get_fuzzy(tags)
                     await ws.send(json.dumps({
-                        'data': res
+                        'data': res,
+                        'comment': comment
                     }))
                 elif msg['mode'] == 'SET':
                     tags = set(msg['tags'])
@@ -589,7 +596,8 @@ class WebsocketServerAdapter(object):
                 elif msg['mode'] == 'GET_ALL':
                     res = self.data_center.get_all()
                     await ws.send(json.dumps({
-                        'data': res
+                        'data': res,
+                        'comment': comment
                     }))
                 else:
                     print('数据接口收到未知mode', msg['mode'])
@@ -632,28 +640,31 @@ class WebsocketClientAdapter(object):
                 'timestamp': timestamp
             }))
 
-    async def get(self, tags: Set[str]):
+    async def get(self, tags: Set[str], comment=''):
         with self.threading_lock:
             await self.ws.send(json.dumps({
                 'mode': 'GET',
-                'tags': list(tags)
+                'tags': list(tags),
+                'comment': comment
             }))
             res = json.loads(await self.ws.recv())
             return res['data']
 
-    async def get_dict(self, tags: Set[str]):
+    async def get_dict(self, tags: Set[str], comment=''):
         with self.threading_lock:
             await self.ws.send(json.dumps({
                 'mode': 'GET_DICT',
-                'tags': list(tags)
+                'tags': list(tags),
+                'comment': comment
             }))
             res = json.loads(await self.ws.recv())
             return res['data']
 
-    async def get_all(self):
+    async def get_all(self, comment=''):
         with self.threading_lock:
             await self.ws.send(json.dumps({
-                'mode': 'GET_ALL'
+                'mode': 'GET_ALL',
+                'comment': comment
             }))
             res = json.loads(await self.ws.recv())
             return res['data']
