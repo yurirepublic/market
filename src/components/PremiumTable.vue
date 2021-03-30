@@ -22,83 +22,83 @@
             @click="$emit('click', item)"
         >
           <td class="text-monospace" style="" nowrap="nowrap">
-            {{ item["symbol"] }}
+            {{ item['symbol'] }}
           </td>
 
           <td
               class="text-monospace"
               style="color: #02c076"
-              v-if="parseFloat(item['rate']) > 0"
+              v-if="item['fundingRate'] > 0"
               nowrap="nowrap"
           >
-            {{ item["rate"] }}%
+            {{ item["fundingRate"] }}%
           </td>
           <td
               class="text-monospace"
               style="color: #f84960"
-              v-if="parseFloat(item['rate']) < 0"
+              v-if="item['fundingRate'] < 0"
               nowrap="nowrap"
           >
-            {{ item["rate"] }}%
+            {{ item["fundingRate"] }}%
           </td>
           <td
               class="text-monospace"
-              v-if="parseFloat(item['rate']) == 0"
+              v-if="item['fundingRate'] === 0"
               nowrap="nowrap"
           >
-            {{ item["rate"] }}%
+            {{ item["fundingRate"] }}%
           </td>
 
           <td
               class="text-monospace"
               style="color: #02c076"
-              v-if="parseFloat(item['avg_rate']) > 0"
+              v-if="item['avgRate'] > 0"
               nowrap="nowrap"
           >
-            {{ item["avg_rate"] }}%
+            {{ item["avgRate"] }}%
           </td>
           <td
               class="text-monospace"
               style="color: #f84960"
-              v-if="parseFloat(item['avg_rate']) < 0"
+              v-if="item['avgRate'] < 0"
               nowrap="nowrap"
           >
-            {{ item["avg_rate"] }}%
+            {{ item["avgRate"] }}%
           </td>
           <td
               class="text-monospace"
-              v-if="parseFloat(item['avg_rate']) == 0"
+              v-if="item['avgRate'] === 0"
               nowrap="nowrap"
           >
-            {{ item["avg_rate"] }}%
+            {{ item["avgRate"] }}%
           </td>
 
           <td class="text-monospace" nowrap="nowrap">
-            {{ item["price"] }}
+            {{ item["mainPrice"] }}
           </td>
 
           <td
               class="text-monospace"
               style="color: #02c076"
-              v-if="parseFloat(item['future_premium']) > 0"
+              v-if="item['premiumRate'] > 0"
               nowrap="nowrap"
           >
-            {{ item["future_premium"] }}%
+            {{ item["premiumRate"] }}%
           </td>
           <td
               class="text-monospace"
               style="color: #f84960"
-              v-if="parseFloat(item['future_premium']) < 0"
+              v-if="item['premiumRate'] < 0"
               nowrap="nowrap"
           >
-            {{ item["future_premium"] }}%
+            {{ item["premiumRate"] }}%
           </td>
           <td
               class="text-monospace"
-              v-if="parseFloat(item['future_premium']) == 0"
+              v-if="item['premiumRate'] === 0"
               nowrap="nowrap"
           >
-            {{ item["future_premium"] }}%
+            {{ item["premiumRate"] }}%
           </td>
         </tr>
         </tbody>
@@ -114,50 +114,143 @@ export default {
   name: "PremiumTable",
   data: function () {
     return {
-      items: [],
+      cache: {},    // 将symbol作为键，可以快速查找相应的对象来修改数据
+      items: [],    // 排序后的items
       refresh_button_anime: false,
-      ws: null,   // 当前正在连接的websocket
+      dataWs: null,
+      subWs: null,   // 当前正在连接的websocket
     };
   },
   methods: {},
-  mounted: function () {
-    // 关闭之前的旧连接
-    if (this.ws !== null) {
-      this.ws.close(1000)
+  mounted: async function () {
+    if (this.dataWs !== null) {
+      this.dataWs.close()
     }
-    // 打开新连接
-    let ws = new WebSocket(this.localConfig.subscribeUrl)
-    this.ws = ws
-    ws.onmessage = msg => {
-      let data = JSON.parse(msg.data)
-      let tags = data['tags']
-      let special = data['special']
-      data = Math.round(data.data * 10000) / 100
-      if (tags.includes('premium') && tags.includes('rate')) {
-        // 查找表格项目有没有对应的symbol
-        for (let i = 0; i < this.items.length; i++) {
-          let e = this.items[i]
-          if (e.symbol === special) {
-            this.items[i].future_premium = data
-          }
-        }
-        this.items = this.items
+    if (this.subWs !== null) {
+      this.subWs.close()
+    }
+    this.dataWs = await this.connectDataCenter('行情表单')
+    // 获取当前资金费率
+    let fundingRate = await this.dataWs.getDict(['premium', 'fundingRate'])
+    console.log('当前资金费率', fundingRate)
+    // 以同步方式根据key来先把object创建好
+    let keys = Object.keys(fundingRate)
+    for (let i = 0; i < keys.length; i++) {
+      let obj = {
+        symbol: keys[i]
       }
-    }
-    ws.onclose = msg => {
-      console.log('ws被关闭', msg)
-    }
-    ws.onopen = async msg => {
-      console.log('ws成功打开', msg)
-      // 向服务器发送自己的密码和订阅内容
-      await ws.send(this.localConfig.password)
-      await ws.send(JSON.stringify({
-        tags: ['premium', 'rate'],
-        mode: 'SUBSCRIBE_DICT',
-        comment: 'rate'
-      }))
+      this.cache[keys[i]] = obj
+      this.items.push(obj)
     }
 
+    Object.keys(fundingRate).forEach(symbol => {
+      let obj = this.cache[symbol]
+      obj['fundingRate'] = this.toPrecision(fundingRate[symbol] * 100, 2)
+      this.$forceUpdate()
+    })
+
+    // 获取历史费率
+    let fundingRateHistory = await this.dataWs.getDict(['premium', 'fundingRateHistory'])
+    console.log('历史资金费率', fundingRateHistory)
+    Object.keys(fundingRateHistory).forEach(symbol => {
+      let obj = this.cache[symbol]
+      obj['fundingRateHistory'] = fundingRateHistory[symbol]
+      // 计算平均费率
+      let total = 0
+      for (let i = 0; i < fundingRateHistory[symbol].length; i++) {
+        total += fundingRateHistory[symbol][i]
+      }
+      if (fundingRateHistory[symbol].length === 0) {
+        obj['avgRate'] = 0
+      } else {
+        obj['avgRate'] = this.toPrecision((total / fundingRateHistory[symbol].length) * 100, 2)
+      }
+      this.$forceUpdate()
+    })
+
+    // 获取现货币价
+    let mainPrice = await this.dataWs.getDict(['price', 'main'])
+    console.log('现货币价', mainPrice)
+    Object.keys(mainPrice).forEach(symbol => {
+      let obj = this.cache[symbol]
+      try {
+        obj['mainPrice'] = mainPrice[symbol]
+      } catch (err) {
+        // 遇到多出的符号是正常的
+        if (err instanceof TypeError) {
+          return
+        }
+        throw err
+      }
+      this.$forceUpdate()
+    })
+
+    // 获取期货溢价
+    let premiumRate = await this.dataWs.getDict(['premium', 'rate'])
+    console.log('期货溢价', premiumRate)
+    Object.keys(premiumRate).forEach(symbol => {
+      let obj = this.cache[symbol]
+      try {
+        obj['premiumRate'] = this.toPrecision(premiumRate[symbol] * 100, 2)
+      } catch (err) {
+        if (err instanceof TypeError) {
+          return
+        }
+        throw err
+      }
+      this.$forceUpdate()
+    })
+
+    // 获取
+
+
+
+
+    // // 打开新连接
+    // this.connectDataCenter('溢价表单').then(res => {
+    //   if (this.dataWs !== null) {
+    //     this.dataWs.close(1000)
+    //   }
+    //   this.dataWs = res
+    //   // 获取基础数据
+    //   this.dataWs.onmessage = msg => {
+    //     msg = JSON.parse(msg.data)['data']
+    //     Object.keys(msg).forEach(key => {
+    //       this.items[key] = {
+    //         rate: msg[key]
+    //       }
+    //       this.items = this.items
+    //     })
+    //
+    //   }
+    //   this.dataWs.send(JSON.stringify({
+    //     mode: 'GET_DICT',
+    //     tags: ['premium', 'rate']
+    //   }))
+    // })
+    // this.connectSubscribe('溢价表单订阅').then(res => {
+    //   this.subWs = res
+    //   if (this.subWs !== null) {
+    //     this.subWs.close(1000)
+    //   }
+    //   this.subWs.onmessage = msg => {
+    //     let data = JSON.parse(msg.data)
+    //     let tags = data['tags']
+    //     let special = data['special']
+    //     data = Math.round(data.data * 10000) / 100
+    //     if (tags.includes('premium') && tags.includes('rate')) {
+    //       // 查找表格项目有没有对应的symbol
+    //       for (let i = 0; i < this.items.length; i++) {
+    //         let e = this.items[i]
+    //         if (e.symbol === special) {
+    //           this.items[i].future_premium = data
+    //         }
+    //       }
+    //       this.items = this.items
+    //     }
+    //   }
+    // })
+    //
 
   },
   components: {
