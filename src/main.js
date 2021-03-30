@@ -23,6 +23,7 @@ Vue.use(VueToast)
 
 // 导入自制基本组件
 import base from './base.js'
+
 Vue.use(base)
 
 // 导入oh-vue-icons

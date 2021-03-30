@@ -124,14 +124,14 @@ export default {
     // 转账操作
     Transfer: function (mode, amount) {
       this.disabled_transfer_button = true;
-      this.showToast().info("开始转账");
+      this.showToast.info("开始转账");
       this.method_request("transfer", [
         mode,
         "BNB",
         amount,
       ])
           .then((res) => {
-            this.showToast().success("转账成功");
+            this.showToast.success("转账成功");
             // 转账成功了清空一下输入
             this.main_to_future_value = ""
             this.main_to_margin_value = ""
@@ -141,7 +141,7 @@ export default {
             this.RefreshWallet();
           })
           .catch((err) => {
-            this.showToast().error("转账失败");
+            this.showToast.error("转账失败");
             this.RefreshWallet();
           })
           .finally(() => {
@@ -162,10 +162,10 @@ export default {
             // this.bnb_usdt = "≈ " + res["data"]["asset_usdt"] + " USDT";
             // this.bnb_future_usdt =
             //     "≈ " + res["data"]["asset_future_usdt"] + " USDT";
-            this.showToast().success("成功获取BNB资产");
+            this.showToast.success("成功获取BNB资产");
           })
           .catch((error) => {
-            this.showToast().error("BNB资产获取失败");
+            this.showToast.error("BNB资产获取失败");
           })
           .finally(() => {
             this.refresh_button_anime = false;
@@ -184,10 +184,10 @@ export default {
           .then(res => {
             this.spot_bnb_burn = res['data']['spotBNBBurn']
             this.interest_bnb_burn = res['data']['interestBNBBurn']
-            this.showToast().success("成功设置BNB燃烧状态")
+            this.showToast.success("成功设置BNB燃烧状态")
           })
           .catch(err => {
-            this.showToast().error('设置BNB燃烧状态失败')
+            this.showToast.error('设置BNB燃烧状态失败')
           })
           .finally(() => {
             this.disabled_bnb_burn_button = false
@@ -201,10 +201,10 @@ export default {
           .then(res => {
             this.spot_bnb_burn = res['data']['spotBNBBurn']
             this.interest_bnb_burn = res['data']['interestBNBBurn']
-            this.showToast().success("成功获取BNB燃烧状态")
+            this.showToast.success("成功获取BNB燃烧状态")
           })
           .catch(err => {
-            this.showToast().error('BNB燃烧状态获取失败')
+            this.showToast.error('BNB燃烧状态获取失败')
           })
           .finally(() => {
             this.disabled_bnb_burn_button = false

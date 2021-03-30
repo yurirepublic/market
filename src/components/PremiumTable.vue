@@ -2,7 +2,7 @@
   <div class="p-2" style="background-color: #fafafa">
     <div class="mb-2 d-flex justify-content-between align-items-center">
       <span class="font-weight-bold">套利行情</span>
-<!--      <RefreshButton :anime="refresh_button_anime" @click="refresh"/>-->
+      <!--      <RefreshButton :anime="refresh_button_anime" @click="refresh"/>-->
     </div>
     <div style="overflow: auto; max-height: 15rem">
       <table class="table table-hover table-borderless table-sm small">
@@ -119,47 +119,19 @@ export default {
       ws: null,   // 当前正在连接的websocket
     };
   },
-  methods: {
-    // refresh: function () {
-    //   this.refresh_button_anime = true;
-    //
-    //   // 如果连接的ws不是空，那么就要直接断开之前的ws
-    //   if (this.ws !== null) {
-    //     this.ws.close(1000)
-    //   }
-    //
-    //   // 开始新的一轮刷新
-    //   this.method_request("request_premium", [])
-    //       .then((res) => {
-    //         this.items = res["data"];
-    //         this.$toast.open({
-    //           message: "资金费率表格加载成功",
-    //           type: "success",
-    //         });
-    //       })
-    //       .catch((error) => {
-    //         this.$toast.open({
-    //           message: "资金费率表格加载失败",
-    //           type: "error",
-    //         });
-    //       })
-    //       .finally(() => {
-    //         this.refresh_button_anime = false;
-    //       });
-    // },
-  },
+  methods: {},
   mounted: function () {
     // 关闭之前的旧连接
     if (this.ws !== null) {
       this.ws.close(1000)
     }
     // 打开新连接
-    let ws = new WebSocket('ws://us.pwp.today:11329')
+    let ws = new WebSocket(this.localConfig.subscribeUrl)
     this.ws = ws
     ws.onmessage = msg => {
       let data = JSON.parse(msg.data)
-      let tags = data.tags
-      let special = data.special
+      let tags = data['tags']
+      let special = data['special']
       data = Math.round(data.data * 10000) / 100
       if (tags.includes('premium') && tags.includes('rate')) {
         // 查找表格项目有没有对应的symbol
@@ -172,13 +144,13 @@ export default {
         this.items = this.items
       }
     }
-    ws.onclose = function (msg) {
+    ws.onclose = msg => {
       console.log('ws被关闭', msg)
     }
-    ws.onopen = async function (msg) {
+    ws.onopen = async msg => {
       console.log('ws成功打开', msg)
       // 向服务器发送自己的密码和订阅内容
-      
+      await ws.send(this.localConfig.password)
       await ws.send(JSON.stringify({
         tags: ['premium', 'rate'],
         mode: 'SUBSCRIBE_DICT',

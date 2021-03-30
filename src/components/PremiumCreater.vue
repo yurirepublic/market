@@ -155,11 +155,11 @@ export default {
       this.disabled_trade = true;
       this.method_request("trade_premium", [pair_symbol, quantity, 'OPEN', this.main_mode])
           .then((res) => {
-            this.showToast().success("加仓成功");
+            this.showToast.success("加仓成功");
           })
           .catch((err) => {
             console.log(this.showToast);
-            this.showToast().error("加仓失败");
+            this.showToast.error("加仓失败");
           })
           .finally(() => {
             this.disabled_trade = false;
@@ -176,11 +176,11 @@ export default {
       this.disabled_trade = true;
       this.method_request("trade_premium", [pair_symbol, quantity, 'CLOSE', this.main_mode])
           .then((res) => {
-            this.showToast().success("减仓成功");
+            this.showToast.success("减仓成功");
           })
           .catch((err) => {
             console.log(this.showToast);
-            this.showToast().error("减仓失败");
+            this.showToast.error("减仓失败");
           })
           .finally(() => {
             this.disabled_trade = false;

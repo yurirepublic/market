@@ -55,21 +55,21 @@ export default {
     };
   },
   mounted: async function () {
-    this.serverUrl = localStorage.serverUrl
-    this.password = localStorage.password
-    this.dataUrl = localStorage.dataUrl
-    this.subscribeUrl = localStorage.subscribUrl
+    this.serverUrl = this.localConfig.serverUrl
+    this.password = this.localConfig.password
+    this.dataUrl = this.localConfig.dataUrl
+    this.subscribeUrl = this.localConfig.subscribeUrl
   },
   methods: {
     Save: function () {
       try {
-        localStorage.serverUrl = this.serverUrl
-        localStorage.password = this.password
-        localStorage.dataUrl = this.dataUrl
-        localStorage.subscribUrl = this.subscribeUrl
-        this.showToast().success('成功保存设置')
+        this.localConfig.serverUrl = this.serverUrl
+        this.localConfig.password = this.password
+        this.localConfig.dataUrl = this.dataUrl
+        this.localConfig.subscribeUrl = this.subscribeUrl
+        this.showToast.success('成功保存设置')
       } catch (e) {
-        this.showToast().error('保存设置失败')
+        this.showToast.error('保存设置失败')
       }
     },
   },

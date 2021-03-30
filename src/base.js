@@ -1,17 +1,16 @@
 import request from 'request'
 import Vue from 'vue'
 
-
 async function method_request(func, args) {
   // 发送请求
   return await new Promise((resolve, reject) => {
     request.post(
       {
-        url: localStorage.serverUrl,
+        url: this.localConfig.serverUrl,
         form: {
           function: func,
           args: JSON.stringify(args),
-          password: localStorage.password,
+          password: this.localConfig.password,
         },
         timeout: 30000,
       },
@@ -51,34 +50,31 @@ function isNumber(value) {
   return !isNaN(value - 0);
 }
 
-
 // 用来快速显示toast
-function showToast() {
-  return {
-    success: function (text) {
-      Vue.$toast.open({
-        message: text,
-        type: 'success'
-      })
-    },
-    error: function (text) {
-      Vue.$toast.open({
-        message: text,
-        type: 'error'
-      })
-    },
-    warning: function (text) {
-      Vue.$toast.open({
-        message: text,
-        type: 'warning'
-      })
-    },
-    info: function (text) {
-      Vue.$toast.open({
-        message: text,
-        type: 'info'
-      })
-    }
+let showToast = {
+  success: function (text) {
+    Vue.$toast.open({
+      message: text,
+      type: 'success'
+    })
+  },
+  error: function (text) {
+    Vue.$toast.open({
+      message: text,
+      type: 'error'
+    })
+  },
+  warning: function (text) {
+    Vue.$toast.open({
+      message: text,
+      type: 'warning'
+    })
+  },
+  info: function (text) {
+    Vue.$toast.open({
+      message: text,
+      type: 'info'
+    })
   }
 }
 
@@ -110,6 +106,34 @@ function float2strCeil(amount, precision) {
   return amount.toString()
 }
 
+// 为了出代码提示来减少错误以及方便重构，本地设置需要在这里获取
+let localConfig = {
+  get serverUrl() {
+    return localStorage.serverUrl
+  },
+  set serverUrl(val) {
+    localStorage.serverUrl = val
+  },
+  get password() {
+    return localStorage.password
+  },
+  set password(val) {
+    localStorage.password = val
+  },
+  get dataUrl() {
+    return localStorage.dataUrl
+  },
+  set dataUrl(val) {
+    localStorage.dataUrl = val
+  },
+  get subscribeUrl() {
+    return localStorage.subscribeUrl
+  },
+  set subscribeUrl(val) {
+    localStorage.subscribeUrl = val
+  }
+}
+
 export default {
   install(Vue, option) {
     Vue.prototype.method_request = method_request
@@ -118,5 +142,6 @@ export default {
     Vue.prototype.float2strFloor = float2strFloor
     Vue.prototype.float2strRound = float2strRound
     Vue.prototype.float2strCeil = float2strCeil
+    Vue.prototype.localConfig = localConfig
   }
 }

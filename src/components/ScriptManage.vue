@@ -86,11 +86,11 @@ export default {
       this.refresh_button_anime = true;
       this.method_request("script_list", [])
         .then((res) => {
-          this.showToast().success("脚本列表获取成功");
+          this.showToast.success("脚本列表获取成功");
           this.script_list = res.data;
         })
         .catch((err) => {
-          this.showToast().error("脚本列表获取失败");
+          this.showToast.error("脚本列表获取失败");
         })
         .finally(() => {
           this.refresh_button_anime = false;
@@ -107,10 +107,10 @@ export default {
       this.button_disabled = true;
       this.method_request("run_script", [item["file_name"], input_dict])
         .then((res) => {
-          this.showToast().success("脚本运行成功");
+          this.showToast.success("脚本运行成功");
         })
         .catch((err) => {
-          this.showToast().error("脚本运行失败");
+          this.showToast.error("脚本运行失败");
         })
         .finally(() => {
           this.button_disabled = false;

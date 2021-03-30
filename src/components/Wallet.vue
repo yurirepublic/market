@@ -94,14 +94,14 @@ export default {
     // 转账操作
     Transfer: function (mode, amount) {
       this.disabled_transfer_button = true;
-      this.showToast().info("开始转账");
+      this.showToast.info("开始转账");
       this.method_request("transfer", [
         mode,
         "USDT",
         amount,
       ])
           .then((res) => {
-            this.showToast().success("转账成功");
+            this.showToast.success("转账成功");
             // 转账成功了清空一下输入
             this.main_to_future_value = ""
             this.main_to_margin_value = ""
@@ -111,7 +111,7 @@ export default {
             this.refresh();
           })
           .catch((err) => {
-            this.showToast().error("转账失败");
+            this.showToast.error("转账失败");
             this.refresh();
           })
           .finally(() => {
