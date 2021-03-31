@@ -41,22 +41,22 @@
         <div class="d-flex flex-row justify-content-between mt-2">
           <span class="align-middle text-muted small">现货下单位置</span>
           <div class="d-flex">
-            <no-border-button class="btn checkbox ml-2 checkbox-check" v-if="main_mode=='MAIN'"
+            <no-border-button class="btn checkbox ml-2 checkbox-check" v-if="main_mode==='MAIN'"
                               @click="ChangeMainMode('MAIN')">现货
             </no-border-button>
-            <no-border-button class="btn checkbox ml-2 checkbox-nocheck" v-if="main_mode!='MAIN'"
+            <no-border-button class="btn checkbox ml-2 checkbox-nocheck" v-if="main_mode!=='MAIN'"
                               @click="ChangeMainMode('MAIN')">现货
             </no-border-button>
-            <no-border-button class="btn checkbox ml-2 checkbox-check" v-if="main_mode=='MARGIN'"
+            <no-border-button class="btn checkbox ml-2 checkbox-check" v-if="main_mode==='MARGIN'"
                               @click="ChangeMainMode('MARGIN')">全仓
             </no-border-button>
-            <no-border-button class="btn checkbox ml-2 checkbox-nocheck" v-if="main_mode!='MARGIN'"
+            <no-border-button class="btn checkbox ml-2 checkbox-nocheck" v-if="main_mode!=='MARGIN'"
                               @click="ChangeMainMode('MARGIN')">全仓
             </no-border-button>
-            <no-border-button class="btn checkbox ml-2 checkbox-check" v-if="main_mode=='ISOLATED'"
+            <no-border-button class="btn checkbox ml-2 checkbox-check" v-if="main_mode==='ISOLATED'"
                               @click="ChangeMainMode('ISOLATED')">逐仓
             </no-border-button>
-            <no-border-button class="btn checkbox ml-2 checkbox-nocheck" v-if="main_mode!='ISOLATED'"
+            <no-border-button class="btn checkbox ml-2 checkbox-nocheck" v-if="main_mode!=='ISOLATED'"
                               @click="ChangeMainMode('ISOLATED')">逐仓
             </no-border-button>
           </div>
@@ -92,7 +92,7 @@ import InfoItem from "@/components/InfoItem.vue";
 import NoBorderButton from "@/components/NoBorderButton";
 
 export default {
-  name: "PremiumCreater",
+  name: "PremiumCreator",
 
   props: {
     pair_item: {
@@ -123,22 +123,6 @@ export default {
     pair_item: function (newItem, oldItem) {
       this.ValueChanged('value');
     },
-    // want_money: function (newItem, oldItem) {
-    //   if (!this.dont_repeat) {
-    //     this.ValueChanged('value');
-    //   }
-    //   else {
-    //     this.dont_repeat = false
-    //   }
-    // },
-    // quantity: function (newItem, oldItem) {
-    //   if (!this.dont_repeat) {
-    //     this.ValueChanged('quantity');
-    //   }
-    //   else {
-    //     this.dont_repeat = false
-    //   }
-    // }
   },
 
   methods: {

@@ -7,7 +7,7 @@
         </div>
 
         <div class="mt-1">
-          <PremiumCreater :pair_item="pair_item" />
+          <PremiumCreator :pair_item="pair_item" />
         </div>
       </div>
 
@@ -38,7 +38,7 @@
 import PremiumTable from "@/components/PremiumTable.vue";
 import PremiumHaving from "@/components/PremiumHaving.vue";
 import Wallet from "@/components/Wallet.vue";
-import PremiumCreater from "@/components/PremiumCreater.vue";
+import PremiumCreator from "@/components/PremiumCreator.vue";
 import BNBWallet from "@/components/BNBWallet.vue";
 import PremiumHistory from "@/components/PremiumHistory.vue";
 
@@ -62,7 +62,7 @@ export default {
     PremiumTable,
     PremiumHaving,
     Wallet,
-    PremiumCreater,
+    PremiumCreator,
     BNBWallet,
     PremiumHistory,
   },
