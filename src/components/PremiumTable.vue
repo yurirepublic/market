@@ -67,7 +67,7 @@ export default {
     return {
       cache: {},    // 将symbol作为键，可以快速查找相应的对象来修改数据
       items: [],    // 排序后的items
-      refresh_button_anime: false,
+
       dataWs: null,
       subWs: null,   // 当前正在连接的websocket
 
@@ -76,20 +76,13 @@ export default {
   },
   methods: {},
   mounted: async function () {
-    // 将变量尽可能初始化以支持热更新
-    if (this.dataWs !== null) {
-      this.dataWs.close()
-    }
-    if (this.subWs !== null) {
-      this.subWs.close()
-    }
     if (this.sortInterval !== null) {
       clearInterval(this.sortInterval)
     }
     this.cache = {}
     this.items = []
 
-    this.dataWs = await this.connectDataCenter('行情表单')
+    this.dataWs = await this.connectDataCenter()
     // 获取当前资金费率
     let fundingRate = await this.dataWs.getDict(['premium', 'fundingRate'])
     console.log('当前资金费率', fundingRate)
@@ -150,7 +143,7 @@ export default {
     })
 
     // 打开订阅连接
-    this.subWs = await this.connectSubscribe('行情表单')
+    this.subWs = await this.connectSubscribe()
 
     // 订阅当前费率
     await this.subWs.dict(['premium', 'fundingRate'], msg => {
