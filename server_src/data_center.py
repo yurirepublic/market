@@ -354,8 +354,6 @@ class WebsocketServerAdapter(object):
 
         self.subscribe_queue: queue.Queue[DataWrapper] = queue.Queue()  # 等待配布的订阅数据，由数据中心通过回调发送
 
-        self.subscribe_send_lock = threading.Lock()  # 发送订阅时的锁
-
         self.subscribe_all_sockets: Set[websockets.WebSocketServerProtocol] = set()  # 用来存储订阅所有消息的列表
         self.subscribe_precise: Set[SubscriberWrapper] = set()  # 精确订阅列表
         self.subscribe_dict: Set[SubscriberWrapper] = set()  # 字典订阅列表
@@ -445,7 +443,7 @@ class WebsocketServerAdapter(object):
         except (websockets.exceptions.ConnectionClosedOK, websockets.exceptions.ConnectionClosed):
             try:
                 self.subscribe_all_sockets.remove(ws)
-            except ValueError:
+            except KeyError:
                 # 对于重复删除直接无视。因为有可能被发现连接断开前，有多个协程开始拿着这个ws在运作
                 pass
 
@@ -458,7 +456,7 @@ class WebsocketServerAdapter(object):
         except (websockets.exceptions.ConnectionClosedOK, websockets.exceptions.ConnectionClosed):
             try:
                 self.subscribe_precise.remove(wrp)
-            except ValueError:
+            except KeyError:
                 # 对于重复删除直接无视。因为有可能被发现连接断开前，有多个协程开始拿着这个ws在运作
                 pass
 
@@ -471,7 +469,7 @@ class WebsocketServerAdapter(object):
         except (websockets.exceptions.ConnectionClosedOK, websockets.exceptions.ConnectionClosed):
             try:
                 self.subscribe_dict.remove(wrp)
-            except ValueError:
+            except KeyError:
                 # 对于重复删除直接无视。因为有可能被发现连接断开前，有多个协程开始拿着这个ws在运作
                 pass
 
@@ -484,7 +482,7 @@ class WebsocketServerAdapter(object):
         except (websockets.exceptions.ConnectionClosedOK, websockets.exceptions.ConnectionClosed):
             try:
                 self.subscribe_fuzzy.remove(wrp)
-            except ValueError:
+            except KeyError:
                 # 对于重复删除直接无视。因为有可能被发现连接断开前，有多个协程开始拿着这个ws在运作
                 pass
 
