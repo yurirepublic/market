@@ -2,7 +2,6 @@
   <div class="p-2" style="background-color: #fafafa">
     <div class="mb-2 d-flex justify-content-between align-items-center">
       <span class="font-weight-bold">套利行情</span>
-      <!--      <RefreshButton :anime="refresh_button_anime" @click="refresh"/>-->
     </div>
     <div style="overflow: auto; max-height: 15rem">
       <table class="table table-hover table-borderless table-sm small">
@@ -85,7 +84,7 @@ export default {
       this.subWs.close()
     }
     if (this.sortInterval !== null) {
-
+      clearInterval(this.sortInterval)
     }
     this.cache = {}
     this.items = []
@@ -202,10 +201,10 @@ export default {
     // 每3s对列表排个序
     this.sortInterval = setInterval(() => {
       this.items.sort((a, b) => {
-        return b['fundingRate'] - a['fundingRate']
+        return Math.abs(b['fundingRate']) - Math.abs(a['fundingRate'])
       })
     }, 3000)
-    
+
   },
   components: {
     RefreshButton,
