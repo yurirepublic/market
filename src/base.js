@@ -6,11 +6,11 @@ async function method_request(func, args) {
   return await new Promise((resolve, reject) => {
     request.post(
       {
-        url: this.localConfig.serverUrl,
+        url: localConfig.serverUrl,
         form: {
           function: func,
           args: JSON.stringify(args),
-          password: this.localConfig.password,
+          password: localConfig.password,
         },
         timeout: 30000,
       },
@@ -143,38 +143,37 @@ let localConfig = {
   }
 }
 
-let globalDatacenterWebsocket = null    // 全局公用的数据中心websocket对象
+// 全局公用的数据中心websocket对象
+let globalDatacenterWebsocket = null
 
-async function connectDataCenter(nickname) {
-  nickname = '全局数据'
+async function generateDataCenterWebsocket() {
+  let nickname = '全局数据'
   let buf = {}
   let order = 0
   // 创建websocket
-  if (globalDatacenterWebsocket === null) {
-    globalDatacenterWebsocket = new WebSocket(this.localConfig.dataUrl)
-    // 等待websocket连接完毕
-    await new Promise(resolve => {
-      globalDatacenterWebsocket.onopen = async msg => {
-        console.log(nickname, '数据连接成功打开', msg)
-        await globalDatacenterWebsocket.send(this.localConfig.password)
-        console.log(nickname, '数据连接密钥发送成功')
-        resolve()
-      }
-      globalDatacenterWebsocket.onmessage = msg => {
-        // 将消息提取出来，根据buf
-        msg = JSON.parse(msg.data)
-        let comment = msg['comment']
-        let data = msg['data']
-        // 触发回调
-        buf[comment](data)
-        // 删除字典元素
-        delete buf[comment]
-      }
-      globalDatacenterWebsocket.onclose = msg => {
-        console.log(nickname, '数据连接被关闭', msg)
-      }
-    })
-  }
+  let ws = new WebSocket(localConfig.dataUrl)
+  // 等待websocket连接完毕
+  await new Promise(resolve => {
+    ws.onopen = async msg => {
+      console.log(nickname, '数据连接成功打开', msg)
+      await ws.send(localConfig.password)
+      console.log(nickname, '数据连接密钥发送成功')
+      resolve()
+    }
+    ws.onmessage = msg => {
+      // 将消息提取出来，根据buf
+      msg = JSON.parse(msg.data)
+      let comment = msg['comment']
+      let data = msg['data']
+      // 触发回调
+      buf[comment](data)
+      // 删除字典元素
+      delete buf[comment]
+    }
+    ws.onclose = msg => {
+      console.log(nickname, '数据连接被关闭', msg)
+    }
+  })
   let getOrder = function () {
     return order++
   }
@@ -189,7 +188,7 @@ async function connectDataCenter(nickname) {
     getData: async function (tags) {
       let order = getOrder()
       let promise = generateGetPromise(order)
-      globalDatacenterWebsocket.send(JSON.stringify({
+      ws.send(JSON.stringify({
         mode: 'GET',
         tags: tags,
         comment: order
@@ -199,7 +198,7 @@ async function connectDataCenter(nickname) {
     getDict: async function (tags) {
       let order = getOrder()
       let promise = generateGetPromise(order)
-      globalDatacenterWebsocket.send(JSON.stringify({
+      ws.send(JSON.stringify({
         mode: 'GET_DICT',
         tags: tags,
         comment: order
@@ -209,7 +208,7 @@ async function connectDataCenter(nickname) {
     getFuzzy: async function (tags) {
       let order = getOrder()
       let promise = generateGetPromise(order)
-      globalDatacenterWebsocket.send(JSON.stringify({
+      ws.send(JSON.stringify({
         mode: 'GET_FUZZY',
         tags: tags,
         comment: order
@@ -219,7 +218,7 @@ async function connectDataCenter(nickname) {
     getAll: async function (tags) {
       let order = getOrder()
       let promise = generateGetPromise(order)
-      globalDatacenterWebsocket.send(JSON.stringify({
+      ws.send(JSON.stringify({
         mode: 'GET_ALL',
         tags: tags,
         comment: order
@@ -227,52 +226,59 @@ async function connectDataCenter(nickname) {
       return await promise
     },
     setData: async function (tags, val) {
-      globalDatacenterWebsocket.send(JSON.stringify({
+      ws.send(JSON.stringify({
         mode: 'SET',
         tags: tags,
         value: val
       }))
     },
     close: async function (code = 1000) {
-      await globalDatacenterWebsocket.close(code)
+      await ws.close(code)
     }
   }
 }
 
+// 工厂模式创建数据中心连接
+async function connectDataCenter() {
+  if (globalDatacenterWebsocket === null) {
+    globalDatacenterWebsocket = await generateDataCenterWebsocket()
+  }
+  return globalDatacenterWebsocket
+}
+
 let globalSubscribeWebsocket = null   // 全局公用的订阅socket对象
 
-async function connectSubscribe(nickname) {
-  nickname = '全局订阅'
+async function generateSubscribeWebsocket() {
+  let nickname = '全局订阅'
   let subscribe = {}    // 用来订阅的字典，key是分配的comment，value是回调函数
   let order = 0
   let getOrder = function () {
     return order++
   }
   // 创建websocket
-  if (globalSubscribeWebsocket === null) {
-    globalSubscribeWebsocket = new WebSocket(this.localConfig.subscribeUrl)
-    await new Promise(resolve => {
-      globalSubscribeWebsocket.onopen = async msg => {
-        console.log(nickname, '订阅连接成功打开', msg)
-        await globalSubscribeWebsocket.send(this.localConfig.password)
-        console.log(nickname, '订阅连接密钥发送成功')
-        resolve()
-      }
-      globalSubscribeWebsocket.onmessage = msg => {
-        msg = JSON.parse(msg.data)
-        subscribe[msg['comment']](msg)
-      }
-      globalSubscribeWebsocket.onclose = msg => {
-        console.log(nickname, '订阅连接被关闭', msg)
-      }
-    })
-  }
+  let ws = new WebSocket(localConfig.subscribeUrl)
+  await new Promise(resolve => {
+    ws.onopen = async msg => {
+      console.log(nickname, '订阅连接成功打开', msg)
+      await ws.send(localConfig.password)
+      console.log(nickname, '订阅连接密钥发送成功')
+      resolve()
+    }
+    ws.onmessage = msg => {
+      msg = JSON.parse(msg.data)
+      subscribe[msg['comment']](msg)
+    }
+    ws.onclose = msg => {
+      console.log(nickname, '订阅连接被关闭', msg)
+    }
+  })
+
 
   return {
     precise: async function (tags, callback) {
       let order = getOrder()
       subscribe[order] = callback
-      await globalSubscribeWebsocket.send(JSON.stringify({
+      await ws.send(JSON.stringify({
         mode: 'SUBSCRIBE_PRECISE',
         tags: tags,
         comment: order
@@ -281,7 +287,7 @@ async function connectSubscribe(nickname) {
     dict: async function (tags, callback) {
       let order = getOrder()
       subscribe[order] = callback
-      await globalSubscribeWebsocket.send(JSON.stringify({
+      await ws.send(JSON.stringify({
         mode: 'SUBSCRIBE_DICT',
         tags: tags,
         comment: order
@@ -290,7 +296,7 @@ async function connectSubscribe(nickname) {
     fuzzy: async function (tags, callback) {
       let order = getOrder()
       subscribe[order] = callback
-      await globalSubscribeWebsocket.send(JSON.stringify({
+      await ws.send(JSON.stringify({
         mode: 'SUBSCRIBE_FUZZY',
         tags: tags,
         comment: order
@@ -299,19 +305,26 @@ async function connectSubscribe(nickname) {
     all: async function (callback) {
       let order = getOrder()
       subscribe[order] = callback
-      await globalSubscribeWebsocket.send(JSON.stringify({
+      await ws.send(JSON.stringify({
         mode: 'SUBSCRIBE_ALL',
         comment: order
       }))
     },
     // 如果需要完整接管数据接收，可以修改此回调
     set onmessage(func) {
-      globalSubscribeWebsocket.onmessage = func
+      ws.onmessage = func
     },
     close: async function (code = 1000) {
-      globalSubscribeWebsocket.close(code)
+      ws.close(code)
     }
   }
+}
+
+async function connectSubscribe(nickname) {
+  if (globalSubscribeWebsocket === null) {
+    globalSubscribeWebsocket = await generateSubscribeWebsocket()
+  }
+  return globalSubscribeWebsocket
 }
 
 const average = arr => arr.reduce((acc, val) => acc + val, 0) / arr.length
