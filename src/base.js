@@ -249,9 +249,8 @@ async function connectSubscribe(nickname) {
       resolve()
     }
     ws.onmessage = msg => {
-      console.log(nickname, '收到消息', msg)
-      msg = JSON.stringify(msg.data)
-      subscribe[msg['comment']](msg['data'])
+      msg = JSON.parse(msg.data)
+      subscribe[msg['comment']](msg)
     }
     ws.onclose = msg => {
       console.log(nickname, '订阅连接被关闭', msg)
@@ -303,6 +302,8 @@ async function connectSubscribe(nickname) {
   }
 }
 
+const average = arr => arr.reduce((acc, val) => acc + val, 0) / arr.length
+
 export default {
   install(Vue, option) {
     Vue.prototype.method_request = method_request
@@ -312,6 +313,7 @@ export default {
     Vue.prototype.float2strRound = float2strRound
     Vue.prototype.float2strCeil = float2strCeil
     Vue.prototype.toPrecision = toPrecision
+    Vue.prototype.average = average
     Vue.prototype.localConfig = localConfig
     Vue.prototype.connectDataCenter = connectDataCenter
     Vue.prototype.connectSubscribe = connectSubscribe
