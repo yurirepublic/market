@@ -2,21 +2,21 @@
   <div class="p-2" style="background-color: #fafafa">
     <div class="mb-2 d-flex justify-content-between">
       <span class="font-weight-bold">100次资金费率图表</span>
-      <span>{{ pair_item["symbol"] }}</span>
+      <span>{{ pairSymbol }}</span>
     </div>
     <TrendChart
-      :datasets="[
+        :datasets="[
         {
-          data: price_list,
+          data: priceHistory,
           smooth: false,
           fill: true,
         },
       ]"
-      :labels="{
+        :labels="{
         yLabels: 5,
         yLabelsTextFormatter: (val) => Math.round(val * 10000) / 100 + '%',
       }"
-      :grid="{
+        :grid="{
         horizontalLines: true,
         horizontalLinesNumber: 5,
         verticalLines: true,
@@ -34,42 +34,39 @@ export default {
   name: "PremiumHistory",
 
   props: {
-    pair_item: {
-      type: Object,
-      default: function () {
-        return {};
-      },
-    },
+    pairSymbol: ''
   },
 
   data: function () {
     return {
-      price_list: [0, 0, 0],
-      times: [1, 2, 3],
+      priceHistory: [0, 0, 0],
+      cache: {},
+      ws: null,
     };
   },
 
   watch: {
-    pair_item() {
-      this.price_list = this.pair_item["premium_history"]["rate"];
-      this.times = this.pair_item["premium_history"]["time"];
-      // this.method_request("premium_history", [this.pair_item["symbol"]]).then(
-      //   (res) => {
-      //     this.price_list = res["data"]["rate"];
-      //     let temp = [];
-      //     res["data"]["time"].forEach((e) => {
-      //       let date = new Date(e);
-      //       if (date.getHours() == 0) {
-      //         temp.push(date.getDate());
-      //       }
-      //     });
-      //     this.times = temp;
-      //   }
-      // );
+    async pairSymbol(newVal) {
+      // 获取这个交易对的历史
+      if (this.cache[newVal]) {
+        this.priceHistory = this.cache[newVal]
+      }
+      else {
+        this.priceHistory = await this.ws.getData(['premium', 'fundingRateHistory', newVal])
+      }
     },
   },
 
-  mounted: function () {},
+  mounted: async function () {
+    this.ws = await this.connectDataCenter()
+    this.sub = await this.connectSubscribe()
+    // 把能拿到的交易对全部拿到做个cache
+    this.cache = await this.ws.getDict(['premium', 'fundingRateHistory'])
+    // 订阅一下History
+    await this.sub.dict(['premium', 'fundingRateHistory'], msg => {
+      this.cache[msg['special']] = msg['data']
+    })
+  },
 
   methods: {},
   components: {
