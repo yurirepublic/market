@@ -235,6 +235,12 @@ async function connectDataCenter(nickname) {
 }
 
 async function connectSubscribe(nickname) {
+  let subscribe = {}    // 用来订阅的字典，key是分配的comment，value是回调函数
+  let order = 0
+  let getOrder = function () {
+    return order++
+  }
+  // 创建websocket
   let ws = new WebSocket(this.localConfig.subscribeUrl)
   await new Promise(resolve => {
     ws.onopen = async msg => {
@@ -244,35 +250,50 @@ async function connectSubscribe(nickname) {
     }
     ws.onmessage = msg => {
       console.log(nickname, '收到消息', msg)
+      msg = JSON.stringify(msg.data)
+      subscribe[msg['comment']](msg['data'])
     }
     ws.onclose = msg => {
       console.log(nickname, '订阅连接被关闭', msg)
     }
   })
   return {
-    precise: async function (tags) {
+    precise: async function (tags, callback) {
+      let order = getOrder()
+      subscribe[order] = callback
       await ws.send(JSON.stringify({
         mode: 'SUBSCRIBE_PRECISE',
-        tags: tags
+        tags: tags,
+        comment: order
       }))
     },
-    dict: async function (tags) {
+    dict: async function (tags, callback) {
+      let order = getOrder()
+      subscribe[order] = callback
       await ws.send(JSON.stringify({
         mode: 'SUBSCRIBE_DICT',
-        tags: tags
+        tags: tags,
+        comment: order
       }))
     },
-    fuzzy: async function (tags) {
+    fuzzy: async function (tags, callback) {
+      let order = getOrder()
+      subscribe[order] = callback
       await ws.send(JSON.stringify({
         mode: 'SUBSCRIBE_FUZZY',
-        tags: tags
+        tags: tags,
+        comment: order
       }))
     },
-    all: async function () {
+    all: async function (callback) {
+      let order = getOrder()
+      subscribe[order] = callback
       await ws.send(JSON.stringify({
-        mode: 'SUBSCRIBE_ALL'
+        mode: 'SUBSCRIBE_ALL',
+        comment: order
       }))
     },
+    // 如果需要完整接管数据接收，可以修改此回调
     set onmessage(func) {
       ws.onmessage = func
     },
