@@ -10,12 +10,12 @@
       />
       <div class="input-group-append">
         <button
-          class="btn btn-light"
+          class="btn btn-light d-flex align-items-center"
           type="button"
           :disabled="disabled"
           @click.stop="$emit('click', $event)"
         >
-          <slot></slot>
+            <slot></slot>
         </button>
       </div>
     </div>
