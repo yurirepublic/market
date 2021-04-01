@@ -38,6 +38,9 @@ import {RiSettings4Line} from 'oh-vue-icons/icons'
 import {BiFileEarmarkCode} from 'oh-vue-icons/icons'
 import {BiFileEarmarkPlay} from 'oh-vue-icons/icons'
 import {RiHistoryLine} from 'oh-vue-icons/icons'
+import {RiCloseCircleLine} from 'oh-vue-icons/icons'
+import {RiCheckboxCircleLine} from 'oh-vue-icons/icons'
+import {BiArrowRight} from 'oh-vue-icons/icons'
 
 OhVueIcon.add(
   RiCloseLine,
@@ -49,7 +52,10 @@ OhVueIcon.add(
   RiSettings4Line,
   BiFileEarmarkCode,
   BiFileEarmarkPlay,
-  RiHistoryLine
+  RiHistoryLine,
+  RiCloseCircleLine,
+  RiCheckboxCircleLine,
+  BiArrowRight
 )
 Vue.component('v-icon', OhVueIcon)
 
