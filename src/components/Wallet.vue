@@ -103,15 +103,9 @@ export default {
     await this.subWs.precise(['asset', 'margin', 'USDT'], msg => {
       this.marginFree = msg['data']
     })
-    this.ws.getData(['asset', 'main', 'USDT']).then(res => {
-      this.mainFree = res
-    })
-    this.ws.getData(['asset', 'future', 'USDT']).then(res => {
-      this.futureFree = res
-    })
-    this.ws.getData(['asset', 'margin', 'USDT']).then(res => {
-      this.marginFree = res
-    })
+    this.mainFree = await this.ws.getData(['asset', 'main', 'USDT'])
+    this.futureFree = await this.ws.getData(['asset', 'future', 'USDT'])
+    this.marginFree = await this.ws.getData(['asset', 'margin', 'USDT'])
   },
   methods: {
     // 转账操作
@@ -139,30 +133,6 @@ export default {
             this.disabled_transfer_button = false;
           });
     },
-    // refresh() {
-    //   this.refresh_button_anime = true;
-    //
-    //   this.method_request("wallet_money", [])
-    //       .then((res) => {
-    //         this.mainFree = res["data"]["main_free"];
-    //         this.futureFree = res["data"]["future_free"];
-    //         this.marginFree = res['data']['margin_free'];
-    //
-    //         this.$toast.open({
-    //           message: "成功获取钱包金额",
-    //           type: "success",
-    //         });
-    //       })
-    //       .catch((error) => {
-    //         this.$toast.open({
-    //           message: "钱包金额获取失败",
-    //           type: "error",
-    //         });
-    //       })
-    //       .finally(() => {
-    //         this.refresh_button_anime = false;
-    //       });
-    // },
   },
   components: {
     InfoItem,

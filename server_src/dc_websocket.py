@@ -29,11 +29,23 @@ class Script(script_manager.Script):
         self.dc = await data_center.create_client_adapter()
         self.operator = await binance_api.create_operator()
 
+        # 针对常用的资产进行初始化（因为资产为0不会被查询到）
+        asyncio.create_task(self.dc.update({'asset', 'main', 'USDT'}, 0))
+        asyncio.create_task(self.dc.update({'asset', 'future', 'USDT'}, 0))
+        asyncio.create_task(self.dc.update({'asset', 'margin', 'USDT'}, 0))
+        asyncio.create_task(self.dc.update({'asset', 'main', 'BNB'}, 0))
+        asyncio.create_task(self.dc.update({'asset', 'future', 'BNB'}, 0))
+        asyncio.create_task(self.dc.update({'asset', 'margin', 'BNB'}, 0))
+
         # 获取现货的资产数量
         asset = await self.operator.get_all_asset_amount('MAIN')
-        # 推送到数据中心
         for key in asset.keys():
             asyncio.create_task(self.dc.update({'asset', 'main', key}, asset[key]))
+
+        # 获取期货的资产数量
+        asset = await self.operator.get_all_asset_amount('FUTURE')
+        for key in asset.keys():
+            asyncio.create_task(self.dc.update({'asset', 'future', key}, asset[key]))
 
         # 获取全仓资产数量
         asset = await self.operator.get_all_asset_amount('MARGIN')
@@ -45,9 +57,13 @@ class Script(script_manager.Script):
         for key in asset.keys():
             asyncio.create_task(self.dc.update({'asset', 'isolated', key}, asset[key]))
 
+        # 启动websocket进行追踪
         asyncio.create_task(self.main_account_update())
         asyncio.create_task(self.margin_account_update())
         asyncio.create_task(self.future_account_update())
+
+        # 期货比较特殊，纸面浮盈不会推送，所以暂定为5s刷新一次
+        asyncio.create_task(self.future_usdt())
 
         # 获取现货所有价格
         price = await self.operator.get_all_latest_price('MAIN')
@@ -62,6 +78,15 @@ class Script(script_manager.Script):
             asyncio.create_task(self.dc.update({'price', 'future', key}, price[key]))
         # 连接websocket获取推送价格
         asyncio.create_task(self.future_price_update())
+
+    async def future_usdt(self):
+        """
+        每5s刷新一下不会被推送的期货usdt余额
+        """
+        while True:
+            await asyncio.sleep(5)
+            usdt = await self.operator.get_asset_amount('USDT', 'FUTURE')
+            await self.dc.update({'asset', 'future', 'USDT'}, usdt)
 
     async def main_update(self, mode, data):
         """
