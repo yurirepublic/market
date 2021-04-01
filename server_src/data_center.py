@@ -257,7 +257,7 @@ class Server(object):
             if len(data_set) == 0:
                 return None
             elif len(data_set) == 1:
-                return data_set.pop()
+                return list(data_set)[0]
 
     def get(self, tags: Set[str]):
         """
@@ -281,7 +281,7 @@ class Server(object):
                 if len(tags) + 1 == len(e.get_tags()):
                     unique_tag_set = e.get_tags() - tags
                     # 此时unique_tag_set虽然是set，但是必然只有一个值
-                    unique_tag = unique_tag_set.pop()
+                    unique_tag = list(unique_tag_set)[0]
                     res[unique_tag] = e
             return res
 
@@ -429,7 +429,7 @@ class WebsocketServerAdapter(object):
                 if issubset(wrp.tags, tags) and len(wrp.tags) + 1 == len(tags):
                     # 筛选出特殊的tag
                     special = tags - wrp.tags
-                    special = special.pop()
+                    special = list(special)[0]
                     msg['comment'] = wrp.comment
                     msg['special'] = special
                     loop.create_task(self.subscribe_sender_dict(wrp, json.dumps(msg)))
