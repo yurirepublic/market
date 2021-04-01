@@ -658,6 +658,16 @@ class WebsocketClientAdapter(object):
             res = json.loads(await self.ws.recv())
             return res['data']
 
+    async def get_fuzzy(self, tags: Set[str], comment=''):
+        with self.threading_lock:
+            await self.ws.send(json.dumps({
+                'mode': 'GET_FUZZY',
+                'tags': list(tags),
+                'comment': comment
+            }))
+            res = json.loads(await self.ws.recv())
+            return res['data']
+
     async def get_all(self, comment=''):
         with self.threading_lock:
             await self.ws.send(json.dumps({
