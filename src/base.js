@@ -144,7 +144,7 @@ let localConfig = {
 }
 
 // 全局公用的数据中心websocket对象
-let globalDatacenterWebsocket = null
+let globalDatacenterWebsocket = generateDataCenterWebsocket()
 
 async function generateDataCenterWebsocket() {
   let nickname = '全局数据'
@@ -240,13 +240,10 @@ async function generateDataCenterWebsocket() {
 
 // 工厂模式创建数据中心连接
 async function connectDataCenter() {
-  if (globalDatacenterWebsocket === null) {
-    globalDatacenterWebsocket = await generateDataCenterWebsocket()
-  }
-  return globalDatacenterWebsocket
+  return await globalDatacenterWebsocket
 }
 
-let globalSubscribeWebsocket = null   // 全局公用的订阅socket对象
+let globalSubscribeWebsocket = generateSubscribeWebsocket()   // 全局公用的订阅socket对象promise
 
 async function generateSubscribeWebsocket() {
   let nickname = '全局订阅'
@@ -320,11 +317,8 @@ async function generateSubscribeWebsocket() {
   }
 }
 
-async function connectSubscribe(nickname) {
-  if (globalSubscribeWebsocket === null) {
-    globalSubscribeWebsocket = await generateSubscribeWebsocket()
-  }
-  return globalSubscribeWebsocket
+async function connectSubscribe() {
+  return await globalSubscribeWebsocket
 }
 
 const average = arr => arr.reduce((acc, val) => acc + val, 0) / arr.length
