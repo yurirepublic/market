@@ -9,14 +9,13 @@
         <ClickableIcon
             class=""
             name="ri-arrow-left-right-line"
-            @click="show_transfer = !show_transfer"
+            @click="showTransfer = !showTransfer"
         />
-        <RefreshButton :anime="refresh_button_anime" @click="refresh"/>
       </div>
     </div>
 
-    <InfoItem header="可用现货" :content="main_free" footer="USDT"/>
-    <div class="d-flex" v-if="show_transfer">
+    <InfoItem header="可用现货" :content="mainFree" footer="USDT"/>
+    <div class="d-flex" v-if="showTransfer">
       <TransferInput
           class="mr-1"
           placeholder="转到现货"
@@ -36,8 +35,8 @@
         <b-icon icon="box-arrow-down"></b-icon>
       </TransferInput>
     </div>
-    <InfoItem header="可用期货" :content="future_free" footer="USDT"/>
-    <div class="d-flex" v-if="show_transfer">
+    <InfoItem header="可用期货" :content="futureFree" footer="USDT"/>
+    <div class="d-flex" v-if="showTransfer">
       <TransferInput
           class="mr-1"
           placeholder="转到现货"
@@ -57,7 +56,7 @@
         <b-icon icon="box-arrow-down"></b-icon>
       </TransferInput>
     </div>
-    <InfoItem header="可用全仓" :content="margin_free" footer="USDT"/>
+    <InfoItem header="可用全仓" :content="marginFree" footer="USDT"/>
   </div>
 </template>
 
@@ -71,12 +70,13 @@ export default {
   name: "Wallet",
   data: function () {
     return {
-      main_free: "",
-      future_free: "",
-      margin_free: '',
-      refresh_button_anime: false,
+      mainFree: NaN,
+      futureFree: NaN,
+      marginFree: NaN,
 
       disabled_transfer_button: false,
+
+      transferAmount: "",
 
       future_to_main_value: "",
       main_to_future_value: "",
@@ -84,11 +84,34 @@ export default {
       margin_to_main_value: '',
       main_to_margin_value: '',
 
-      show_transfer: false,
+      showTransfer: false,
+
+      ws: null,
+      subWs: null
     };
   },
-  mounted: function () {
-    this.refresh();
+  mounted: async function () {
+    this.ws = await this.connectDataCenter()
+    this.subWs = await this.connectSubscribe()
+    // 订阅资产变动
+    await this.subWs.precise(['asset', 'main', 'USDT'], msg => {
+      this.mainFree = msg['data']
+    })
+    await this.subWs.precise(['asset', 'future', 'USDT'], msg => {
+      this.futureFree = msg['data']
+    })
+    await this.subWs.precise(['asset', 'margin', 'USDT'], msg => {
+      this.marginFree = msg['data']
+    })
+    this.ws.getData(['asset', 'main', 'USDT']).then(res => {
+      this.mainFree = res
+    })
+    this.ws.getData(['asset', 'future', 'USDT']).then(res => {
+      this.futureFree = res
+    })
+    this.ws.getData(['asset', 'margin', 'USDT']).then(res => {
+      this.marginFree = res
+    })
   },
   methods: {
     // 转账操作
@@ -107,8 +130,6 @@ export default {
             this.main_to_margin_value = ""
             this.future_to_main_value = ""
             this.margin_to_main_value = ""
-
-            this.refresh();
           })
           .catch((err) => {
             this.showToast.error("转账失败");
@@ -118,30 +139,30 @@ export default {
             this.disabled_transfer_button = false;
           });
     },
-    refresh() {
-      this.refresh_button_anime = true;
-
-      this.method_request("wallet_money", [])
-          .then((res) => {
-            this.main_free = res["data"]["main_free"];
-            this.future_free = res["data"]["future_free"];
-            this.margin_free = res['data']['margin_free'];
-
-            this.$toast.open({
-              message: "成功获取钱包金额",
-              type: "success",
-            });
-          })
-          .catch((error) => {
-            this.$toast.open({
-              message: "钱包金额获取失败",
-              type: "error",
-            });
-          })
-          .finally(() => {
-            this.refresh_button_anime = false;
-          });
-    },
+    // refresh() {
+    //   this.refresh_button_anime = true;
+    //
+    //   this.method_request("wallet_money", [])
+    //       .then((res) => {
+    //         this.mainFree = res["data"]["main_free"];
+    //         this.futureFree = res["data"]["future_free"];
+    //         this.marginFree = res['data']['margin_free'];
+    //
+    //         this.$toast.open({
+    //           message: "成功获取钱包金额",
+    //           type: "success",
+    //         });
+    //       })
+    //       .catch((error) => {
+    //         this.$toast.open({
+    //           message: "钱包金额获取失败",
+    //           type: "error",
+    //         });
+    //       })
+    //       .finally(() => {
+    //         this.refresh_button_anime = false;
+    //       });
+    // },
   },
   components: {
     InfoItem,
