@@ -62,7 +62,7 @@
         <b-icon icon="box-arrow-down"></b-icon>
       </TransferInput>
     </div>
-    
+
     <InfoItem header="全仓账户" :content="marginBNB" footer="BNB"/>
     <span class="text-muted small align-self-end">≈ {{ Math.floor(marginBNB * BNBPrice * 100) / 100 }} USDT</span>
 

@@ -13,7 +13,7 @@
           class="btn btn-light d-flex align-items-center"
           type="button"
           :disabled="disabled"
-          @click.stop="$emit('click', $event)"
+          @click.stop="$emit('click', 'confirm')"
         >
           <v-icon name="ri-checkbox-circle-line"></v-icon>
         </button>
@@ -23,7 +23,7 @@
             class="btn btn-light d-flex align-items-center"
             type="button"
             :disabled="disabled"
-            @click.stop="$emit('click', $event)"
+            @click.stop="$emit('click', 'cancel')"
         >
           <v-icon name="ri-close-circle-line"></v-icon>
         </button>
