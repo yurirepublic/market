@@ -12,6 +12,7 @@ precision quote future <>
 资产余额
 asset main <
 asset future <
+asset margin <
 
 仓位
 position future <>

@@ -238,7 +238,7 @@ async function generateDataCenterWebsocket() {
   }
 }
 
-// 工厂模式创建数据中心连接
+// 单例模式创建数据中心连接
 async function connectDataCenter() {
   return await globalDatacenterWebsocket
 }
