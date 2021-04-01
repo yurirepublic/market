@@ -18,63 +18,39 @@
     <InfoItem header="现货账户" :content="mainBNB" footer="BNB"/>
     <span class="text-muted small align-self-end">≈ {{ Math.floor(mainBNB * BNBPrice * 100) / 100 }} USDT</span>
 
-    <div class="d-flex" v-if="showTransfer">
-      <TransferInput
-          class="mr-1"
-          placeholder="转到现货"
-          :disabled="disabled_transfer_button"
-          v-model="future_to_main_value"
-          @click="Transfer('UMFUTURE_MAIN', future_to_main_value)"
-      >
-        <b-icon icon="box-arrow-up"></b-icon>
-      </TransferInput>
-      <TransferInput
-          class="ml-1"
-          placeholder="转到期货"
-          :disabled="disabled_transfer_button"
-          v-model="main_to_future_value"
-          @click="Transfer('MAIN_UMFUTURE', main_to_future_value)"
-      >
-        <b-icon icon="box-arrow-down"></b-icon>
-      </TransferInput>
-    </div>
-
     <InfoItem header="期货账户" :content="futureBNB" footer="BNB"/>
     <span class="text-muted small align-self-end">≈ {{ Math.floor(futureBNB * BNBPrice * 100) / 100 }} USDT</span>
-
-    <div class="d-flex" v-if="showTransfer">
-      <TransferInput
-          class="mr-1"
-          placeholder="转到现货"
-          :disabled="disabled_transfer_button"
-          v-model="margin_to_main_value"
-          @click="Transfer('MARGIN_MAIN', margin_to_main_value)"
-      >
-        <b-icon icon="box-arrow-up"></b-icon>
-      </TransferInput>
-      <TransferInput
-          class="ml-1"
-          placeholder="转到全仓"
-          :disabled="disabled_transfer_button"
-          v-model="main_to_margin_value"
-          @click="Transfer('MAIN_MARGIN', main_to_margin_value)"
-      >
-        <b-icon icon="box-arrow-down"></b-icon>
-      </TransferInput>
-    </div>
 
     <InfoItem header="全仓账户" :content="marginBNB" footer="BNB"/>
     <span class="text-muted small align-self-end">≈ {{ Math.floor(marginBNB * BNBPrice * 100) / 100 }} USDT</span>
 
+    <div v-if="showTransfer">
+      <div class="py-1 d-flex justify-content-between align-items-center">
+        <Radio @click="fromMode = $event" init-active="现货" :options="['现货', '期货', '全仓']"></Radio>
+        <v-icon name="bi-arrow-right"></v-icon>
+        <Radio @click="toMode = $event" init-active="期货" :options="['现货', '期货', '全仓']"></Radio>
+      </div>
+      <div class="d-flex flex-column">
+        <TransferInput
+            class=""
+            placeholder="转账金额"
+            :disabled="disabledTransferButton"
+            v-model="transferAmount"
+            @click="Transfer"
+        >
+        </TransferInput>
+      </div>
+    </div>
   </div>
 </template>
 
 <script>
-import InfoItem from "@/components/InfoItem.vue";
-import RefreshButton from "@/components/RefreshButton.vue";
-import TransferInput from "@/components/TransferInput.vue";
-import ClickableIcon from "@/components/ClickableIcon.vue";
-import NoBorderButton from "@/components/NoBorderButton";
+import InfoItem from "@/components/InfoItem.vue"
+import RefreshButton from "@/components/RefreshButton.vue"
+import TransferInput from "@/components/TransferInput.vue"
+import ClickableIcon from "@/components/ClickableIcon.vue"
+import NoBorderButton from "@/components/NoBorderButton"
+import Radio from '@/components/Radio.vue'
 
 export default {
   name: "BNBWallet",
@@ -85,18 +61,14 @@ export default {
       marginBNB: "",
       BNBPrice: "",
 
+      transferAmount: "",
+
+      fromMode: '现货',
+      toMode: '期货',
+
       showTransfer: false,   // 显示转账输入框
 
-      disabled_transfer_button: false,
-
-      main_to_future_value: "",        // 现货转期货数目
-      main_to_margin_value: "",
-      future_to_main_value: "",        // 期货转现货数目
-      margin_to_main_value: "",
-
-      spot_bnb_burn: false,
-      interest_bnb_burn: false,
-      disabled_bnb_burn_button: false,
+      disabledTransferButton: false,
     };
   },
   mounted: async function () {
@@ -113,82 +85,72 @@ export default {
     await this.subWs.precise(['asset', 'marin', 'BNB'], msg => {
       this.marginBNB = msg['data']
     })
+    await this.subWs.precise(['price', 'main', 'BNBUSDT'], msg => {
+      this.BNBPrice = msg['data']
+    })
     this.mainBNB = await this.ws.getData(['asset', 'main', 'BNB'])
     this.futureBNB = await this.ws.getData(['asset', 'future', 'BNB'])
     this.marginBNB = await this.ws.getData(['asset', 'margin', 'BNB'])
   },
   methods: {
     // 转账操作
-    Transfer: function (mode, amount) {
-      this.disabled_transfer_button = true;
-      this.showToast.info("开始转账");
-      this.method_request("transfer", [
-        mode,
-        "BNB",
-        amount,
-      ])
-          .then((res) => {
-            this.showToast.success("转账成功");
-            // 转账成功了清空一下输入
-            this.main_to_future_value = ""
-            this.main_to_margin_value = ""
-            this.future_to_main_value = ""
-            this.margin_to_main_value = ""
-
-          })
-          .catch((err) => {
-            this.showToast.error("转账失败");
-          })
-          .finally(() => {
-            this.disabled_transfer_button = false;
-          });
-    },
-
-    BNBBurnClick: function (event) {
-      this.disabled_bnb_burn_button = true
-      let promise = null
-      if (event === 'spot') {
-        promise = this.method_request('set_bnb_burn', [!this.spot_bnb_burn, this.interest_bnb_burn])
-      } else {
-        promise = this.method_request('set_bnb_burn', [this.spot_bnb_burn, !this.interest_bnb_burn])
+    Transfer: async function (mode) {
+      if (mode === 'cancel') {
+        this.showTransfer = false
+        return
       }
-      promise
-          .then(res => {
-            this.spot_bnb_burn = res['data']['spotBNBBurn']
-            this.interest_bnb_burn = res['data']['interestBNBBurn']
-            this.showToast.success("成功设置BNB燃烧状态")
-          })
-          .catch(err => {
-            this.showToast.error('设置BNB燃烧状态失败')
-          })
-          .finally(() => {
-            this.disabled_bnb_burn_button = false
-          })
+      if (this.fromMode === this.toMode) {
+        this.showToast.warning('不能自己转给自己')
+        return
+      }
+      this.disabledTransferButton = true
+      // 生成转账模式
+      let transferMode = ''
+      switch (this.fromMode) {
+        case '现货':
+          transferMode += 'MAIN'
+          break
+        case '全仓':
+          transferMode += 'MARGIN'
+          break
+        case '期货':
+          transferMode += 'UMFUTURE'
+      }
+      transferMode += '_'
+      switch (this.toMode) {
+        case '现货':
+          transferMode += 'MAIN'
+          break
+        case '全仓':
+          transferMode += 'MARGIN'
+          break
+        case '期货':
+          transferMode += 'UMFUTURE'
+      }
+      this.showToast.info("开始转账");
+      try {
+        await this.method_request("transfer", [
+          transferMode,
+          'BNB',
+          this.transferAmount,
+        ])
+        this.showToast.success("转账成功")
+        // 转账成功了清空一下输入
+        this.transferAmount = ''
+      } catch (err) {
+        this.showToast.error("转账失败")
+      } finally {
+        this.disabledTransferButton = false
+      }
     },
-
-    // 刷新BNB燃烧情况
-    RefreshBNBBurn: function () {
-      this.disabled_bnb_burn_button = true
-      this.method_request('get_bnb_burn', [])
-          .then(res => {
-            this.spot_bnb_burn = res['data']['spotBNBBurn']
-            this.interest_bnb_burn = res['data']['interestBNBBurn']
-            this.showToast.success("成功获取BNB燃烧状态")
-          })
-          .catch(err => {
-            this.showToast.error('BNB燃烧状态获取失败')
-          })
-          .finally(() => {
-            this.disabled_bnb_burn_button = false
-          })
-    }
   },
   components: {
     InfoItem,
     RefreshButton,
     TransferInput,
     ClickableIcon,
-    NoBorderButton
+    NoBorderButton,
+    Radio
   },
 };
 </script>
