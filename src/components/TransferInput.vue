@@ -2,7 +2,7 @@
   <div class="card" style="background-color: #f0f1f2">
     <div class="input-group">
       <input
-        class="form-control text-right"
+        class="form-control text-left"
         :type="type"
         :placeholder="placeholder"
         :value="value"
@@ -15,7 +15,17 @@
           :disabled="disabled"
           @click.stop="$emit('click', $event)"
         >
-            <slot></slot>
+          <v-icon name="ri-checkbox-circle-line"></v-icon>
+        </button>
+      </div>
+      <div class="input-group-append">
+        <button
+            class="btn btn-light d-flex align-items-center"
+            type="button"
+            :disabled="disabled"
+            @click.stop="$emit('click', $event)"
+        >
+          <v-icon name="ri-close-circle-line"></v-icon>
         </button>
       </div>
     </div>
