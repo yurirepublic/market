@@ -350,7 +350,7 @@ class WebsocketServerAdapter(object):
         self.data_center = data_center
 
         self.connect_identification = 0  # 用于给传入连接分配识别码的
-        self.identify_lock = threading.Lock()  # 计算识别码的锁
+        self.identify_lock = asyncio.Lock()  # 计算识别码的锁
 
         self.subscribe_queue: queue.Queue[DataWrapper] = queue.Queue()  # 等待配布的订阅数据，由数据中心通过回调发送
 
@@ -486,11 +486,11 @@ class WebsocketServerAdapter(object):
                 # 对于重复删除直接无视。因为有可能被发现连接断开前，有多个协程开始拿着这个ws在运作
                 pass
 
-    def assign_identification(self):
+    async def assign_identification(self):
         """
         分配线程识别码
         """
-        with self.identify_lock:
+        async with self.identify_lock:
             identification = self.connect_identification
             self.connect_identification += 1
             if self.connect_identification > 1000000:
@@ -502,7 +502,7 @@ class WebsocketServerAdapter(object):
         用来处理传入的订阅连接
         """
         # 直接将ws塞进去
-        identification = self.assign_identification()
+        identification = await self.assign_identification()
         print('新增一个数据中心订阅，分配识别码{}'.format(identification))
         try:
             # 检验连接的口令
@@ -548,7 +548,7 @@ class WebsocketServerAdapter(object):
         用此函数处理websocket数据
         """
         # 给此链接分配识别码，识别码会循环使用
-        identification = self.assign_identification()
+        identification = await self.assign_identification()
         try:
             print('新传入websocket连接，分配识别码{}'.format(identification))
             # 传入连接后首先发送的必是口令
@@ -612,7 +612,7 @@ class WebsocketClientAdapter(object):
     """
 
     def __init__(self):
-        self.threading_lock = threading.Lock()
+        self.threading_lock = asyncio.Lock()
 
         self.ws = None
 
@@ -630,7 +630,7 @@ class WebsocketClientAdapter(object):
         await self.ws.close()
 
     async def update(self, tags: Set[str], value, timestamp: int = None):
-        with self.threading_lock:
+        async with self.threading_lock:
             await self.ws.send(json.dumps({
                 'mode': 'SET',
                 'tags': list(tags),
@@ -639,7 +639,7 @@ class WebsocketClientAdapter(object):
             }))
 
     async def get(self, tags: Set[str], comment=''):
-        with self.threading_lock:
+        async with self.threading_lock:
             await self.ws.send(json.dumps({
                 'mode': 'GET',
                 'tags': list(tags),
@@ -649,7 +649,7 @@ class WebsocketClientAdapter(object):
             return res['data']
 
     async def get_dict(self, tags: Set[str], comment=''):
-        with self.threading_lock:
+        async with self.threading_lock:
             await self.ws.send(json.dumps({
                 'mode': 'GET_DICT',
                 'tags': list(tags),
@@ -659,7 +659,7 @@ class WebsocketClientAdapter(object):
             return res['data']
 
     async def get_fuzzy(self, tags: Set[str], comment=''):
-        with self.threading_lock:
+        async with self.threading_lock:
             await self.ws.send(json.dumps({
                 'mode': 'GET_FUZZY',
                 'tags': list(tags),
@@ -669,7 +669,7 @@ class WebsocketClientAdapter(object):
             return res['data']
 
     async def get_all(self, comment=''):
-        with self.threading_lock:
+        async with self.threading_lock:
             await self.ws.send(json.dumps({
                 'mode': 'GET_ALL',
                 'comment': comment
