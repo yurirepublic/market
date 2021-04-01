@@ -10,16 +10,15 @@
         <ClickableIcon
             class=""
             name="ri-arrow-left-right-line"
-            @click="show_transfer = !show_transfer"
+            @click="showTransfer = !showTransfer"
         />
-        <RefreshButton :anime="refresh_button_anime" @click="RefreshWallet"/>
       </div>
     </div>
 
-    <InfoItem header="现货账户" :content="main_bnb" footer="BNB"/>
-    <span class="text-muted small align-self-end">≈ {{ Math.floor(main_bnb * bnb_price * 100) / 100 }} USDT</span>
+    <InfoItem header="现货账户" :content="mainBNB" footer="BNB"/>
+    <span class="text-muted small align-self-end">≈ {{ Math.floor(mainBNB * BNBPrice * 100) / 100 }} USDT</span>
 
-    <div class="d-flex" v-if="show_transfer">
+    <div class="d-flex" v-if="showTransfer">
       <TransferInput
           class="mr-1"
           placeholder="转到现货"
@@ -40,10 +39,10 @@
       </TransferInput>
     </div>
 
-    <InfoItem header="期货账户" :content="future_bnb" footer="BNB"/>
-    <span class="text-muted small align-self-end">≈ {{ Math.floor(future_bnb * bnb_price * 100) / 100 }} USDT</span>
+    <InfoItem header="期货账户" :content="futureBNB" footer="BNB"/>
+    <span class="text-muted small align-self-end">≈ {{ Math.floor(futureBNB * BNBPrice * 100) / 100 }} USDT</span>
 
-    <div class="d-flex" v-if="show_transfer">
+    <div class="d-flex" v-if="showTransfer">
       <TransferInput
           class="mr-1"
           placeholder="转到现货"
@@ -63,24 +62,9 @@
         <b-icon icon="box-arrow-down"></b-icon>
       </TransferInput>
     </div>
-
-
-    <InfoItem header="全仓账户" :content="margin_bnb" footer="BNB"/>
-    <span class="text-muted small align-self-end">≈ {{ Math.floor(margin_bnb * bnb_price * 100) / 100 }} USDT</span>
-
-    <div class="d-flex">
-      <no-border-button @click="BNBBurnClick('spot')" :disabled="disabled_bnb_burn_button">
-        <input class="align-middle" type="checkbox" :checked="spot_bnb_burn"/>
-        <span class="text-muted small ml-1 align-middle">手续费BNB燃烧</span>
-      </no-border-button>
-
-      <no-border-button @click="BNBBurnClick('interest')" :disabled="disabled_bnb_burn_button">
-        <input class="align-middle" type="checkbox" :checked="interest_bnb_burn"/>
-        <span class="text-muted small ml-1 align-middle">利息BNB燃烧</span>
-      </no-border-button>
-
-
-    </div>
+    
+    <InfoItem header="全仓账户" :content="marginBNB" footer="BNB"/>
+    <span class="text-muted small align-self-end">≈ {{ Math.floor(marginBNB * BNBPrice * 100) / 100 }} USDT</span>
 
   </div>
 </template>
@@ -96,14 +80,13 @@ export default {
   name: "BNBWallet",
   data: function () {
     return {
-      main_bnb: "",
-      future_bnb: "",
-      margin_bnb: "",
-      bnb_price: "",
+      mainBNB: "",
+      futureBNB: "",
+      marginBNB: "",
+      BNBPrice: "",
 
-      show_transfer: false,   // 显示转账输入框
+      showTransfer: false,   // 显示转账输入框
 
-      refresh_button_anime: false,
       disabled_transfer_button: false,
 
       main_to_future_value: "",        // 现货转期货数目
@@ -116,9 +99,23 @@ export default {
       disabled_bnb_burn_button: false,
     };
   },
-  mounted: function () {
-    this.RefreshWallet()
-    this.RefreshBNBBurn()
+  mounted: async function () {
+    this.ws = await this.connectDataCenter()
+    this.subWs = await this.connectSubscribe()
+
+    this.BNBPrice = await this.ws.getData(['price', 'main', 'BNBUSDT'])
+    await this.subWs.precise(['asset', 'main', 'BNB'], msg => {
+      this.mainBNB = msg['data']
+    })
+    await this.subWs.precise(['asset', 'future', 'BNB'], msg => {
+      this.futureBNB = msg['data']
+    })
+    await this.subWs.precise(['asset', 'marin', 'BNB'], msg => {
+      this.marginBNB = msg['data']
+    })
+    this.mainBNB = await this.ws.getData(['asset', 'main', 'BNB'])
+    this.futureBNB = await this.ws.getData(['asset', 'future', 'BNB'])
+    this.marginBNB = await this.ws.getData(['asset', 'margin', 'BNB'])
   },
   methods: {
     // 转账操作
@@ -138,37 +135,12 @@ export default {
             this.future_to_main_value = ""
             this.margin_to_main_value = ""
 
-            this.RefreshWallet();
           })
           .catch((err) => {
             this.showToast.error("转账失败");
-            this.RefreshWallet();
           })
           .finally(() => {
             this.disabled_transfer_button = false;
-          });
-    },
-
-    // 刷新余额操作
-    RefreshWallet: function () {
-      this.refresh_button_anime = true;
-      this.method_request("bnb_asset", [])
-          .then((res) => {
-            this.main_bnb = res['data']['main_bnb']
-            this.future_bnb = res['data']['future_bnb']
-            this.margin_bnb = res['data']['margin_bnb']
-            this.bnb_price = res['data']['bnb_price']
-            //
-            // this.bnb_usdt = "≈ " + res["data"]["asset_usdt"] + " USDT";
-            // this.bnb_future_usdt =
-            //     "≈ " + res["data"]["asset_future_usdt"] + " USDT";
-            this.showToast.success("成功获取BNB资产");
-          })
-          .catch((error) => {
-            this.showToast.error("BNB资产获取失败");
-          })
-          .finally(() => {
-            this.refresh_button_anime = false;
           });
     },
 
