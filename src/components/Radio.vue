@@ -3,7 +3,7 @@
     <button
         class="p-1 small"
         v-for="(option, index) in options"
-        v-bind:class="{'isActive': active === option, 'mr-1': index != options.length - 1}"
+        v-bind:class="{'isActive': active === option, 'mr-1': index !== options.length - 1}"
         @click.stop="active = option;$emit('click', option)"
     >
       {{ option }}
@@ -19,6 +19,10 @@ export default {
       type: Array,
       default: []
     },
+    initActive: {
+      type: null,
+      default: ''
+    }
   },
   data: function () {
     return {
@@ -26,7 +30,13 @@ export default {
     }
   },
   mounted: function () {
-    this.active = this.options[0]
+    if (this.initActive === '') {
+      this.active = this.options[0]
+    }
+    else {
+      this.active = this.initActive
+    }
+
   }
 
 }

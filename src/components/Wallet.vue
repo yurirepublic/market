@@ -15,56 +15,34 @@
     </div>
 
     <InfoItem header="可用现货" :content="mainFree" footer="USDT"/>
-    <div class="d-flex" v-if="showTransfer">
-      <TransferInput
-          class="mr-1"
-          placeholder="转到现货"
-          :disabled="disabled_transfer_button"
-          v-model="future_to_main_value"
-          @click="Transfer('UMFUTURE_MAIN', future_to_main_value)"
-      >
-        <b-icon icon="box-arrow-up"></b-icon>
-      </TransferInput>
-      <TransferInput
-          class="ml-1"
-          placeholder="转到期货"
-          :disabled="disabled_transfer_button"
-          v-model="main_to_future_value"
-          @click="Transfer('MAIN_UMFUTURE', main_to_future_value)"
-      >
-        <b-icon icon="box-arrow-down"></b-icon>
-      </TransferInput>
-    </div>
     <InfoItem header="可用期货" :content="futureFree" footer="USDT"/>
-    <div class="d-flex" v-if="showTransfer">
-      <TransferInput
-          class="mr-1"
-          placeholder="转到现货"
-          :disabled="disabled_transfer_button"
-          v-model="margin_to_main_value"
-          @click="Transfer('MARGIN_MAIN', margin_to_main_value)"
-      >
-        <b-icon icon="box-arrow-up"></b-icon>
-      </TransferInput>
-      <TransferInput
-          class="ml-1"
-          placeholder="转到全仓"
-          :disabled="disabled_transfer_button"
-          v-model="main_to_margin_value"
-          @click="Transfer('MAIN_MARGIN', main_to_margin_value)"
-      >
-        <b-icon icon="box-arrow-down"></b-icon>
-      </TransferInput>
-    </div>
     <InfoItem header="可用全仓" :content="marginFree" footer="USDT"/>
+    <div v-if="showTransfer">
+      <div class="py-1 d-flex justify-content-between align-items-center">
+        <Radio @click="fromMode = $event" init-active="现货" :options="['现货', '期货', '全仓']"></Radio>
+        <v-icon name="bi-arrow-right"></v-icon>
+        <Radio @click="toMode = $event" init-active="期货" :options="['现货', '期货', '全仓']"></Radio>
+      </div>
+      <div class="d-flex flex-column">
+        <TransferInput
+            class=""
+            placeholder="转账金额"
+            :disabled="disabledTransferButton"
+            v-model="transferAmount"
+            @click="Transfer"
+        >
+        </TransferInput>
+      </div>
+    </div>
   </div>
 </template>
 
 <script>
-import InfoItem from "@/components/InfoItem.vue";
-import RefreshButton from "@/components/RefreshButton.vue";
-import TransferInput from "@/components/TransferInput.vue";
-import ClickableIcon from "@/components/ClickableIcon.vue";
+import InfoItem from "@/components/InfoItem.vue"
+import RefreshButton from "@/components/RefreshButton.vue"
+import TransferInput from "@/components/TransferInput.vue"
+import ClickableIcon from "@/components/ClickableIcon.vue"
+import Radio from "@/components/Radio.vue"
 
 export default {
   name: "Wallet",
@@ -74,15 +52,12 @@ export default {
       futureFree: NaN,
       marginFree: NaN,
 
-      disabled_transfer_button: false,
+      disabledTransferButton: false,
 
       transferAmount: "",
 
-      future_to_main_value: "",
-      main_to_future_value: "",
-
-      margin_to_main_value: '',
-      main_to_margin_value: '',
+      fromMode: '现货',
+      toMode: '期货',
 
       showTransfer: false,
 
@@ -109,29 +84,54 @@ export default {
   },
   methods: {
     // 转账操作
-    Transfer: function (mode, amount) {
-      this.disabled_transfer_button = true;
+    Transfer: async function (mode) {
+      if (mode === 'cancel') {
+        this.showTransfer = false
+        return
+      }
+      if (this.fromMode === this.toMode) {
+        this.showToast.warning('不能自己转给自己')
+        return
+      }
+      this.disabledTransferButton = true
+      // 生成转账模式
+      let transferMode = ''
+      switch (this.fromMode) {
+        case '现货':
+          transferMode += 'MAIN'
+          break
+        case '全仓':
+          transferMode += 'MARGIN'
+          break
+        case '期货':
+          transferMode += 'UMFUTURE'
+      }
+      transferMode += '_'
+      switch (this.toMode) {
+        case '现货':
+          transferMode += 'MAIN'
+          break
+        case '全仓':
+          transferMode += 'MARGIN'
+          break
+        case '期货':
+          transferMode += 'UMFUTURE'
+      }
       this.showToast.info("开始转账");
-      this.method_request("transfer", [
-        mode,
-        "USDT",
-        amount,
-      ])
-          .then((res) => {
-            this.showToast.success("转账成功");
-            // 转账成功了清空一下输入
-            this.main_to_future_value = ""
-            this.main_to_margin_value = ""
-            this.future_to_main_value = ""
-            this.margin_to_main_value = ""
-          })
-          .catch((err) => {
-            this.showToast.error("转账失败");
-            this.refresh();
-          })
-          .finally(() => {
-            this.disabled_transfer_button = false;
-          });
+      try {
+        await this.method_request("transfer", [
+          transferMode,
+          "USDT",
+          this.transferAmount,
+        ])
+        this.showToast.success("转账成功")
+        // 转账成功了清空一下输入
+        this.transferAmount = ''
+      } catch (err) {
+        this.showToast.error("转账失败")
+      } finally {
+        this.disabledTransferButton = false
+      }
     },
   },
   components: {
@@ -139,6 +139,7 @@ export default {
     RefreshButton,
     TransferInput,
     ClickableIcon,
+    Radio
   },
 };
 </script>

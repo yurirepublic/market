@@ -1,9 +1,9 @@
 import request from 'request'
 import Vue from 'vue'
 
-async function method_request(func, args) {
+function method_request(func, args) {
   // 发送请求
-  return await new Promise((resolve, reject) => {
+  return new Promise((resolve, reject) => {
     request.post(
       {
         url: localConfig.serverUrl,
@@ -36,7 +36,6 @@ async function method_request(func, args) {
       }
     );
   })
-
 }
 
 // 用来方便判断是不是数字
