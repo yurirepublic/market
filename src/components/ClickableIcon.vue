@@ -1,9 +1,9 @@
 <template>
   <button
-    class="float-right"
-    type="button"
-    @click="$emit('click', '$event')"
-    :disabled="disabled"
+      class="float-right"
+      type="button"
+      @click="$emit('click', '$event')"
+      :disabled="disabled"
   >
     <v-icon :name="name"></v-icon>
   </button>
@@ -37,5 +37,9 @@ button {
   border-radius: 5px;
   border-style: none;
   color: #000;
+}
+
+button:hover {
+  background-color: #ddd;
 }
 </style>
