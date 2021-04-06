@@ -13,7 +13,7 @@ import time
 # 引入websocket相关
 import websockets
 import asyncio
-import functools
+import ssl
 
 # 读取配置文件
 with open('config.json', 'r', encoding='utf-8') as f:
@@ -322,7 +322,6 @@ class Server(object):
 class WebsocketServerAdapter(object):
     """
     数据中心的websocket接口服务端
-    TODO: 现在是不加密的，加密后莫名其妙连不上
     """
 
     def __init__(self, data_center: Server):
@@ -344,18 +343,23 @@ class WebsocketServerAdapter(object):
         self.loop = asyncio.get_event_loop()
 
     async def init(self):
+        # 生成tls上下文
+        ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        ssl_context.load_cert_chain(config['api']['ssl_pem'], config['api']['ssl_key'])
+
         # websocket接口部分
         server_ip = config['data_center']['server_ip']
         server_port = config['data_center']['server_port']
 
-        self.adapter = await websockets.serve(self.recv, server_ip, server_port)
+        self.adapter = await websockets.serve(self.recv, server_ip, server_port, ssl=ssl_context)
         print('成功启动数据中心服务端websocket接口，运行在{}:{}'.format(server_ip, server_port))
 
         # websocket订阅部分
         subscribe_ip = config['data_center']['subscribe_server_ip']
         subscribe_port = config['data_center']['subscribe_server_port']
 
-        self.subscribe_adapter = await websockets.serve(self.subscribe_recv, subscribe_ip, subscribe_port)
+        self.subscribe_adapter = await websockets.serve(self.subscribe_recv, subscribe_ip, subscribe_port,
+                                                        ssl=ssl_context)
         print('成功启动数据中心订阅接口，运行在{}:{}'.format(subscribe_ip, subscribe_port))
 
         # 向数据中心挂一个全局更新回调
@@ -602,7 +606,7 @@ class WebsocketClientAdapter(object):
         # 连接websocket
         client_ip = config['data_center']['client_ip']
         client_port = config['data_center']['client_port']
-        url = 'ws://{}:{}'.format(client_ip, client_port)
+        url = 'wss://{}:{}'.format(client_ip, client_port)
         print('即将连接数据中心接口' + url)
         self.ws = await websockets.connect(url)
         await self.ws.send(config['password'])
@@ -672,7 +676,7 @@ class WebsocketSubscribe(object):
         # 连接subscribe
         ip = config['data_center']['subscribe_client_ip']
         port = config['data_center']['subscribe_client_port']
-        url = 'ws://{}:{}'.format(ip, port)
+        url = 'wss://{}:{}'.format(ip, port)
         print('即将连接订阅接口' + url)
         self.ws = await websockets.connect(url)
         await self.ws.send(config['password'])
