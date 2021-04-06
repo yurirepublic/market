@@ -1,22 +1,22 @@
 import binance_api
 import time
-import tools
+import script_manager
 import json
 import math
 import multiprocessing
 
-operator = binance_api.SmartOperator()  # 实例化一个币安api的操作者
 
-
-class Script(tools.Script):
+class Script(script_manager.Script):
     def info(self):
-        info = tools.ScriptInfo()
+        info = script_manager.ScriptInfo()
         info.title = "自动紧急平仓"
-        info.description = """需要手动改代码
+        info.description = """
+        需要手动改代码
         """
         return info
 
     def main(self):
+        operator = binance_api.SmartOperator()  # 实例化一个币安api的操作者
 
         while True:
             # 获取余额

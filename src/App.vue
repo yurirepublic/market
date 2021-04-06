@@ -1,6 +1,5 @@
 <template>
   <div class="d-flex flex-column" style="height: 100%">
-    <TitleBar style="-webkit-app-region: drag" />
     <div class="d-flex" style="height: 100%">
       <FuncSwitchBar :focus_page="focus_page" @click="switchPage" />
       <div v-show="focus_page == 'premium'">
@@ -32,7 +31,6 @@
 // document.body.style.height = "100%";
 
 import premium from "@/components/premium.vue";
-import TitleBar from "@/components/TitleBar.vue";
 import FuncSwitchBar from "@/components/FuncSwitchBar.vue";
 import Setting from "@/components/Setting.vue";
 import RunningScript from "@/components/RunningScript.vue";
@@ -51,7 +49,6 @@ export default {
   },
   components: {
     premium,
-    TitleBar,
     FuncSwitchBar,
     Setting,
     RunningScript,
@@ -68,7 +65,7 @@ body {
   background-color: #f5f5f5;
 }
 
-/* 
+/*
 #app {
   font-family: Avenir, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;

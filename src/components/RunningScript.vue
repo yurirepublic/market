@@ -78,10 +78,10 @@ export default {
       this.method_request("running_script", [])
         .then((res) => {
           this.running_script_list = res.data;
-          this.showToast().success("运行中的脚本列表获取成功");
+          this.showToast.success("运行中的脚本列表获取成功");
         })
         .catch((err) => {
-          this.showToast().error("运行中的脚本列表获取失败");
+          this.showToast.error("运行中的脚本列表获取失败");
         })
         .finally(() => {
           this.refresh_button_anime = false;
@@ -91,10 +91,10 @@ export default {
       this.button_disabled = true;
       this.method_request("stop_script", [item.thread_id])
         .then((res) => {
-          this.showToast().success("脚本终止成功");
+          this.showToast.success("脚本终止成功");
         })
         .catch((err) => {
-          this.showToast().error("脚本终止失败");
+          this.showToast.error("脚本终止失败");
         })
         .finally(() => {
           this.button_disabled = false;
@@ -105,10 +105,10 @@ export default {
       this.method_request("script_log", [item.thread_id])
         .then((res) => {
           this.focus_log = res.data;
-          this.showToast().success("获取选中脚本log成功");
+          this.showToast.success("获取选中脚本log成功");
         })
         .catch((err) => {
-          this.showToast().error("获取选中脚本log失败");
+          this.showToast.error("获取选中脚本log失败");
         });
     },
   },

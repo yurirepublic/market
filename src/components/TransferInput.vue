@@ -1,23 +1,32 @@
 <template>
   <div class="card" style="background-color: #f0f1f2">
-    <div class="input-group">
+    <div class="d-flex justify-content-between">
       <input
-        class="form-control text-right"
-        :type="type"
-        :placeholder="placeholder"
-        :value="value"
-        @input="$emit('input', $event.target.value)"
+          class="p-2 text-left flex-shrink-1"
+          :type="type"
+          :placeholder="placeholder"
+          :value="value"
+          @input="$emit('input', $event.target.value)"
       />
-      <div class="input-group-append">
+      <div class="d-flex">
         <button
-          class="btn btn-light"
-          type="button"
-          :disabled="disabled"
-          @click.stop="$emit('click', $event)"
+            class="d-flex align-items-center"
+            type="button"
+            :disabled="disabled"
+            @click.stop="$emit('click', 'confirm')"
         >
-          <slot></slot>
+          <v-icon class="mx-1" name="ri-checkbox-circle-line"></v-icon>
+        </button>
+        <button
+            class="d-flex align-items-center"
+            type="button"
+            :disabled="disabled"
+            @click.stop="$emit('click', 'cancel')"
+        >
+          <v-icon class="mx-1" name="ri-close-circle-line"></v-icon>
         </button>
       </div>
+
     </div>
   </div>
 </template>
@@ -51,48 +60,31 @@ export default {
 
 .card {
   border: none;
-  border-radius: 0.5rem;
+  border-radius: 5px;
 }
 
-.input-group-text {
-  border: 0;
-  background-color: transparent;
+input {
+  font-family: 'JetBrains Mono';
+  border: none;
+  background: transparent;
+  width: 100%;
 }
 
-.form-control {
-  border: 0;
-  box-shadow: none;
-  background-color: transparent;
-  font-family: "JetBrainsMono";
-}
-
-.form-control:disabled {
-  background-color: transparent;
-}
-
-.form-control:focus {
-  border-color: none;
-  box-shadow: none;
-  background-color: transparent;
+input:focus {
+  outline: none;
 }
 
 button {
-  background-color: transparent;
-  border: none;
+  border-radius: 5px;
+  border-style: none;
+  color: #000;
 }
-button:active {
-  border: none;
-}
+
 button:hover {
-  border: none;
+  background-color: #ddd;
 }
-button:focus {
-  background-color: transparent;
-  border: none;
-  box-shadow: none;
-}
-button:not(:disabled):not(.disabled):active:focus {
-  box-shadow: none;
-  border: none;
+
+button:disabled {
+  color: #888;
 }
 </style>

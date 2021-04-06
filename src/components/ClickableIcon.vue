@@ -1,9 +1,9 @@
 <template>
   <button
-    class="btn btn-light btn-sm float-right"
-    type="button"
-    @click="$emit('click', '$event')"
-    :disabled="disabled"
+      class="float-right"
+      type="button"
+      @click="$emit('click', '$event')"
+      :disabled="disabled"
   >
     <v-icon :name="name"></v-icon>
   </button>
@@ -14,7 +14,10 @@ export default {
   name: "ClickableIcon",
 
   props: {
-    name: "",
+    name: {
+      type: String,
+      default: ''
+    }
   },
 
   data: function () {
@@ -25,41 +28,18 @@ export default {
     };
   },
 
-  watch: {
-    // anime: function (newValue, oldValue) {
-    //   if (newValue == true) {
-    //     this.animation = "spin-reverse";
-    //     this.disabled = true;
-    //   } else {
-    //     this.animation = "";
-    //     this.disabled = false;
-    //   }
-    // },
-  },
-
   components: {},
 };
 </script>
 
 <style scoped>
 button {
-  background-color: transparent;
-  border: none;
+  border-radius: 5px;
+  border-style: none;
+  color: #000;
 }
-button:active {
-  background-color: transparent;
-  border: none;
-}
+
 button:hover {
-  background-color: transparent;
-  border: none;
-}
-button:focus {
-  background-color: transparent;
-  border: none;
-  box-shadow: none;
-}
-button:not(:disabled):not(.disabled):active:focus {
-  box-shadow: none;
+  background-color: #ddd;
 }
 </style>

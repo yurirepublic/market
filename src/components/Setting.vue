@@ -1,31 +1,37 @@
 <template>
   <div class="p-1">
-    <CardFrame style="min-width: 17rem">
+    <CardFrame style="min-width: 30rem">
       <div class="mb-2">
         <span class="font-weight-bold">网络连接设置</span>
       </div>
       <div>
         <TradeInput
-          header="服务器地址"
-          placeholder=""
-          v-model="server_url"
+            header="服务器地址"
+            placeholder=""
+            v-model="serverUrl"
         ></TradeInput>
         <TradeInput
-          class="mt-1"
-          header="服务器口令"
-          placeholder="在服务端设置的字符串"
-          v-model="password"
+            class="mt-1"
+            header="服务器口令"
+            placeholder=""
+            v-model="password"
         ></TradeInput>
         <TradeInput
-          class="mt-1"
-          header="HTTP代理地址"
-          placeholder="通过代理连接到自己的服务器"
-          v-model="proxy_url"
+            class="mt-1"
+            header="数据中心接口"
+            placeholder=""
+            v-model="dataUrl"
+        ></TradeInput>
+        <TradeInput
+            class="mt-1"
+            header="数据订阅接口"
+            placeholder=""
+            v-model="subscribeUrl"
         ></TradeInput>
         <button
-          class="btn btn-primary mt-3 px-2"
-          @click="saveConfig"
-          style="background-color: #02c076; border-color: transparent"
+            class="btn btn-primary mt-3 px-2"
+            @click="Save"
+            style="background-color: #02c076; border-color: transparent"
         >
           保存
         </button>
@@ -35,50 +41,36 @@
 </template>
 
 <script>
-import CardFrame from "@/components/CardFrame.vue";
-import TradeInput from "@/components/TradeInput.vue";
-import { ipcRenderer } from "electron";
-import Vue from "vue";
-
-ipcRenderer.on("save-config-reply", (event, args) => {
-  if (args == "success") {
-    Vue.$toast.open({
-      type: "success",
-      message: "保存成功",
-    });
-  }
-  if (args == "fail") {
-    Vue.$toast.open({
-      type: "error",
-      message: "保存失败",
-    });
-  }
-});
+import CardFrame from "@/components/CardFrame.vue"
+import TradeInput from "@/components/TradeInput.vue"
 
 export default {
   name: "Setting",
   data: function () {
     return {
-      server_url: "",
-      password: "",
-      proxy_url: "",
+      serverUrl: '',
+      password: '',
+      dataUrl: '',
+      subscribeUrl: ''
     };
   },
-  mounted: function () {
-    ipcRenderer.on("read-config-reply", (event, arg) => {
-      this.server_url = arg["server_url"];
-      this.password = arg["password"];
-      this.proxy_url = arg["proxy_url"];
-    });
-    ipcRenderer.send("read-config");
+  mounted: async function () {
+    this.serverUrl = this.localConfig.serverUrl
+    this.password = this.localConfig.password
+    this.dataUrl = this.localConfig.dataUrl
+    this.subscribeUrl = this.localConfig.subscribeUrl
   },
   methods: {
-    saveConfig: function () {
-      ipcRenderer.send("save-config", {
-        server_url: this.server_url,
-        password: this.password,
-        proxy_url: this.proxy_url,
-      });
+    Save: function () {
+      try {
+        this.localConfig.serverUrl = this.serverUrl
+        this.localConfig.password = this.password
+        this.localConfig.dataUrl = this.dataUrl
+        this.localConfig.subscribeUrl = this.subscribeUrl
+        this.showToast.success('成功保存设置')
+      } catch (e) {
+        this.showToast.error('保存设置失败')
+      }
     },
   },
   components: {

@@ -1,18 +1,19 @@
-import tools
+import script_manager
 import binance_api
 import binance_api as bi
 import time
-import tools
+import script_manager
 import json
 import math
 import multiprocessing
 
 
-class Script(tools.Script):
+class Script(script_manager.Script):
     def info(self):
-        info = tools.ScriptInfo()
+        info = script_manager.ScriptInfo()
         info.title = "套利自动调仓"
-        info.description = """初代版本，有待改进
+        info.description = """
+        初代版本，有待改进
         会自动将所有钱都划到期货，所以要对账户进行操作的时候，务必关闭脚本
         注意加仓限制和减仓限制，针对的都是期货账户的USDT余额
         加仓限制和减仓限制太过接近，将会频繁调仓导致亏损
@@ -21,13 +22,13 @@ class Script(tools.Script):
         TODO 制定严谨的错误处理链，从可靠的自动处理，到无法自动处理的语音电话警报
         TODO 添加孤立仓位平仓机制，如果操作的仓位发现孤立仓位立马平仓，并发出警报
         """
-        info.inputs.append(tools.ScriptInput('调仓的交易对', 'close_symbol', ''))
-        info.inputs.append(tools.ScriptInput('减仓限制', 'close_limit', 200))
-        info.inputs.append(tools.ScriptInput('加仓限制', 'open_limit', 1500))
-        info.inputs.append(tools.ScriptInput('调仓目标', 'aim', 800))
-        info.inputs.append(tools.ScriptInput('单周期加仓最大交易额', 'max_once', 100))
-        info.inputs.append(tools.ScriptInput('期货保证金率', 'margin_rate', 0.05))
-        info.inputs.append(tools.ScriptInput('刷新间隔（秒）', 'refresh_timeout', 30))
+        info.inputs.append(script_manager.ScriptInput('调仓的交易对', 'close_symbol', ''))
+        info.inputs.append(script_manager.ScriptInput('减仓限制', 'close_limit', 200))
+        info.inputs.append(script_manager.ScriptInput('加仓限制', 'open_limit', 1500))
+        info.inputs.append(script_manager.ScriptInput('调仓目标', 'aim', 800))
+        info.inputs.append(script_manager.ScriptInput('单周期加仓最大交易额', 'max_once', 100))
+        info.inputs.append(script_manager.ScriptInput('期货保证金率', 'margin_rate', 0.05))
+        info.inputs.append(script_manager.ScriptInput('刷新间隔（秒）', 'refresh_timeout', 30))
         return info
 
     def main(self):

@@ -1,48 +1,50 @@
 import Vue from 'vue'
-
-// 导入Bootstrap样式库
-import 'bootstrap/dist/css/bootstrap.css'
-import 'bootstrap-vue/dist/bootstrap-vue.css'
-
 import App from './App.vue'
 import './registerServiceWorker'
 import router from './router'
 import store from './store'
 
-// 导入BootstrapVue (我觉得这玩意太垃圾了，考虑删掉)
-import { BootstrapVue, IconsPlugin } from 'bootstrap-vue'
-
-// 导入VueToast
-// 可以自选主题
-import VueToast from 'vue-toast-notification'
-import 'vue-toast-notification/dist/theme-default.css';
-//import 'vue-toast-notification/dist/theme-sugar.css';
-
-
-
 Vue.config.productionTip = false
+
+// 导入Bootstrap样式库
+import 'bootstrap/dist/css/bootstrap.css'
+
+// 导入Bootstrap-vue
+import {BootstrapVue, IconsPlugin} from 'bootstrap-vue'
 
 Vue.use(BootstrapVue)
 Vue.use(IconsPlugin)
+
+// 导入VueToast
+import VueToast from 'vue-toast-notification'
+import 'vue-toast-notification/dist/theme-default.css'   // 两个主题可选
+//import 'vue-toast-notification/dist/theme-sugar.css'
 Vue.use(VueToast)
 
+// 导入自制基本组件
 import base from './base.js'
 
 Vue.use(base)
 
-import OhVueIcon from 'oh-vue-icons/components/Icon'
+// 导入oh-vue-icons
+import OhVueIcon from 'oh-vue-icons'
 
-import { RiCloseLine } from 'oh-vue-icons/icons'
-import { FaRegularWindowMaximize } from 'oh-vue-icons/icons'
-import { FaRegularWindowMinimize } from 'oh-vue-icons/icons'
-import { RiArrowLeftRightLine } from 'oh-vue-icons/icons'
-import { FaRegularWindowRestore } from 'oh-vue-icons/icons'
-import { RiCoinsLine } from 'oh-vue-icons/icons'
-import { RiSettings4Line } from 'oh-vue-icons/icons'
-import { BiFileEarmarkCode } from 'oh-vue-icons/icons'
-import { BiFileEarmarkPlay } from 'oh-vue-icons/icons'
-import { RiHistoryLine } from 'oh-vue-icons/icons'
-OhVueIcon.add([
+import {FaRegularWindowMaximize, RiCloseLine} from 'oh-vue-icons/icons'
+import {FaRegularWindowMinimize} from 'oh-vue-icons/icons'
+import {RiArrowLeftRightLine} from 'oh-vue-icons/icons'
+import {FaRegularWindowRestore} from 'oh-vue-icons/icons'
+import {RiCoinsLine} from 'oh-vue-icons/icons'
+import {RiSettings4Line} from 'oh-vue-icons/icons'
+import {BiFileEarmarkCode} from 'oh-vue-icons/icons'
+import {BiFileEarmarkPlay} from 'oh-vue-icons/icons'
+import {RiHistoryLine} from 'oh-vue-icons/icons'
+import {RiCloseCircleLine} from 'oh-vue-icons/icons'
+import {RiCheckboxCircleLine} from 'oh-vue-icons/icons'
+import {BiArrowRight} from 'oh-vue-icons/icons'
+import {RiLoader4Line} from 'oh-vue-icons/icons'
+import {RiErrorWarningLine} from 'oh-vue-icons/icons'
+
+OhVueIcon.add(
   RiCloseLine,
   FaRegularWindowMinimize,
   FaRegularWindowMaximize,
@@ -53,8 +55,12 @@ OhVueIcon.add([
   BiFileEarmarkCode,
   BiFileEarmarkPlay,
   RiHistoryLine,
-])
-
+  RiCloseCircleLine,
+  RiCheckboxCircleLine,
+  BiArrowRight,
+  RiLoader4Line,
+  RiErrorWarningLine
+)
 Vue.component('v-icon', OhVueIcon)
 
 

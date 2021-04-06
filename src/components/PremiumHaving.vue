@@ -37,7 +37,11 @@
       </tr>
       </thead>
       <tbody>
-      <tr v-for="(value, key) in havingItems" v-if="!(key=='BNB' && !show_bnb)" :key="key">
+      <tr v-for="(value, key) in havingItems"
+          v-if="!(key=='BNB' && !show_bnb)"
+          :key="key"
+          @click="$emit('click', key + 'USDT')"
+      >
         <td class="text-monospace align-middle">
           <span>{{ key }}</span>
         </td>
@@ -153,13 +157,13 @@ export default {
       // 平仓下单
       console.log("平仓下单符号", item["symbol"]);
       console.log("平仓下单数量", item["quantity"]);
-      this.showToast().info("开始平仓" + item["symbol"]);
+      this.showToast.info("开始平仓" + item["symbol"]);
       this.method_request("trade_premium", [item["symbol"], item["quantity"], 'MAIN'])
           .then((res) => {
-            this.showToast().success(item["symbol"] + "成功平仓");
+            this.showToast.success(item["symbol"] + "成功平仓");
           })
           .catch((err) => {
-            this.showToast().error("平仓失败");
+            this.showToast.error("平仓失败");
           })
           .finally(() => {
             this.button_disabled = false;
@@ -177,18 +181,18 @@ export default {
       if (item['type'] === 'FUTURE' && item['quantity'] < 0) {
         // 将仓位的负号消除，方向使用BUY
         this.method_request('trade_market', [item['symbol'], item['type'], item['quantity'].replace('-', ''), 'BUY']).then(res => {
-          this.showToast().success(item['symbol'] + '成功平仓')
+          this.showToast.success(item['symbol'] + '成功平仓')
         }).catch(err => {
-          this.showToast().success(item['symbol'] + '平仓失败')
+          this.showToast.success(item['symbol'] + '平仓失败')
         }).finally(() => {
           this.button_disabled = false
         })
       } else {
         // 将仓位的负号消除，方向使用BUY
         this.method_request('trade_market', [item['symbol'], item['type'], item['quantity'], 'SELL']).then(res => {
-          this.showToast().success(item['symbol'] + '成功平仓')
+          this.showToast.success(item['symbol'] + '成功平仓')
         }).catch(err => {
-          this.showToast().success(item['symbol'] + '平仓失败')
+          this.showToast.success(item['symbol'] + '平仓失败')
         }).finally(() => {
           this.button_disabled = false
         })
