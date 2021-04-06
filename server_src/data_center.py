@@ -708,6 +708,15 @@ class WebsocketSubscribe(object):
             'comment': order
         }))
 
+    async def subscribe_fuzzy(self, tags: Set[str], callback):
+        order = await self._get_order()
+        self.buf[order] = callback
+        await self.ws.send(json.dumps({
+            'mode': 'SUBSCRIBE_FUZZY',
+            'tags': list(tags),
+            'comment': order
+        }))
+
 
 async def create_server():
     return Server()
