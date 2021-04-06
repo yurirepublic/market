@@ -82,7 +82,7 @@ export default {
     await this.subWs.precise(['asset', 'future', 'BNB'], msg => {
       this.futureBNB = msg['data']
     })
-    await this.subWs.precise(['asset', 'marin', 'BNB'], msg => {
+    await this.subWs.precise(['asset', 'margin', 'BNB'], msg => {
       this.marginBNB = msg['data']
     })
     await this.subWs.precise(['price', 'main', 'BNBUSDT'], msg => {

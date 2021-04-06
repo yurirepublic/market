@@ -52,7 +52,10 @@ export default {
         this.priceHistory = this.cache[newVal]
       }
       else {
-        this.priceHistory = await this.ws.getData(['premium', 'fundingRateHistory', newVal])
+        let history = await this.ws.getData(['premium', 'fundingRateHistory', newVal])
+        if (history === null) {
+          this.priceHistory = [0, 0, 0]
+        }
       }
     },
   },

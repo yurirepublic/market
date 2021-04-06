@@ -27,7 +27,7 @@
 
       <div class="ml-1">
         <div>
-          <PremiumHaving />
+          <PremiumHaving @click="clickTable" />
         </div>
       </div>
     </div>

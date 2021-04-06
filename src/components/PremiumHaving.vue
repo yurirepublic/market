@@ -37,7 +37,11 @@
       </tr>
       </thead>
       <tbody>
-      <tr v-for="(value, key) in havingItems" v-if="!(key=='BNB' && !show_bnb)" :key="key">
+      <tr v-for="(value, key) in havingItems"
+          v-if="!(key=='BNB' && !show_bnb)"
+          :key="key"
+          @click="$emit('click', key + 'USDT')"
+      >
         <td class="text-monospace align-middle">
           <span>{{ key }}</span>
         </td>
