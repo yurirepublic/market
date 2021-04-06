@@ -41,6 +41,8 @@ import {RiHistoryLine} from 'oh-vue-icons/icons'
 import {RiCloseCircleLine} from 'oh-vue-icons/icons'
 import {RiCheckboxCircleLine} from 'oh-vue-icons/icons'
 import {BiArrowRight} from 'oh-vue-icons/icons'
+import {RiLoader4Line} from 'oh-vue-icons/icons'
+import {RiErrorWarningLine} from 'oh-vue-icons/icons'
 
 OhVueIcon.add(
   RiCloseLine,
@@ -55,7 +57,9 @@ OhVueIcon.add(
   RiHistoryLine,
   RiCloseCircleLine,
   RiCheckboxCircleLine,
-  BiArrowRight
+  BiArrowRight,
+  RiLoader4Line,
+  RiErrorWarningLine
 )
 Vue.component('v-icon', OhVueIcon)
 

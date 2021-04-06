@@ -6,14 +6,14 @@
           <PremiumTable @click="clickTable" />
         </div>
 
-        <div class="mt-1">
-          <PremiumCreator :pair_item="pair_item" />
+        <div class="mt-1" style="width: 26rem">
+          <PremiumCreator :pair-symbol="pairSymbol" />
         </div>
       </div>
 
       <div class="ml-1" style="max-width: 20rem">
         <div>
-          <PremiumHistory :pair_item="pair_item" />
+          <PremiumHistory :pair-symbol="pairSymbol" />
         </div>
 
         <div class="mt-1">
@@ -46,12 +46,12 @@ export default {
   name: "premium",
   data: function () {
     return {
-      pair_item: {}, // 被选中的对象
+      pairSymbol: '', // 被选中的符号
     };
   },
   methods: {
     clickTable(event) {
-      this.pair_item = event;
+      this.pairSymbol = event
     },
   },
   created: function () {

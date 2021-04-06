@@ -734,6 +734,19 @@ async def _main():
     await create_server_adapter(server)
 
 
+def memory_summary():
+    # Only import Pympler when we need it. We don't want it to
+    # affect our process if we never call memory_summary.
+    while True:
+        from pympler import summary, muppy
+        mem_summary = summary.summarize(muppy.get_objects())
+        rows = summary.format_(mem_summary)
+        print('\n'.join(rows))
+        time.sleep(300)
+
+
 if __name__ == '__main__':
+    # 运行内存泄露检测
+    threading.Thread(target=memory_summary).start()
     asyncio.get_event_loop().run_until_complete(_main())
     asyncio.get_event_loop().run_forever()

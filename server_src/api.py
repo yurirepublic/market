@@ -344,8 +344,6 @@ async def analyze_premium():
         margin_warning = ((0.8 * margin_asset_usdt - margin_borrowed_usdt
                            ) / (margin_asset_borrowed - 0.8 * margin_asset_value)) * 100
 
-    print(margin_asset_borrowed, margin_asset_value)
-
     # 获取当前所有逐仓资产
     isolated_asset = await operator.get_all_asset_amount('ISOLATED')
     # 仅保留计价单位是USDT的逐仓，且将逐仓名字仅保留币名
@@ -659,12 +657,12 @@ def memory_summary():
         mem_summary = summary.summarize(muppy.get_objects())
         rows = summary.format_(mem_summary)
         print('\n'.join(rows))
-        time.sleep(60)
+        time.sleep(300)
 
 
 if __name__ == '__main__':
-    # # 运行内存泄露检测
-    # threading.Thread(target=memory_summary).start()
+    # 运行内存泄露检测
+    threading.Thread(target=memory_summary).start()
 
     # 运行数据中心的脚本
     sm.exec('dc_websocket', {})
