@@ -184,11 +184,11 @@ class Operator(object):
             if trace_to_file:
                 with open('requests_trace.txt', 'a+', encoding='utf-8') as f:
                     f.writelines([
-                        '-----start-----',
-                        'URL: {}'.format(url),
-                        'STATUS CODE: {}'.format(r.status_code),
-                        'TEXT: {}'.format(r.text),
-                        '-----ended-----'
+                        '-----start-----\n',
+                        'URL: {}\n'.format(url),
+                        'STATUS CODE: {}\n'.format(r.status_code),
+                        'TEXT: {}\n'.format(r.text),
+                        '-----ended-----\n'
                     ])
             if r.status_code != 200:
                 if only_trace_error:
