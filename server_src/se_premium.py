@@ -33,12 +33,19 @@ class Script(script_manager.Script):
         # 获取交易符号
         symbol = msg['special']
         # 获取双方价格
-        main_price = await self.client.get({'price', 'main', symbol})
-        future_price = await self.client.get({'price', 'future', symbol})
+        if 'main' in msg['tags']:
+            main_price = msg['data']
+            future_price = await self.client.get({'price', 'future', symbol})
+        elif 'future' in msg['tags']:
+            future_price = msg['data']
+            main_price = await self.client.get({'price', 'main', symbol})
+        else:
+            print('premium收到了不符合期望的数据')
+            return
         # 如果有一方数据缺失直接返回
         if main_price is None or future_price is None:
             return
         # 计算溢价并且放回去
         premium_price = future_price / main_price - 1
-        await self.client.update({'premium', 'rate', symbol}, premium_price)
-        await self.client.update({'premium', 'dif', symbol}, future_price - main_price)
+        asyncio.create_task(self.client.update({'premium', 'rate', symbol}, premium_price))
+        # asyncio.create_task(self.client.update({'premium', 'dif', symbol}, future_price - main_price))
