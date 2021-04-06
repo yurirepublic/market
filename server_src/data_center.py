@@ -9,7 +9,6 @@ import traceback
 from typing import Dict, List, Set, Union, Callable
 import threading
 import time
-import queue
 
 # 引入websocket相关
 import websockets
@@ -94,9 +93,10 @@ class DataWrapper(object):
 class CallbackWrapper(object):
     """
     回调的包装器，和DataWrapper是一个东西，只不过这里面装的是回调
+    会使用asyncio.create_task来运行它
     """
 
-    def __init__(self, func: Callable[[DataWrapper], None], tags: Set):
+    def __init__(self, func, tags: Set):
         self.func = func
         self.tags = tags
 
@@ -211,16 +211,14 @@ class Server(object):
         callbacks = self._callback(tags)
         for e in callbacks:
             try:
+                print('警告，这里的代码不应该被运行')
                 threading.Thread(target=lambda: e.func(data_obj)).start()
             except Exception:
                 print(traceback.format_exc())
 
         # 多线程触发所有订阅的回调
         for e in self.subscribe:
-            try:
-                threading.Thread(target=lambda: e.func(data_obj)).start()
-            except Exception:
-                print(traceback.format_exc())
+            asyncio.create_task(e.func(data_obj))
 
     def add_update_callback(self, callback: CallbackWrapper):
         """
@@ -333,7 +331,7 @@ class WebsocketServerAdapter(object):
         self.connect_identification = 0  # 用于给传入连接分配识别码的
         self.identify_lock = asyncio.Lock()  # 计算识别码的锁
 
-        self.subscribe_queue: queue.Queue[DataWrapper] = queue.Queue()  # 等待配布的订阅数据，由数据中心通过回调发送
+        self.subscribe_queue: asyncio.Queue[DataWrapper] = asyncio.Queue()  # 等待配布的订阅数据，由数据中心通过回调发送
 
         self.subscribe_all_sockets: Set[websockets.WebSocketServerProtocol] = set()  # 用来存储订阅所有消息的列表
         self.subscribe_precise: Set[SubscriberWrapper] = set()  # 精确订阅列表
@@ -342,6 +340,8 @@ class WebsocketServerAdapter(object):
 
         self.adapter = None
         self.subscribe_adapter = None
+
+        self.loop = asyncio.get_event_loop()
 
     async def init(self):
         # websocket接口部分
@@ -362,22 +362,21 @@ class WebsocketServerAdapter(object):
         self.data_center.subscribe_all(CallbackWrapper(self.subscribe_callback, set()))
 
         # 启动配布协程
-        asyncio.get_event_loop().create_task(self.subscribe_sender())
+        self.loop.create_task(self.subscribe_sender())
 
-    def subscribe_callback(self, wrp: DataWrapper):
+    async def subscribe_callback(self, wrp: DataWrapper):
         """
         数据中心传达订阅的回调，收到数据就塞到queue等待配布
         """
         # 将原始的DataWrapper塞进去
-        self.subscribe_queue.put(wrp)
+        await self.subscribe_queue.put(wrp)
 
     async def subscribe_sender(self):
         """
         专用于向订阅者进行配布的协程
         """
-        loop = asyncio.get_running_loop()
         while True:
-            data: DataWrapper = await loop.run_in_executor(None, functools.partial(self.subscribe_queue.get))
+            data: DataWrapper = await self.subscribe_queue.get()
 
             # 转义出直接配布的json
             tags = data.get_tags()
@@ -389,7 +388,7 @@ class WebsocketServerAdapter(object):
                 'data': data.get()
             })
             for ws in self.subscribe_all_sockets:
-                loop.create_task(self.subscribe_sender_all(ws, msg))
+                self.loop.create_task(self.subscribe_sender_all(ws, msg))
 
             # 向可选订阅进行配布
             msg = {
@@ -399,12 +398,12 @@ class WebsocketServerAdapter(object):
             for wrp in self.subscribe_precise:
                 if wrp.tags == tags:
                     msg['comment'] = wrp.comment
-                    loop.create_task(self.subscribe_sender_precise(wrp, json.dumps(msg)))
+                    self.loop.create_task(self.subscribe_sender_precise(wrp, json.dumps(msg)))
 
             for wrp in self.subscribe_fuzzy:
                 if issubset(wrp.tags, tags):
                     msg['comment'] = wrp.comment
-                    loop.create_task(self.subscribe_sender_fuzzy(wrp, json.dumps(msg)))
+                    self.loop.create_task(self.subscribe_sender_fuzzy(wrp, json.dumps(msg)))
 
             for wrp in self.subscribe_dict:
                 if issubset(wrp.tags, tags) and len(wrp.tags) + 1 == len(tags):
@@ -413,7 +412,7 @@ class WebsocketServerAdapter(object):
                     special = list(special)[0]
                     msg['comment'] = wrp.comment
                     msg['special'] = special
-                    loop.create_task(self.subscribe_sender_dict(wrp, json.dumps(msg)))
+                    self.loop.create_task(self.subscribe_sender_dict(wrp, json.dumps(msg)))
 
     async def subscribe_sender_all(self, ws, msg):
         """
@@ -746,7 +745,8 @@ def memory_summary():
 
 
 if __name__ == '__main__':
-    # 运行内存泄露检测
-    threading.Thread(target=memory_summary).start()
+    # # 运行内存泄露检测
+    # threading.Thread(target=memory_summary).start()
+
     asyncio.get_event_loop().run_until_complete(_main())
     asyncio.get_event_loop().run_forever()

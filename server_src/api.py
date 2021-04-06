@@ -661,8 +661,8 @@ def memory_summary():
 
 
 if __name__ == '__main__':
-    # 运行内存泄露检测
-    threading.Thread(target=memory_summary).start()
+    # # 运行内存泄露检测
+    # threading.Thread(target=memory_summary).start()
 
     # 运行数据中心的脚本
     sm.exec('dc_websocket', {})
