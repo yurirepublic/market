@@ -11,6 +11,7 @@ import json
 import time
 import multiprocessing
 from multiprocessing import Process, Manager
+import threading
 import traceback
 import numpy as np
 from typing import Union
@@ -650,27 +651,28 @@ def run_http_server():
         app.run(config['api']['server_ip'], config['api']['server_port'])
 
 
-async def main():
-    # 运行数据中心
-    data_center_server = await data_center.create_server()
+def memory_summary():
+    # Only import Pympler when we need it. We don't want it to
+    # affect our process if we never call memory_summary.
+    while True:
+        from pympler import summary, muppy
+        mem_summary = summary.summarize(muppy.get_objects())
+        rows = summary.format_(mem_summary)
+        print('\n'.join(rows))
+        time.sleep(60)
 
-    # 给数据中心挂上websocket接口
-    await data_center.create_server_adapter(data_center_server)
 
-    # 给数据中心挂上回调函数
-    import se_premium
-    se_premium.Script(data_center_server)
+if __name__ == '__main__':
+    # # 运行内存泄露检测
+    # threading.Thread(target=memory_summary).start()
 
     # 运行数据中心的脚本
     sm.exec('dc_websocket', {})
     sm.exec('dc_static', {})
     sm.exec('dc_static_realtime', {})
 
-    # 这东西能直接把主进程给阻塞了，搞得loop也中断，所以丢去executor运行
-    asyncio.get_event_loop().run_in_executor(None, run_http_server)
+    # 运行二次处理脚本
+    sm.exec('se_premium', {})
 
-
-if __name__ == '__main__':
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(main())
-    loop.run_forever()
+    # 运行http服务器（会直接阻塞）
+    run_http_server()

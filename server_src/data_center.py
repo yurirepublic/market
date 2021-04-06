@@ -593,9 +593,11 @@ class WebsocketClientAdapter(object):
     """
 
     def __init__(self):
-        self.threading_lock = asyncio.Lock()
-
         self.ws = None
+
+        self.async_lock = asyncio.Lock()
+
+        self.buf = {}
 
     async def init(self):
         # 连接websocket
@@ -607,20 +609,16 @@ class WebsocketClientAdapter(object):
         await self.ws.send(config['password'])
         print('成功连接数据中心接口')
 
-    async def close(self):
-        await self.ws.close()
-
     async def update(self, tags: Set[str], value, timestamp: int = None):
-        async with self.threading_lock:
-            await self.ws.send(json.dumps({
-                'mode': 'SET',
-                'tags': list(tags),
-                'value': value,
-                'timestamp': timestamp
-            }))
+        await self.ws.send(json.dumps({
+            'mode': 'SET',
+            'tags': list(tags),
+            'value': value,
+            'timestamp': timestamp
+        }))
 
     async def get(self, tags: Set[str], comment=''):
-        async with self.threading_lock:
+        async with self.async_lock:
             await self.ws.send(json.dumps({
                 'mode': 'GET',
                 'tags': list(tags),
@@ -630,7 +628,7 @@ class WebsocketClientAdapter(object):
             return res['data']
 
     async def get_dict(self, tags: Set[str], comment=''):
-        async with self.threading_lock:
+        async with self.async_lock:
             await self.ws.send(json.dumps({
                 'mode': 'GET_DICT',
                 'tags': list(tags),
@@ -640,7 +638,7 @@ class WebsocketClientAdapter(object):
             return res['data']
 
     async def get_fuzzy(self, tags: Set[str], comment=''):
-        async with self.threading_lock:
+        async with self.async_lock:
             await self.ws.send(json.dumps({
                 'mode': 'GET_FUZZY',
                 'tags': list(tags),
@@ -650,13 +648,62 @@ class WebsocketClientAdapter(object):
             return res['data']
 
     async def get_all(self, comment=''):
-        async with self.threading_lock:
+        async with self.async_lock:
             await self.ws.send(json.dumps({
                 'mode': 'GET_ALL',
                 'comment': comment
             }))
             res = json.loads(await self.ws.recv())
             return res['data']
+
+
+class WebsocketSubscribe(object):
+    """
+    数据中心的websocket接口客户端
+    """
+
+    def __init__(self):
+        self.ws: websockets.WebSocketClientProtocol = None
+
+        self.buf = {}
+        self.order = 0
+        self.order_lock = asyncio.Lock()
+
+    async def init(self):
+        # 连接subscribe
+        ip = config['data_center']['subscribe_client_ip']
+        port = config['data_center']['subscribe_client_port']
+        url = 'ws://{}:{}'.format(ip, port)
+        print('即将连接订阅接口' + url)
+        self.ws = await websockets.connect(url)
+        await self.ws.send(config['password'])
+        print('成功连接订阅接口')
+        # 启动消息接收
+        asyncio.create_task(self._on_message())
+
+    async def _on_message(self):
+        """
+        分流订阅消息
+        """
+        while True:
+            msg = await self.ws.recv()
+            msg = json.loads(msg)
+            asyncio.create_task(self.buf[msg['comment']](msg))
+
+    async def _get_order(self):
+        async with self.order_lock:
+            self.order += 1
+            if self.order > 1000000:
+                self.order = 0
+
+    async def subscribe_dict(self, tags: Set[str], callback):
+        order = await self._get_order()
+        self.buf[order] = callback
+        await self.ws.send(json.dumps({
+            'mode': 'SUBSCRIBE_DICT',
+            'tags': list(tags),
+            'comment': order
+        }))
 
 
 async def create_server():
@@ -675,10 +722,16 @@ async def create_client_adapter():
     return adapter
 
 
+async def create_subscribe():
+    obj = WebsocketSubscribe()
+    await obj.init()
+    return obj
+
+
 async def _main():
     # 用于直接使用该脚本启动数据中心的情况
-    server = create_server()
-    adapter = create_server_adapter(server)
+    server = await create_server()
+    await create_server_adapter(server)
 
 
 if __name__ == '__main__':
