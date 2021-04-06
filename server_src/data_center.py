@@ -118,34 +118,32 @@ class Server(object):
     """
 
     def __init__(self):
-        self.threading_lock = threading.Lock()
-        with self.threading_lock:
-            """
-            此字典以tag为key,set为value，set里放置DataWrapper
-            查询时将不同tag的set取交集，就可以获取查询到的DataWrapper
-            """
-            self.database: Dict[str, Set[DataWrapper]] = {}
+        """
+        此字典以tag为key,set为value，set里放置DataWrapper
+        查询时将不同tag的set取交集，就可以获取查询到的DataWrapper
+        """
+        self.database: Dict[str, Set[DataWrapper]] = {}
 
-            """
-            为了避免每次精确的update都要对集合进行缓慢的交集操作
-            self.cache的职责就是将tag排序，加入横线，变成asset-main-usdt的形式作为key
-            以此来快速索引单个数据
-            """
-            self.cache: Dict[str, DataWrapper] = {}
+        """
+        为了避免每次精确的update都要对集合进行缓慢的交集操作
+        self.cache的职责就是将tag排序，加入横线，变成asset-main-usdt的形式作为key
+        以此来快速索引单个数据
+        """
+        self.cache: Dict[str, DataWrapper] = {}
 
-            """
-            此字典与database特别相似，但是存储的是CallbackWrapper
-            update时，取并集，再遍历结果查询其CallbackWrapper的tag是否为要update的tag的子集
-            以此来判断是否要触发此Callback
-            例如asset main usdt，此tag就可以触发asset main这个CallbackWrapper
-            """
-            self.callback: Dict[str, Set[CallbackWrapper]] = {}
+        """
+        此字典与database特别相似，但是存储的是CallbackWrapper
+        update时，取并集，再遍历结果查询其CallbackWrapper的tag是否为要update的tag的子集
+        以此来判断是否要触发此Callback
+        例如asset main usdt，此tag就可以触发asset main这个CallbackWrapper
+        """
+        self.callback: Dict[str, Set[CallbackWrapper]] = {}
 
-            """
-            此列表存储的是订阅所有数据的回调
-            如果要订阅可选回调，直接用callback功能就好了
-            """
-            self.subscribe: Set[CallbackWrapper] = set()
+        """
+        此列表存储的是订阅所有数据的回调
+        如果要订阅可选回调，直接用callback功能就好了
+        """
+        self.subscribe: Set[CallbackWrapper] = set()
 
     def _select(self, tags: Set[str]) -> Set[DataWrapper]:
         """
@@ -166,7 +164,6 @@ class Server(object):
     def _callback(self, tags: Set[str]) -> Set[CallbackWrapper]:
         """
         根据输入的tags，返回匹配到的CallbackWrapper\n
-        需要回调包装器的标签是
         """
         res: Set[CallbackWrapper] = set()
         for tag in tags:
@@ -188,38 +185,28 @@ class Server(object):
         tags.sort(key=lambda x: x)
         return '-'.join(tags)
 
-    def _cache_select(self, tags: Set[str]) -> DataWrapper:
-        """
-        会将tag转为缓存用的kay，并在cache查询Data对象\n
-        如果没有，则会引发KeyError异常
-        :return: 查询到的Data对象
-        """
-        key = self.tag2key(tags)
-        return self.cache[key]
-
     def update(self, tags: Set[str], value, timestamp=None):
         """
         依据tag更新值
         """
         # 根据tag筛选数据集合
         data_obj = None
-        with self.threading_lock:
-            try:
-                data_obj = self._cache_select(tags)
-                data_obj.update(value, timestamp=timestamp)
-            except KeyError:
-                # 还没有对应的数据则新建一个Data对象
-                data_obj = DataWrapper()
-                data_obj.update(value, timestamp=timestamp)
-                data_obj.set_tags(tags)
-                # 将对象放入缓存索引和tag索引
-                self.cache[self.tag2key(tags)] = data_obj
-                for tag in tags:
-                    try:
-                        self.database[tag].add(data_obj)
-                    except KeyError:
-                        self.database[tag] = set()
-                        self.database[tag].add(data_obj)
+        try:
+            data_obj = self.cache[self.tag2key(tags)]
+            data_obj.update(value, timestamp=timestamp)
+        except KeyError:
+            # 还没有对应的数据则新建一个Data对象
+            data_obj = DataWrapper()
+            data_obj.update(value, timestamp=timestamp)
+            data_obj.set_tags(tags)
+            # 将对象放入缓存索引和tag索引
+            self.cache[self.tag2key(tags)] = data_obj
+            for tag in tags:
+                try:
+                    self.database[tag].add(data_obj)
+                except KeyError:
+                    self.database[tag] = set()
+                    self.database[tag].add(data_obj)
         # 多线程触发更新回调
         callbacks = self._callback(tags)
         for e in callbacks:
@@ -239,58 +226,55 @@ class Server(object):
         """
         添加对应tag的回调
         """
-        with self.threading_lock:
-            for tag in callback.tags:
-                try:
-                    self.callback[tag].add(callback)
-                except KeyError:
-                    self.callback[tag] = set()
-                    self.callback[tag].add(callback)
+        for tag in callback.tags:
+            try:
+                self.callback[tag].add(callback)
+            except KeyError:
+                self.callback[tag] = set()
+                self.callback[tag].add(callback)
 
-    def get_detail(self, tags: Set[str]) -> Union[DataWrapper, None]:
+    def _get_detail(self, tags: Set[str]) -> Union[DataWrapper, None]:
         """
         依据tag精确查询，会返回数据的包装对象\n
         因此使用此方法可以获取到时间戳之类的额外数据\n
         """
-        with self.threading_lock:
-            data_set = self._select(tags)
-            if len(data_set) == 0:
-                return None
-            elif len(data_set) == 1:
-                return list(data_set)[0]
+        data_set = self._select(tags)
+        if len(data_set) == 0:
+            return None
+        elif len(data_set) == 1:
+            return list(data_set)[0]
 
     def get(self, tags: Set[str]):
         """
         依据tag精确查询，会返回拆箱后的数据\n
         """
-        res = self.get_detail(tags)
+        res = self._get_detail(tags)
         if res is not None:
             return res.get()
         else:
             return None
 
-    def get_dict_detail(self, tags: Set[str]) -> Dict[str, DataWrapper]:
+    def _get_dict_detail(self, tags: Set[str]) -> Dict[str, DataWrapper]:
         """
         依据tag模糊查询，会返回数据的包装对象\n
         因此使用此方法可以获取到时间戳之类的额外数据\n
         """
-        with self.threading_lock:
-            result = self._select(tags)
-            res = {}
-            for e in result:
-                if len(tags) + 1 == len(e.get_tags()):
-                    unique_tag_set = e.get_tags() - tags
-                    # 此时unique_tag_set虽然是set，但是必然只有一个值
-                    unique_tag = list(unique_tag_set)[0]
-                    res[unique_tag] = e
-            return res
+        result = self._select(tags)
+        res = {}
+        for e in result:
+            if len(tags) + 1 == len(e.get_tags()):
+                unique_tag_set = e.get_tags() - tags
+                # 此时unique_tag_set虽然是set，但是必然只有一个值
+                unique_tag = list(unique_tag_set)[0]
+                res[unique_tag] = e
+        return res
 
     def get_dict(self, tags: Set[str]) -> Dict:
         """
         依据tag获取值，但是只会获取模糊查询的结果\n
         模糊值返回 {unique_tag: xxx, unique_tag2: xxx}\n
         """
-        res = self.get_dict_detail(tags)
+        res = self._get_dict_detail(tags)
         for key in res.keys():
             res[key] = res[key].get()
         return res
@@ -300,44 +284,41 @@ class Server(object):
         满足tag就返回，但是不会返回成字典形式\n
         返回形式为[{tags:[xxx, xxx], data:xxx}, ...]
         """
-        with self.threading_lock:
-            result = self._select(tags)
-            res = []
-            for e in result:
-                res.append({
-                    'tags': list(e.get_tags()),
-                    'data': e.get()
-                })
-            return res
+        result = self._select(tags)
+        res = []
+        for e in result:
+            res.append({
+                'tags': list(e.get_tags()),
+                'data': e.get()
+            })
+        return res
 
     def get_all(self):
         """
         返回所有的数据\n
         格式为[{'tags': [], 'data': xxx}, ...]
         """
-        with self.threading_lock:
-            # 数据库所有的tag
-            tag_all = self.database.keys()
-            # 将所有的数据取个并集
-            data_all = set()
-            for tag in tag_all:
-                data_all = self.database[tag] | data_all
-            # 处理成返回格式
-            res = []
-            for e in data_all:
-                res.append({
-                    'tags': list(e.get_tags()),
-                    'data': e.get(),
-                    'timestamp': e.get_timestamp()
-                })
-            return res
+        # 数据库所有的tag
+        tag_all = self.database.keys()
+        # 将所有的数据取个并集
+        data_all = set()
+        for tag in tag_all:
+            data_all = self.database[tag] | data_all
+        # 处理成返回格式
+        res = []
+        for e in data_all:
+            res.append({
+                'tags': list(e.get_tags()),
+                'data': e.get(),
+                'timestamp': e.get_timestamp()
+            })
+        return res
 
     def subscribe_all(self, func: CallbackWrapper):
         """
         传入一个回调，并且会在所有数据更新的时候，都触发该回调
         """
-        with self.threading_lock:
-            self.subscribe.add(func)
+        self.subscribe.add(func)
 
 
 class WebsocketServerAdapter(object):
@@ -692,3 +673,14 @@ async def create_client_adapter():
     adapter = WebsocketClientAdapter()
     await adapter.init()
     return adapter
+
+
+async def _main():
+    # 用于直接使用该脚本启动数据中心的情况
+    server = create_server()
+    adapter = create_server_adapter(server)
+
+
+if __name__ == '__main__':
+    asyncio.get_event_loop().run_until_complete(_main())
+    asyncio.get_event_loop().run_forever()
