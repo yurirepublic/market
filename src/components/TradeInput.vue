@@ -1,53 +1,47 @@
 <template>
-  <div class="card" style="background-color: #f0f1f2">
-    <div class="input-group">
-      <span v-if="header != ''" class="input-group-text text-muted">{{
-        header
-      }}</span>
+  <div class='card' style='background-color: #f0f1f2'>
+    <div class='input-group'>
+      <span v-if="header !== ''" class='input-group-text text-muted'>{{ header }}</span>
       <input
-        class="form-control text-right"
-        :type="type"
-        :placeholder="placeholder"
-        :value="value"
-				@input="$emit('input', $event.target.value)"
-        :disabled="disabled"
+        class='form-control text-right'
+        :type='type'
+        :placeholder='placeholder'
+        :value='value'
+        @input="$emit('input', $event.target.value)"
+        :disabled='disabled'
       />
-      <span v-if="footer != ''" class="input-group-text text-muted">{{
-        footer
-      }}</span>
+      <span v-if="footer !== ''" class='input-group-text text-muted'>{{ footer }}</span>
     </div>
   </div>
 </template>
 
 <script>
 export default {
-  name: "TradeInput",
+  name: 'TradeInput',
   props: {
     header: {
       type: String,
-      default: "",
+      default: ''
     },
     placeholder: {
       type: String,
-      default: "",
+      default: ''
     },
     footer: {
       type: String,
-      default: "",
+      default: ''
     },
     type: {
       type: String,
-      default: "text",
+      default: 'text'
     },
     disabled: false,
     value: ''
   },
-  data: function () {
-		return {
-
-		}
-  },
-};
+  data: function() {
+    return {}
+  }
+}
 </script>
 
 <style scoped>
@@ -78,7 +72,7 @@ export default {
 }
 
 .form-control:focus {
-  border-color: none;
+  border-color: transparent;
   box-shadow: none;
   background-color: transparent;
 }

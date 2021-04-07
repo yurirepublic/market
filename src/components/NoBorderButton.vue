@@ -1,9 +1,9 @@
 <template>
   <button
-      class="btn btn-light btn-sm float-right"
-      type="button"
-      @click="$emit('click', '$event')"
-      :disabled="disabled"
+    class='btn btn-light btn-sm float-right'
+    type='button'
+    @click="$emit('click', '$event')"
+    :disabled='disabled'
   >
     <slot></slot>
   </button>
@@ -11,9 +11,12 @@
 
 <script>
 export default {
-  name: "NoBorderButton",
+  name: 'NoBorderButton',
   props: {
-    disabled: false
+    disabled: {
+      type: Boolean,
+      default: false
+    }
   }
 }
 </script>

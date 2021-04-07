@@ -1,17 +1,17 @@
 <template>
   <button
-      class="float-right"
-      type="button"
-      @click="$emit('click', '$event')"
-      :disabled="disabled"
+    class='float-right'
+    type='button'
+    @click="$emit('click', '$event')"
+    :disabled='disabled'
   >
-    <v-icon :name="name"></v-icon>
+    <v-icon :name='name'></v-icon>
   </button>
 </template>
 
 <script>
 export default {
-  name: "ClickableIcon",
+  name: 'ClickableIcon',
 
   props: {
     name: {
@@ -20,16 +20,16 @@ export default {
     }
   },
 
-  data: function () {
+  data: function() {
     return {
       amine: false,
-      animation: "",
-      disabled: false,
-    };
+      animation: '',
+      disabled: false
+    }
   },
 
-  components: {},
-};
+  components: {}
+}
 </script>
 
 <style scoped>

@@ -1,10 +1,10 @@
 <template>
   <div>
     <button
-        class="p-1 small"
-        v-for="(option, index) in options"
-        v-bind:class="{'isActive': active === option, 'mr-1': index !== options.length - 1}"
-        @click.stop="active = option;$emit('click', option)"
+      class='p-1 small'
+      v-for='(option, index) in options'
+      v-bind:class="{'isActive': active === option, 'mr-1': index !== options.length - 1}"
+      @click.stop="active = option;$emit('click', option)"
     >
       {{ option }}
     </button>
@@ -13,7 +13,7 @@
 
 <script>
 export default {
-  name: "Radio",
+  name: 'Radio',
   props: {
     options: {
       type: Array,
@@ -24,16 +24,15 @@ export default {
       default: ''
     }
   },
-  data: function () {
+  data: function() {
     return {
       active: ''
     }
   },
-  mounted: function () {
+  mounted: function() {
     if (this.initActive === '') {
       this.active = this.options[0]
-    }
-    else {
+    } else {
       this.active = this.initActive
     }
 
@@ -49,6 +48,7 @@ button {
   background-color: #e1e1e1;
   color: #000;
 }
+
 .isActive {
   background-color: #505050;
   color: #fff;

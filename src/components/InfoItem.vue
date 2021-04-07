@@ -1,12 +1,12 @@
 <template>
-  <div class="">
-    <div class="d-flex justify-content-between">
-      <div class="flex-shrink-0">
-        <span class="text-muted small">{{ header }}</span>
+  <div class=''>
+    <div class='d-flex justify-content-between'>
+      <div class='flex-shrink-0'>
+        <span class='text-muted small'>{{ header }}</span>
       </div>
       <div>
-        <span class="text-monospace ml-3">{{ content }}</span>
-        <span class="text-monospace small text-muted ml-2">{{ footer }}</span>
+        <span class='text-monospace ml-3'><slot></slot></span>
+        <span class='text-monospace small text-muted ml-2'>{{ footer }}</span>
       </div>
     </div>
   </div>
@@ -14,19 +14,18 @@
 
 <script>
 export default {
-  name: "InfoItem",
+  name: 'InfoItem',
   props: {
     header: {
       type: String,
-      defalut: "",
+      default: ''
     },
-    content: "",
     footer: {
       type: String,
-      defalut: "",
-    },
-  },
-};
+      default: ''
+    }
+  }
+}
 </script>
 
 <style scoped>

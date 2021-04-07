@@ -1,29 +1,29 @@
 <template>
-  <div class="card" style="background-color: #f0f1f2">
-    <div class="d-flex justify-content-between">
+  <div class='card' style='background-color: #f0f1f2'>
+    <div class='d-flex justify-content-between'>
       <input
-          class="p-2 text-left flex-shrink-1"
-          :type="type"
-          :placeholder="placeholder"
-          :value="value"
-          @input="$emit('input', $event.target.value)"
+        class='p-2 text-left flex-shrink-1'
+        :type='type'
+        :placeholder='placeholder'
+        :value='value'
+        @input="$emit('input', $event.target.value)"
       />
-      <div class="d-flex">
+      <div class='d-flex'>
         <button
-            class="d-flex align-items-center"
-            type="button"
-            :disabled="disabled"
-            @click.stop="$emit('click', 'confirm')"
+          class='d-flex align-items-center'
+          type='button'
+          :disabled='disabled'
+          @click.stop="$emit('click', 'confirm')"
         >
-          <v-icon class="mx-1" name="ri-checkbox-circle-line"></v-icon>
+          <v-icon class='mx-1' name='ri-checkbox-circle-line'></v-icon>
         </button>
         <button
-            class="d-flex align-items-center"
-            type="button"
-            :disabled="disabled"
-            @click.stop="$emit('click', 'cancel')"
+          class='d-flex align-items-center'
+          type='button'
+          :disabled='disabled'
+          @click.stop="$emit('click', 'cancel')"
         >
-          <v-icon class="mx-1" name="ri-close-circle-line"></v-icon>
+          <v-icon class='mx-1' name='ri-close-circle-line'></v-icon>
         </button>
       </div>
 
@@ -33,23 +33,23 @@
 
 <script>
 export default {
-  name: "TransferInput",
+  name: 'TransferInput',
   props: {
     placeholder: {
       type: String,
-      default: "",
+      default: ''
     },
     type: {
       type: String,
-      default: "text",
+      default: 'text'
     },
     disabled: false,
-    value: "",
+    value: ''
   },
-  data: function () {
-    return {};
-  },
-};
+  data: function() {
+    return {}
+  }
+}
 </script>
 
 <style scoped>

@@ -21,20 +21,20 @@
       <div v-if="!isLoading">
         <div class="">
           <div>
-            <TradeInput
+            <trade-input
                 header="交易对"
                 placeholder="点击表格"
                 disabled="true"
                 :value="pairSymbol"
             />
-            <TradeInput
+            <trade-input
                 class="mt-2"
                 header="单方下单金额"
                 footer="USDT"
                 v-model="wantMoney"
                 @input="ValueChanged('value')"
             />
-            <TradeInput
+            <trade-input
                 class="mt-2"
                 header="每边下单"
                 :footer="baseSymbol"
@@ -44,13 +44,16 @@
           </div>
         </div>
         <div class="mt-3 d-flex flex-column">
-          <InfoItem header="货币精度" :content="quotePrecision"/>
-          <InfoItem header="预计8小时收益" :content="benefit" footer="USDT"/>
-          <InfoItem header="总开仓手续费" :content="totalTax" footer="USDT"/>
-          <span class="text-muted small align-self-end">现货手续费(以0.075%) {{ mainTax }} USDT</span>
+          <info-item header="货币精度">{{ quotePrecision }}</info-item>
+          <info-item header="预计8小时收益" footer="USDT">{{ toPrecision(benefit, 2) }}</info-item>
+          <info-item header="预计8小时收益" footer="USDT">{{ toPrecision(benefit, 2) }}</info-item>
+          <info-item header="总开仓手续费" footer="USDT">{{ toPrecision(totalTax, 2) }}</info-item>
+          <span class="text-muted small align-self-end">
+            现货手续费(以0.075%) {{ toPrecision(mainTax, 2) }} USDT
+          </span>
           <span class="text-muted small align-self-end float-right">
-          期货手续费(以0.040%) {{ futureTax }} USDT
-        </span>
+            期货手续费(以0.040%) {{ toPrecision(futureTax, 2) }} USDT
+          </span>
           <div class="d-flex flex-row justify-content-between mt-2">
             <span class="align-middle text-muted small">现货下单位置</span>
             <div class="d-flex">

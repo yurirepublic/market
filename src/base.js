@@ -10,11 +10,11 @@ function method_request(func, args) {
         form: {
           function: func,
           args: JSON.stringify(args),
-          password: localConfig.password,
+          password: localConfig.password
         },
-        timeout: 30000,
+        timeout: 30000
       },
-      function (err, httpResponse, body) {
+      function(err, httpResponse, body) {
         if (err) {
           console.error(err)
           reject(err)
@@ -25,8 +25,8 @@ function method_request(func, args) {
           reject(httpResponse)
           return
         }
-        let res = JSON.parse(body);
-        if (res["msg"] !== "success") {
+        let res = JSON.parse(body)
+        if (res['msg'] !== 'success') {
           console.error(res)
           reject(res)
           return
@@ -34,42 +34,42 @@ function method_request(func, args) {
         console.log(res)
         resolve(res)
       }
-    );
+    )
   })
 }
 
 // 用来方便判断是不是数字
 function isNumber(value) {
   if (undefined === value || null === value) {
-    return false;
+    return false
   }
-  if (typeof value == "number") {
-    return true;
+  if (typeof value == 'number') {
+    return true
   }
-  return !isNaN(value - 0);
+  return !isNaN(value - 0)
 }
 
 // 用来快速显示toast
 let showToast = {
-  success: function (text) {
+  success: function(text) {
     Vue.$toast.open({
       message: text,
       type: 'success'
     })
   },
-  error: function (text) {
+  error: function(text) {
     Vue.$toast.open({
       message: text,
       type: 'error'
     })
   },
-  warning: function (text) {
+  warning: function(text) {
     Vue.$toast.open({
       message: text,
       type: 'warning'
     })
   },
-  info: function (text) {
+  info: function(text) {
     Vue.$toast.open({
       message: text,
       type: 'info'
@@ -79,29 +79,29 @@ let showToast = {
 
 // 用来将数字转换为指定精度的str格式
 function float2strFloor(amount, precision) {
-  amount *= Math.pow(10, precision);
+  amount *= Math.pow(10, precision)
   // 向下取整
-  amount = Math.floor(amount);
+  amount = Math.floor(amount)
   // 将数字除以精度
-  amount /= Math.pow(10, precision);
+  amount /= Math.pow(10, precision)
   return amount.toString()
 }
 
 function float2strRound(amount, precision) {
-  amount *= Math.pow(10, precision);
+  amount *= Math.pow(10, precision)
   // 向下取整
-  amount = Math.round(amount);
+  amount = Math.round(amount)
   // 将数字除以精度
-  amount /= Math.pow(10, precision);
+  amount /= Math.pow(10, precision)
   return amount.toString()
 }
 
 function float2strCeil(amount, precision) {
-  amount *= Math.pow(10, precision);
+  amount *= Math.pow(10, precision)
   // 向下取整
-  amount = Math.ceil(amount);
+  amount = Math.ceil(amount)
   // 将数字除以精度
-  amount /= Math.pow(10, precision);
+  amount /= Math.pow(10, precision)
   return amount.toString()
 }
 
@@ -173,18 +173,18 @@ async function generateDataCenterWebsocket() {
       console.log(nickname, '数据连接被关闭', msg)
     }
   })
-  let getOrder = function () {
+  let getOrder = function() {
     return order++
   }
-  let generateGetPromise = function (order) {
+  let generateGetPromise = function(order) {
     return new Promise(resolve => {
-      buf[order] = function (data) {
+      buf[order] = function(data) {
         resolve(data)
       }
     })
   }
   return {
-    getData: async function (tags) {
+    getData: async function(tags) {
       let order = getOrder()
       let promise = generateGetPromise(order)
       ws.send(JSON.stringify({
@@ -194,7 +194,7 @@ async function generateDataCenterWebsocket() {
       }))
       return await promise
     },
-    getDict: async function (tags) {
+    getDict: async function(tags) {
       let order = getOrder()
       let promise = generateGetPromise(order)
       ws.send(JSON.stringify({
@@ -204,7 +204,7 @@ async function generateDataCenterWebsocket() {
       }))
       return await promise
     },
-    getFuzzy: async function (tags) {
+    getFuzzy: async function(tags) {
       let order = getOrder()
       let promise = generateGetPromise(order)
       ws.send(JSON.stringify({
@@ -214,7 +214,7 @@ async function generateDataCenterWebsocket() {
       }))
       return await promise
     },
-    getAll: async function (tags) {
+    getAll: async function(tags) {
       let order = getOrder()
       let promise = generateGetPromise(order)
       ws.send(JSON.stringify({
@@ -224,14 +224,14 @@ async function generateDataCenterWebsocket() {
       }))
       return await promise
     },
-    setData: async function (tags, val) {
+    setData: async function(tags, val) {
       ws.send(JSON.stringify({
         mode: 'SET',
         tags: tags,
         value: val
       }))
     },
-    close: async function (code = 1000) {
+    close: async function(code = 1000) {
       await ws.close(code)
     }
   }
@@ -248,7 +248,7 @@ async function generateSubscribeWebsocket() {
   let nickname = '全局订阅'
   let subscribe = {}    // 用来订阅的字典，key是分配的comment，value是回调函数
   let order = 0
-  let getOrder = function () {
+  let getOrder = function() {
     return order++
   }
   // 创建websocket
@@ -271,7 +271,7 @@ async function generateSubscribeWebsocket() {
 
 
   return {
-    precise: async function (tags, callback) {
+    precise: async function(tags, callback) {
       let order = getOrder()
       subscribe[order] = callback
       await ws.send(JSON.stringify({
@@ -280,7 +280,7 @@ async function generateSubscribeWebsocket() {
         comment: order
       }))
     },
-    dict: async function (tags, callback) {
+    dict: async function(tags, callback) {
       let order = getOrder()
       subscribe[order] = callback
       await ws.send(JSON.stringify({
@@ -289,7 +289,7 @@ async function generateSubscribeWebsocket() {
         comment: order
       }))
     },
-    fuzzy: async function (tags, callback) {
+    fuzzy: async function(tags, callback) {
       let order = getOrder()
       subscribe[order] = callback
       await ws.send(JSON.stringify({
@@ -298,7 +298,7 @@ async function generateSubscribeWebsocket() {
         comment: order
       }))
     },
-    all: async function (callback) {
+    all: async function(callback) {
       let order = getOrder()
       subscribe[order] = callback
       await ws.send(JSON.stringify({
@@ -310,7 +310,7 @@ async function generateSubscribeWebsocket() {
     set onmessage(func) {
       ws.onmessage = func
     },
-    close: async function (code = 1000) {
+    close: async function(code = 1000) {
       ws.close(code)
     }
   }
