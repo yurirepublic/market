@@ -15,13 +15,13 @@
       </div>
     </div>
 
-    <info-item header='现货账户' :content='mainBNB' footer='BNB' />
+    <info-item header='现货账户' footer='BNB'>{{ mainBNB }}</info-item>
     <span class='text-muted small align-self-end'>≈ {{ Math.floor(mainBNB * BNBPrice * 100) / 100 }} USDT</span>
 
-    <info-item header='期货账户' :content='futureBNB' footer='BNB' />
+    <info-item header='期货账户' footer='BNB'>{{ futureBNB }}</info-item>
     <span class='text-muted small align-self-end'>≈ {{ Math.floor(futureBNB * BNBPrice * 100) / 100 }} USDT</span>
 
-    <info-item header='全仓账户' :content='marginBNB' footer='BNB' />
+    <info-item header='全仓账户' footer='BNB'>{{ marginBNB }}</info-item>
     <span class='text-muted small align-self-end'>≈ {{ Math.floor(marginBNB * BNBPrice * 100) / 100 }} USDT</span>
 
     <div v-if='showTransfer'>

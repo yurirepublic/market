@@ -14,9 +14,9 @@
       </div>
     </div>
 
-    <InfoItem header='可用现货' :content='mainFree' footer='USDT' />
-    <InfoItem header='可用期货' :content='futureFree' footer='USDT' />
-    <InfoItem header='可用全仓' :content='marginFree' footer='USDT' />
+    <InfoItem header='可用现货' footer='USDT'>{{ mainFree }}</InfoItem>
+    <InfoItem header='可用期货' footer='USDT'>{{ futureFree }}</InfoItem>
+    <InfoItem header='可用全仓' footer='USDT'>{{ marginFree }}</InfoItem>
     <div v-if='showTransfer'>
       <div class='py-1 d-flex justify-content-between align-items-center'>
         <Radio @click='fromMode = $event' init-active='现货' :options="['现货', '期货', '全仓']"></Radio>
