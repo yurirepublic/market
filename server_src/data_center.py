@@ -596,7 +596,7 @@ class WebsocketClientAdapter(object):
     """
 
     def __init__(self):
-        self.ws = None
+        self.ws: websockets.WebSocketClientProtocol = None
 
         self.async_lock = asyncio.Lock()
 
@@ -611,6 +611,9 @@ class WebsocketClientAdapter(object):
         self.ws = await websockets.connect(url)
         await self.ws.send(config['password'])
         print('成功连接数据中心接口')
+
+    async def close(self):
+        await self.ws.close()
 
     async def update(self, tags: Set[str], value, timestamp: int = None):
         await self.ws.send(json.dumps({
@@ -683,6 +686,9 @@ class WebsocketSubscribe(object):
         print('成功连接订阅接口')
         # 启动消息接收
         asyncio.create_task(self._on_message())
+
+    async def close(self):
+        await self.ws.close()
 
     async def _on_message(self):
         """
