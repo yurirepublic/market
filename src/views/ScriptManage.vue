@@ -84,7 +84,7 @@ export default {
   methods: {
     Refresh: function() {
       this.refresh_button_anime = true
-      this.method_request('script_list', [])
+      this.apiRequest('script_list', [])
         .then((res) => {
           this.showToast.success('脚本列表获取成功')
           this.script_list = res.data
@@ -105,7 +105,7 @@ export default {
       })
       // 发送请求
       this.button_disabled = true
-      this.method_request('run_script', [item['file_name'], input_dict])
+      this.apiRequest('run_script', [item['file_name'], input_dict])
         .then((res) => {
           this.showToast.success('脚本运行成功')
         })

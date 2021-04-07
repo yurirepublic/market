@@ -16,19 +16,25 @@
     </div>
 
     <info-item header='现货账户' footer='BNB'>{{ mainBNB }}</info-item>
-    <span class='text-muted small align-self-end'>≈ {{ Math.floor(mainBNB * BNBPrice * 100) / 100 }} USDT</span>
+    <span class='text-muted small align-self-end'>
+      ≈ {{ Math.floor(mainBNB * BNBPrice * 100) / 100 }} USDT
+    </span>
 
     <info-item header='期货账户' footer='BNB'>{{ futureBNB }}</info-item>
-    <span class='text-muted small align-self-end'>≈ {{ Math.floor(futureBNB * BNBPrice * 100) / 100 }} USDT</span>
+    <span class='text-muted small align-self-end'>
+      ≈ {{ Math.floor(futureBNB * BNBPrice * 100) / 100 }} USDT
+    </span>
 
     <info-item header='全仓账户' footer='BNB'>{{ marginBNB }}</info-item>
-    <span class='text-muted small align-self-end'>≈ {{ Math.floor(marginBNB * BNBPrice * 100) / 100 }} USDT</span>
+    <span class='text-muted small align-self-end'>
+      ≈ {{ Math.floor(marginBNB * BNBPrice * 100) / 100 }} USDT
+    </span>
 
     <div v-if='showTransfer'>
       <div class='py-1 d-flex justify-content-between align-items-center'>
-        <my-radio @click='fromMode = $event' init-active='现货' :options="['现货', '期货', '全仓']"></my-radio>
+        <my-radio @click='fromMode = $event' init-active='现货' :options="['现货', '期货', '全仓']" />
         <v-icon name='bi-arrow-right'></v-icon>
-        <my-radio @click='toMode = $event' init-active='期货' :options="['现货', '期货', '全仓']"></my-radio>
+        <my-radio @click='toMode = $event' init-active='期货' :options="['现货', '期货', '全仓']" />
       </div>
       <div class='d-flex flex-column'>
         <transfer-input
@@ -129,7 +135,7 @@ export default {
       }
       this.showToast.info('开始转账')
       try {
-        await this.method_request('transfer', [
+        await this.apiRequest('transfer', [
           transferMode,
           'BNB',
           this.transferAmount

@@ -126,7 +126,7 @@ export default {
       this.refresh_button_anime = true
 
       // 获取套利开仓情况
-      this.method_request('analyze_premium', [])
+      this.apiRequest('analyze_premium', [])
         .then((res) => {
           this.havingItems = res['data']['USDT']
           this.margin_risk = res['data']['margin_risk']
@@ -150,55 +150,6 @@ export default {
           this.refresh_button_anime = false
         })
     },
-
-    // 平仓
-    CloseOut(item) {
-      console.log('即将平仓双向交易对', item)
-      this.button_disabled = true
-      // 平仓下单
-      console.log('平仓下单符号', item['symbol'])
-      console.log('平仓下单数量', item['quantity'])
-      this.showToast.info('开始平仓' + item['symbol'])
-      this.method_request('trade_premium', [item['symbol'], item['quantity'], 'MAIN'])
-        .then((res) => {
-          this.showToast.success(item['symbol'] + '成功平仓')
-        })
-        .catch((err) => {
-          this.showToast.error('平仓失败')
-        })
-        .finally(() => {
-          this.button_disabled = false
-        })
-    },
-
-    // 平孤立仓
-    CloseSingle(item) {
-      this.button_disabled = true
-      console.log('即将平孤立仓', item['symbol'])
-      console.log('平仓下单数量', item['quantity'])
-      console.log('平仓区域', item['type'])
-
-      // 特别对待一下期货的负仓位情况
-      if (item['type'] === 'FUTURE' && item['quantity'] < 0) {
-        // 将仓位的负号消除，方向使用BUY
-        this.method_request('trade_market', [item['symbol'], item['type'], item['quantity'].replace('-', ''), 'BUY']).then(res => {
-          this.showToast.success(item['symbol'] + '成功平仓')
-        }).catch(err => {
-          this.showToast.success(item['symbol'] + '平仓失败')
-        }).finally(() => {
-          this.button_disabled = false
-        })
-      } else {
-        // 将仓位的负号消除，方向使用BUY
-        this.method_request('trade_market', [item['symbol'], item['type'], item['quantity'], 'SELL']).then(res => {
-          this.showToast.success(item['symbol'] + '成功平仓')
-        }).catch(err => {
-          this.showToast.success(item['symbol'] + '平仓失败')
-        }).finally(() => {
-          this.button_disabled = false
-        })
-      }
-    }
   },
 
   components: {

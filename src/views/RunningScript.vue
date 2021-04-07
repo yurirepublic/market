@@ -75,7 +75,7 @@ export default {
   methods: {
     Refresh: function() {
       this.refresh_button_anime = true
-      this.method_request('running_script', [])
+      this.apiRequest('running_script', [])
         .then((res) => {
           this.running_script_list = res.data
           this.showToast.success('运行中的脚本列表获取成功')
@@ -89,7 +89,7 @@ export default {
     },
     StopScript: function(item) {
       this.button_disabled = true
-      this.method_request('stop_script', [item.thread_id])
+      this.apiRequest('stop_script', [item.thread_id])
         .then((res) => {
           this.showToast.success('脚本终止成功')
         })
@@ -102,7 +102,7 @@ export default {
     },
     ShowFocusLog: function(item) {
       console.log('选中脚本线程号', item.thread_id)
-      this.method_request('script_log', [item.thread_id])
+      this.apiRequest('script_log', [item.thread_id])
         .then((res) => {
           this.focus_log = res.data
           this.showToast.success('获取选中脚本log成功')

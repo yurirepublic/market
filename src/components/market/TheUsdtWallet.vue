@@ -119,7 +119,7 @@ export default {
       }
       this.showToast.info('开始转账')
       try {
-        await this.method_request('transfer', [
+        await this.apiRequest('transfer', [
           transferMode,
           'USDT',
           this.transferAmount

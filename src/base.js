@@ -1,7 +1,7 @@
 import request from 'request'
 import Vue from 'vue'
 
-function method_request(func, args) {
+function apiRequest(func, args) {
   // 发送请求
   return new Promise((resolve, reject) => {
     request.post(
@@ -324,7 +324,7 @@ const average = arr => arr.reduce((acc, val) => acc + val, 0) / arr.length
 
 export default {
   install(Vue, option) {
-    Vue.prototype.method_request = method_request
+    Vue.prototype.apiRequest = apiRequest
     Vue.prototype.isNumber = isNumber
     Vue.prototype.showToast = showToast
     Vue.prototype.float2strFloor = float2strFloor

@@ -213,7 +213,7 @@ export default {
       // 发送开仓指令
       this.disabledTrade = true
       this.banReason = '正在下单'
-      this.method_request("trade_premium", [this.pairSymbol, this.quantity, 'OPEN', this.mainMode])
+      this.apiRequest("trade_premium", [this.pairSymbol, this.quantity, 'OPEN', this.mainMode])
           .then((res) => {
             this.showToast.success("加仓成功")
           })
@@ -231,7 +231,7 @@ export default {
       // 发送指令
       this.disabledTrade = true
       this.banReason = '正在下单'
-      this.method_request("trade_premium", [this.pairSymbol, this.quantity, 'CLOSE', this.mainMode])
+      this.apiRequest("trade_premium", [this.pairSymbol, this.quantity, 'CLOSE', this.mainMode])
           .then((res) => {
             this.showToast.success("减仓成功")
           })
