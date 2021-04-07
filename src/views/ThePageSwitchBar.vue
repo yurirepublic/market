@@ -11,7 +11,7 @@
 
 <script>
 export default {
-  name: 'FuncSwitchBar',
+  name: 'ThePagesSwitchBar',
   props: {
     pages: {
       type: Array,

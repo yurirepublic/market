@@ -45,7 +45,7 @@ import ClickableIcon from '@/components/ClickableIcon.vue'
 import Radio from '@/components/MyRadio.vue'
 
 export default {
-  name: 'Wallet',
+  name: 'TheUsdtWallet',
   data: function() {
     return {
       mainFree: NaN,

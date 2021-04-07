@@ -97,7 +97,7 @@ import RefreshButton from '@/components/RefreshButton.vue'
 import NoBorderButton from '@/components/NoBorderButton'
 
 export default {
-  name: 'PremiumHaving',
+  name: 'ThePositionAnalyst',
   data: function() {
     return {
       havingItems: {},

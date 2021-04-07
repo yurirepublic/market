@@ -43,7 +43,7 @@ import TheBnbWallet from '@/components/market/TheBnbWallet.vue'
 import TheFundingRateHistory from '@/components/market/TheFundingRateHistory.vue'
 
 export default {
-  name: 'premium',
+  name: 'Market',
   data: function() {
     return {
       pairSymbol: '' // 被选中的符号

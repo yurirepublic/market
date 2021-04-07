@@ -122,7 +122,7 @@ import InfoItem from "@/components/InfoItem.vue"
 import NoBorderButton from "@/components/NoBorderButton"
 
 export default {
-  name: "PremiumCreator",
+  name: "ThePositionCreator",
 
   props: {
     pairSymbol: ''    // 用于开仓的交易对

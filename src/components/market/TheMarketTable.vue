@@ -62,7 +62,7 @@
 import RefreshButton from '@/components/RefreshButton.vue'
 
 export default {
-  name: 'PremiumTable',
+  name: 'TheMarketTable',
   data: function() {
     return {
       cache: {},    // 将symbol作为键，可以快速查找相应的对象来修改数据
