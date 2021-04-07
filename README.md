@@ -26,12 +26,11 @@ npm run build
 域名可以在godaddy一年十块钱买到，证书可以在阿里云、腾讯云免费签发
 ### 部署过程
 1. 将```server_src```所有内容复制到服务器
-1. 运行```make_default_config.py```创建默认的配置文件
-1. 在后台服务端程序```nohup python3 -u api.py &```
+1. 运行```make_default_config.py```创建默认的配置文件 
+1. 输入```screen```新建一个screen窗口
+1. 输入```python3 data_center.py```运行数据中心
+1. 按下Ctrl+A，弹起后再按下C，以此新建另一个screen子窗口   
+1. 输入```python3 api.py```运行主控服务端
 
-注：程序会在后台运行，想看log输入
-```
-tail nohup.out
-```
-
-注2：服务端目前极度不稳定，暂时不要自行部署，仅供代码研究
+注：可以按下Ctrl+A，弹起后按下n，来切换数据中心和主控服务器的控制台，更多操作请搜索screen使用方法
+注2：服务端目前相当不稳定，运作时如有问题，请重启api.py，数据中心一般不用重启。
