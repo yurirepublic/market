@@ -1,6 +1,5 @@
 <template>
   <button
-    class='btn btn-light btn-sm float-right'
     type='button'
     @click="$emit('click', '$event')"
     :disabled='disabled'
@@ -23,20 +22,12 @@ export default {
 
 <style scoped>
 button {
-  border: none;
+  border-radius: 5px;
+  border-style: none;
+  color: #000;
 }
 
 button:hover {
-  border: none;
+  background-color: #ddd;
 }
-
-button:focus {
-  border: none;
-  box-shadow: none;
-}
-
-button:not(:disabled):not(.disabled):active:focus {
-  box-shadow: none;
-}
-
 </style>

@@ -110,7 +110,6 @@ export default {
       if (obj) {
         obj['fundingRateHistory'] = fundingRateHistory[symbol]
         // 计算平均费率
-        let total = 0
         if (fundingRateHistory[symbol].length === 0) {
           obj['avgRate'] = 0
         } else {

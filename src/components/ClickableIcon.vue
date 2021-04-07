@@ -1,6 +1,5 @@
 <template>
   <button
-    class='float-right'
     type='button'
     @click="$emit('click', '$event')"
     :disabled='disabled'

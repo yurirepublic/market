@@ -1,6 +1,6 @@
 <template>
   <div class='d-flex flex-column' style='background-color: #e1e1e1'>
-    <div v-for='page in pages' :key='page.name' @click="$emit('click', page.name)">
+    <div class='d-flex' v-for='page in pages' :key='page.name' @click="$emit('click', page.name)">
       <div class='pl-1' :class="focusPage === page.name? 'focus-line': 'normal-line'" />
       <div class='py-3 pl-2 pr-3'>
         <v-icon :name='page.icon' scale='2' :fill="focusPage === page.name ? focusColor : normalColor" />
