@@ -33,6 +33,7 @@
         <th class='font-weight-normal'>期货</th>
         <th class='font-weight-normal'>净持</th>
         <th class='font-weight-normal'>双持</th>
+        <th class='font-weight-normal' v-if='showDetail'>市值</th>
       </tr>
       </thead>
       <tbody>
@@ -71,6 +72,9 @@
         </td>
         <td class='text-monospace align-middle'>
           <span v-if="item['hedging'] !== 0">{{ item['hedging'] }}</span>
+        </td>
+        <td class='text-monospace align-middle' v-if='showDetail'>
+          <span v-if="item['value'] !== 0">{{ toPrecision(item['value'], 2) }}</span>
         </td>
       </tr>
       </tbody>
@@ -116,6 +120,7 @@ export default {
 
 
       riskCalcInterval: null,   // 定期计算风险的定时器
+      sortInterval: null,   // 用来排序的定时器
 
       button_disabled: false,
 
@@ -144,7 +149,7 @@ export default {
         net: 0,   // 净持仓
         hedging: 0,   // 双向持仓
 
-        value: 0,    // 双向持仓的单边市值
+        value: 0,   // 双向持仓的单边市值
 
         show: false // 经过判断后认为此项可以显示的标识
       }
@@ -152,11 +157,19 @@ export default {
     // 修改一个持仓item，会优先根据cache判断是否存在，不存在会自动创建
     setItem: async function(symbol, key, value) {
       let obj = this.cache[symbol]
-      if (obj !== undefined) {
-        if (obj[key] === value) {
-          return    // 一样的数字没必要改
-        }
-        obj[key] = value
+      if (obj === undefined) {
+        obj = this.createDefaultItem()
+        obj['symbol'] = symbol
+        this.cache[symbol] = obj
+        this.items.push(obj)
+      }
+      if (obj[key] === value) {
+        return    // 一样的数字没必要改
+      }
+      obj[key] = value
+      // 判断是否可以显示
+      obj['show'] = this.checkShow(obj)
+      if (obj['show']) {
         // 计算净持和双持
         let positive = 0
         let negative = 0
@@ -175,33 +188,22 @@ export default {
         obj['net'] = positive - negative
         obj['hedging'] = Math.min(positive, negative)
 
-        // 判断是否可以显示
-        obj['show'] = this.checkShow(obj)
+        // 计算双持单边市值
+        obj['value'] = this.mainPrice[obj['symbol'] + 'USDT'] * obj['hedging']
 
-        if (obj['show']) {
-          // 计算逐仓波动风险
-          let assetValue = 0
-          let borrowedValue = 0
-          let price = this.mainPrice[obj.symbol + 'USDT']
-          assetValue += obj.isolated * price
-          assetValue += obj.isolatedQuote
-          borrowedValue += obj.isolatedBorrowed * price
-          borrowedValue += obj.isolatedQuoteBorrowed
-          if (borrowedValue - 0.8 * assetValue === 0) {
-            obj.isolatedRisk = 99999
-          } else {
-            obj.isolatedRisk = ((0.8 * assetValue - borrowedValue) / (borrowedValue - 0.8 * assetValue)) * 100
-          }
+        // 计算逐仓波动风险
+        let assetValue = 0
+        let borrowedValue = 0
+        let price = this.mainPrice[obj.symbol + 'USDT']
+        assetValue += obj.isolated * price
+        assetValue += obj.isolatedQuote
+        borrowedValue += obj.isolatedBorrowed * price
+        borrowedValue += obj.isolatedQuoteBorrowed
+        if (borrowedValue - 0.8 * assetValue === 0) {
+          obj.isolatedRisk = 99999
+        } else {
+          obj.isolatedRisk = ((0.8 * assetValue - borrowedValue) / (borrowedValue - 0.8 * assetValue)) * 100
         }
-
-
-      } else {
-        obj = this.createDefaultItem()
-        obj['symbol'] = symbol
-        obj[key] = value
-        obj.show = this.checkShow(obj)
-        this.cache[symbol] = obj
-        this.items.push(obj)
       }
       this.$forceUpdate()
     },
@@ -222,6 +224,9 @@ export default {
     this.subscribe = await this.connectSubscribe()
     if (this.riskCalcInterval !== null) {
       clearInterval(this.riskCalcInterval)
+    }
+    if (this.sortInterval !== null) {
+      clearInterval(this.sortInterval)
     }
     this.riskCalcInterval = setInterval(async () => {
       // 统计全仓和期货的相关信息
@@ -280,6 +285,25 @@ export default {
 
 
     }, 1000)
+    this.sortInterval = setInterval(() => {
+      // 对双持价值进行排序，其次是净持仓
+      this.items.sort((a, b) => {
+        if (a.value < b.value) {
+          return 1
+        } else if (a.value > b.value) {
+          return -1
+        } else {
+          if (a.net < b.net) {
+            return 1
+          } else if (a.net > b.net) {
+            return -1
+          } else {
+            return 0
+          }
+        }
+      })
+      this.$forceUpdate()
+    }, 3000)
     // 获取及订阅所有现货价格
     this.mainPrice = await this.ws.getDict(['price', 'main'])
     await this.subscribe.dict(['price', 'main'], msg => {
