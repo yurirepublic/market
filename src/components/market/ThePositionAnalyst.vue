@@ -37,7 +37,7 @@
       </thead>
       <tbody>
       <tr v-for='(item, index) in items'
-          v-if="!(item['symbol'] === 'BNB' && !showBnb || item['symbol'] === 'USDT' || item['show'] === false)"
+          v-if="!((item['symbol'] === 'BNB' && !showBnb) || item['symbol'] === 'USDT' || item['show'] === false)"
           :key="item['symbol']"
           @click="$emit('click', item['symbol'] + 'USDT')"
       >
@@ -139,7 +139,7 @@ export default {
         isolatedBorrowed: 0,  // 逐仓借入
         isolatedQuote: 0, // 逐仓合约币（一般是USDT）余额
         isolatedQuoteBorrowed: 0, // 逐仓合约币借入
-        isolatedRisk: 0,    // 逐仓风险率
+        isolatedRisk: 99999,    // 逐仓风险率
         future: 0,  // 期货余额
         net: 0,   // 净持仓
         hedging: 0,   // 双向持仓
@@ -199,6 +199,7 @@ export default {
         obj = this.createDefaultItem()
         obj['symbol'] = symbol
         obj[key] = value
+        obj.show = this.checkShow(obj)
         this.cache[symbol] = obj
         this.items.push(obj)
       }
@@ -209,7 +210,7 @@ export default {
       let keys = Object.keys(item)
       let show = false
       keys.forEach(e => {
-        if (e !== 'symbol' && e !== 'show' && item[e] !== 0 && item[e] !== null) {
+        if (e !== 'symbol' && e !== 'show' && e !== 'isolatedRisk' && item[e] !== 0) {
           show = true
         }
       })
