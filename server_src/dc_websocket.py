@@ -29,7 +29,7 @@ class Script(script_manager.Script):
         self.dc = await data_center.create_client_adapter()
         self.operator = await binance_api.create_operator()
 
-        # 针对常用的资产进行初始化（因为资产为0不会被查询到）
+        # 针对必须展示的资产进行初始化（因为资产为0不会被查询到）
         asyncio.create_task(self.dc.update({'asset', 'main', 'USDT'}, 0))
         asyncio.create_task(self.dc.update({'asset', 'future', 'USDT'}, 0))
         asyncio.create_task(self.dc.update({'asset', 'margin', 'USDT'}, 0))
@@ -38,29 +38,45 @@ class Script(script_manager.Script):
         asyncio.create_task(self.dc.update({'asset', 'margin', 'BNB'}, 0))
 
         # 获取现货的资产数量
-        asset = await self.operator.get_all_asset_amount('MAIN')
-        for key in asset.keys():
-            asyncio.create_task(self.dc.update({'asset', 'main', key}, asset[key]))
+        res = await self.operator.request('api', '/api/v3/account', 'GET', {
+            'timestamp': binance_api.get_timestamp()
+        })
+        res = res['balances']
+        for e in res:
+            asset = e['asset']
+            free = float(e['free'])
+            asyncio.create_task(self.dc.update({'asset', 'main', asset}, free))
 
-        # 获取期货的资产数量
-        asset = await self.operator.get_all_asset_amount('FUTURE')
-        for key in asset.keys():
-            asyncio.create_task(self.dc.update({'asset', 'future', key}, asset[key]))
+        # 获取期货的资产和头寸信息
+        res = await self.operator.request('fapi', '/fapi/v2/account', 'GET', {
+            'timestamp': binance_api.get_timestamp()
+        })
+        for e in res['assets']:
+            asset = e['asset']
+            free = float(e['maxWithdrawAmount'])
+            asyncio.create_task(self.dc.update({'asset', 'future', asset}, free))
+        for e in res['positions']:
+            symbol = e['symbol']
+            position = float(e['positionAmt'])
+            asyncio.create_task(self.dc.update({'position', 'future', symbol}, position))
 
-        # 获取全仓资产数量
-        asset = await self.operator.get_all_asset_amount('MARGIN')
-        for key in asset.keys():
-            asyncio.create_task(self.dc.update({'asset', 'margin', key}, asset[key]))
-
-        # 获取逐仓资产数量
-        asset = await self.operator.get_all_asset_amount('ISOLATED')
-        for key in asset.keys():
-            asyncio.create_task(self.dc.update({'asset', 'isolated', key}, asset[key]))
+        # 获取全仓的资产和借贷数量
+        res = await self.operator.request('api', '/sapi/v1/margin/account', 'GET', {
+            'timestamp': binance_api.get_timestamp()
+        })
+        res = res['userAssets']
+        for e in res:
+            asset = e['asset']
+            borrowed = float(e['borrowed'])
+            free = float(e['free'])
+            asyncio.create_task(self.dc.update({'asset', 'margin', asset}, free))
+            asyncio.create_task(self.dc.update({'borrowed', 'margin', asset}, borrowed))
 
         # 启动websocket进行追踪
         asyncio.create_task(self.main_account_update())
         asyncio.create_task(self.margin_account_update())
         asyncio.create_task(self.future_account_update())
+        asyncio.create_task(self.isolated_account_update())
 
         # 期货比较特殊，纸面浮盈不会推送，所以暂定为5s刷新一次
         asyncio.create_task(self.future_usdt())
@@ -90,20 +106,20 @@ class Script(script_manager.Script):
 
     async def main_update(self, mode, data):
         """
-        处理现货三个仓位的账户更新
+        处理现货和全仓和逐仓的账户更新
         """
         data = json.loads(data)
         if data['e'] == 'outboundAccountPosition':
             # 扫描数据
             for x in data['B']:
-                symbol = x['a']
+                asset = x['a']
                 free = float(x['f'])
                 try:
                     timestamp = int(x['E'])
                 except KeyError:
                     timestamp = None
                 # 发送到数据中心
-                asyncio.create_task(self.dc.update({'asset', mode, symbol}, free, timestamp))
+                asyncio.create_task(self.dc.update({'asset', mode, asset}, free, timestamp))
         elif data['e'] == 'balanceUpdate':
             pass
         else:
@@ -144,6 +160,31 @@ class Script(script_manager.Script):
         while True:
             await asyncio.sleep(1800)
             await self.operator.overtime_listen_key('MARGIN', key)
+
+    async def isolated_account_update(self):
+        """
+        处理逐仓账户更新
+        """
+        # 逐仓更新起来十分麻烦，而且仓位更新不频繁，所以1s调用http接口刷新一次
+        while True:
+            # 获取逐仓的资产和借贷数量
+            res = await self.operator.request('api', '/sapi/v1/margin/isolated/account', 'GET', {
+                'timestamp': binance_api.get_timestamp()
+            })
+            res = res['assets']
+            for e in res:
+                symbol = e['symbol']
+
+                borrowed = float(e['baseAsset']['borrowed'])
+                free = float(e['baseAsset']['free'])
+                asyncio.create_task(self.dc.update({'asset', 'isolated', 'base', symbol}, free))
+                asyncio.create_task(self.dc.update({'borrowed', 'isolated', 'base', symbol}, borrowed))
+
+                borrowed = float(e['quoteAsset']['borrowed'])
+                free = float(e['quoteAsset']['free'])
+                asyncio.create_task(self.dc.update({'asset', 'isolated', 'quote', symbol}, free))
+                asyncio.create_task(self.dc.update({'borrowed', 'isolated', 'quote', symbol}, borrowed))
+            await asyncio.sleep(1)
 
     async def future_account_update(self):
         """

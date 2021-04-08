@@ -1,3 +1,11 @@
+"""
+随着数据中心的投入使用
+API的封装越来越没有必要
+因为封装的原因是之前数据不互通，同一个API需要调用多次
+现在封装的倾向要向着通用化转变
+例如只封装需要多次调用的websocket连接、request这类
+"""
+
 import json
 import hmac
 import time
@@ -118,6 +126,9 @@ class Operator(object):
             self.public_key = jsons['binance_public_key']
             self.private_key = jsons['binance_private_key']
 
+        # 创建一个共用session
+        self.session = requests.Session()
+
     async def request(self, area_url: str, path_url, method: str, data: dict, test=False, send_signature=True,
                       retry_count: int = 3, retry_interval: int = 0) -> Dict:
         """
@@ -161,11 +172,11 @@ class Operator(object):
 
         while True:
             if method == 'GET':
-                func = requests.get
+                func = self.session.get
             elif method == 'POST':
-                func = requests.post
+                func = self.session.post
             else:
-                func = requests.put
+                func = self.session.put
             r: requests.Response = \
                 await asyncio.get_running_loop().run_in_executor(None, functools.partial(func, url, headers=headers))
             if not only_trace_error:
@@ -561,7 +572,7 @@ class Operator(object):
             for e in res:
                 # 过滤掉仓位为0的交易对
                 if float(e['positionAmt']) != 0:
-                    all_price[e['symbol']] = e['positionAmt']
+                    all_price[e['symbol']] = float(e['positionAmt'])
             return all_price
 
     async def transfer_asset(self, mode: str, asset_symbol: str, amount: Union[str, float, int]):
