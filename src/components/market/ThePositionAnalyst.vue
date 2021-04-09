@@ -34,6 +34,8 @@
         <th class='font-weight-normal'>净持</th>
         <th class='font-weight-normal'>双持</th>
         <th class='font-weight-normal' v-if='showDetail'>市值</th>
+        <th class='font-weight-normal' v-if='showDetail'>费率</th>
+        <th class='font-weight-normal' v-if='showDetail'>溢价</th>
       </tr>
       </thead>
       <tbody>
@@ -74,7 +76,13 @@
           <span v-if="item['hedging'] !== 0">{{ item['hedging'] }}</span>
         </td>
         <td class='text-monospace align-middle' v-if='showDetail'>
-          <span v-if="item['value'] !== 0">{{ toFixed(item['value'], 2) }}</span>
+          <span v-if="item['value'] !== 0">{{ toFixed(item['value'], 2) }}＄</span>
+        </td>
+        <td class='text-monospace align-middle' v-if='showDetail'>
+          <span v-if="item['fundingRate'] !== 0">{{ toFixed(item['fundingRate'] * 100, 2) }}%</span>
+        </td>
+        <td class='text-monospace align-middle' v-if='showDetail'>
+          <span v-if="item['fundingRate'] !== 0">{{ toFixed(item['premiumRate'] * 100, 2) }}%</span>
         </td>
       </tr>
       </tbody>
@@ -108,6 +116,7 @@ export default {
 
       mainPrice: {},    // 市值计算需要用到现货价格，这里会订阅所有的现货价格
       futurePrice: {},    // 市值计算需要用到的期货价格
+      fundingRate: {},    // 显示详细信息的费率要用用到的期货费率
 
       havingItems: {},
       havingItemsSingle: {},
@@ -150,6 +159,8 @@ export default {
         hedging: 0,   // 双向持仓
 
         value: 0,   // 双向持仓的单边市值
+        fundingRate: 0,     // 期货费率
+        premiumRate: 0,   // 期货溢价
 
         show: false // 经过判断后认为此项可以显示的标识
       }
@@ -191,6 +202,11 @@ export default {
         // 计算双持单边市值
         obj['value'] = this.mainPrice[obj['symbol'] + 'USDT'] * obj['hedging']
 
+        // 获取期货费率
+        if (this.fundingRate[obj['symbol'] + 'USDT'] !== undefined) {
+          obj['fundingRate'] = this.fundingRate[obj['symbol'] + 'USDT']
+        }
+
         // 计算逐仓波动风险
         let assetValue = 0
         let borrowedValue = 0
@@ -212,7 +228,8 @@ export default {
       let keys = Object.keys(item)
       let show = false
       keys.forEach(e => {
-        if (e !== 'symbol' && e !== 'show' && e !== 'isolatedRisk' && item[e] !== 0) {
+        if (e !== 'symbol' && e !== 'show' && e !== 'isolatedRisk' && e !== 'fundingRate' &&
+          e !== 'premiumRate' && item[e] !== 0) {
           show = true
         }
       })
@@ -314,6 +331,27 @@ export default {
     this.futurePrice = await this.ws.getDict(['price', 'future'])
     await this.subscribe.dict(['price', 'future'], msg => {
       this.futurePrice[msg['special']] = msg['data']
+    })
+
+    // 获取及订阅所有期货费率
+    this.fundingRate = await this.ws.getDict(['premium', 'fundingRate'])
+    await this.subscribe.dict(['premium', 'fundingRate'], msg => {
+      this.fundingRate[msg['special']] = msg['data']
+    })
+
+    // 订阅期货溢价
+    await this.subscribe.dict(['premium', 'rate'], msg => {
+      let symbol = msg['special']
+      if (symbol.endsWith('USDT')) {
+        symbol = symbol.substring(0, symbol.length - 4)   // 删除USDT
+        // 找到对应的obj
+        let obj = this.cache[symbol]
+        // obj能显示才给赋值
+        if (obj !== undefined && obj['show']) {
+          obj['premiumRate'] = msg['data']
+          this.$forceUpdate()
+        }
+      }
     })
 
     // 获取及订阅当前所有现货资产

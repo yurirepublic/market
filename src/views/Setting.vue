@@ -15,6 +15,7 @@
           header='服务器口令'
           placeholder=''
           v-model='password'
+          type='password'
         ></trade-input>
         <trade-input
           class='mt-1'

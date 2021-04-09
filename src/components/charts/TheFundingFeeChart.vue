@@ -3,8 +3,8 @@
     <div class='mb-2 d-flex justify-content-between align-items-center'>
       <span class='font-weight-bold'>每日套利金额</span>
       <div>
-        <span class='font-weight-bold'>平均 {{ strip(average, 6) }}</span>
-        <span class='font-weight-bold ml-2'>总计 {{ strip(sum, 6) }}</span>
+        <span class='font-weight-bold'>平均 {{ toFixed(average, 2) }}＄</span>
+        <span class='font-weight-bold ml-2'>总计 {{ toFixed(sum, 2) }}＄</span>
       </div>
 
     </div>
