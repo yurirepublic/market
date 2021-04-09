@@ -1,42 +1,44 @@
 <template>
   <button
-    class="btn btn-light btn-sm float-right"
-    type="button"
+    class='btn btn-light btn-sm float-right'
+    type='button'
     @click="$emit('click', '$event')"
-    :disabled="disabled"
+    :disabled='disabled'
   >
-    <b-icon icon="arrow-counterclockwise" :animation="animation"></b-icon>
+    <v-icon name='ri-refresh-line' :animation='animation'></v-icon>
   </button>
 </template>
 
 <script>
 export default {
-  name: "RefreshButton",
+  name: 'RefreshButton',
 
   props: {
-    anime: false,
+    anime: {
+      type: Boolean,
+      default: false
+    }
   },
 
-  data: function () {
+  data: function() {
     return {
-      amine: false,
-      animation: "",
-      disabled: false,
-    };
+      animation: null,
+      disabled: false
+    }
   },
 
   watch: {
-    anime: function (newValue, oldValue) {
-      if (newValue == true) {
-        this.animation = "spin-reverse";
-        this.disabled = true;
+    anime: function(newValue, oldValue) {
+      if (newValue === true) {
+        this.animation = 'spin'
+        this.disabled = true
       } else {
-        this.animation = "";
-        this.disabled = false;
+        this.animation = null
+        this.disabled = false
       }
-    },
-  },
-};
+    }
+  }
+}
 </script>
 
 <style scoped>
@@ -44,15 +46,18 @@ button {
   background-color: transparent;
   border: none;
 }
+
 button:hover {
   background-color: transparent;
   border: none;
 }
+
 button:focus {
   background-color: transparent;
   border: none;
   box-shadow: none;
 }
+
 button:not(:disabled):not(.disabled):active:focus {
   box-shadow: none;
 }

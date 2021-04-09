@@ -1,55 +1,55 @@
 <template>
-  <div class="p-2" style="background-color: #fafafa">
-    <div class="mb-2 d-flex justify-content-between align-items-center">
-      <span class="font-weight-bold">套利行情</span>
+  <div class='p-2' style='background-color: #fafafa'>
+    <div class='mb-2 d-flex justify-content-between align-items-center'>
+      <span class='font-weight-bold'>套利行情</span>
     </div>
-    <div style="overflow: auto; max-height: 15rem">
-      <table class="table table-hover table-borderless table-sm small">
+    <div style='overflow: auto; max-height: 15rem'>
+      <table class='table table-hover table-borderless table-sm small'>
         <thead>
-        <tr class="text-muted">
-          <th class="font-weight-normal" nowrap="nowrap">交易对</th>
-          <th class="font-weight-normal" nowrap="nowrap">当前费率</th>
-          <th class="font-weight-normal" nowrap="nowrap">平均费率</th>
-          <th class="font-weight-normal" nowrap="nowrap">现货币价(U)</th>
-          <th class="font-weight-normal" nowrap="nowrap">期货溢价</th>
+        <tr class='text-muted'>
+          <th class='font-weight-normal' nowrap='nowrap'>交易对</th>
+          <th class='font-weight-normal' nowrap='nowrap'>当前费率</th>
+          <th class='font-weight-normal' nowrap='nowrap'>平均费率</th>
+          <th class='font-weight-normal' nowrap='nowrap'>现货币价(U)</th>
+          <th class='font-weight-normal' nowrap='nowrap'>期货溢价</th>
         </tr>
         </thead>
         <tbody>
         <tr
-            v-for="item in items"
-            :key="item['symbol']"
-            @click="$emit('click', item['symbol'])"
+          v-for='item in items'
+          :key="item['symbol']"
+          @click="$emit('click', item['symbol'])"
         >
-          <td class="text-monospace" style="" nowrap="nowrap">
+          <td class='text-monospace' style='' nowrap='nowrap'>
             {{ item['symbol'] }}
           </td>
 
           <td
-              class="text-monospace"
-              v-bind:class="{ positive: item['fundingRate'] > 0, negative: item['fundingRate'] < 0}"
-              nowrap="nowrap"
+            class='text-monospace'
+            v-bind:class="{ positive: item['fundingRate'] > 0, negative: item['fundingRate'] < 0}"
+            nowrap='nowrap'
           >
-            {{ toPrecision(item["fundingRate"] * 100, 2) }}%
+            {{ toFixed(item['fundingRate'] * 100, 2) }}%
           </td>
 
           <td
-              class="text-monospace"
-              v-bind:class="{ positive: item['avgRate'] > 0, negative: item['avgRate'] < 0}"
-              nowrap="nowrap"
+            class='text-monospace'
+            v-bind:class="{ positive: item['avgRate'] > 0, negative: item['avgRate'] < 0}"
+            nowrap='nowrap'
           >
-            {{ toPrecision(item["avgRate"] * 100, 2) }}%
+            {{ toFixed(item['avgRate'] * 100, 2) }}%
           </td>
 
-          <td class="text-monospace" nowrap="nowrap">
-            {{ item["mainPrice"] }}
+          <td class='text-monospace' nowrap='nowrap'>
+            {{ item['mainPrice'] }}
           </td>
 
           <td
-              class="text-monospace"
-              v-bind:class="{ positive: item['premiumRate'] > 0, negative: item['premiumRate'] < 0}"
-              nowrap="nowrap"
+            class='text-monospace'
+            v-bind:class="{ positive: item['premiumRate'] > 0, negative: item['premiumRate'] < 0}"
+            nowrap='nowrap'
           >
-            {{ toPrecision(item["premiumRate"] * 100, 2) }}%
+            {{ toFixed(item['premiumRate'] * 100, 2) }}%
           </td>
         </tr>
         </tbody>
@@ -59,11 +59,11 @@
 </template>
 
 <script>
-import RefreshButton from "@/components/RefreshButton.vue";
+import RefreshButton from '@/components/RefreshButton.vue'
 
 export default {
-  name: "PremiumTable",
-  data: function () {
+  name: 'TheMarketTable',
+  data: function() {
     return {
       cache: {},    // 将symbol作为键，可以快速查找相应的对象来修改数据
       items: [],    // 排序后的items
@@ -72,10 +72,10 @@ export default {
       subWs: null,   // 当前正在连接的websocket
 
       sortInterval: null
-    };
+    }
   },
   methods: {},
-  mounted: async function () {
+  mounted: async function() {
     if (this.sortInterval !== null) {
       clearInterval(this.sortInterval)
     }
@@ -110,7 +110,6 @@ export default {
       if (obj) {
         obj['fundingRateHistory'] = fundingRateHistory[symbol]
         // 计算平均费率
-        let total = 0
         if (fundingRateHistory[symbol].length === 0) {
           obj['avgRate'] = 0
         } else {
@@ -200,9 +199,9 @@ export default {
 
   },
   components: {
-    RefreshButton,
-  },
-};
+    RefreshButton
+  }
+}
 </script>
 
 <style scoped>

@@ -13,6 +13,12 @@ precision quote future <>
 asset main <
 asset future <
 asset margin <
+asset isolated base <>
+asset isolated quote <>
+
+负债余额
+borrowed margin base <>
+borrowed isolated quote <>
 
 仓位
 position future <>
@@ -26,4 +32,8 @@ premium rate <>
 premium dif <>
 premium fundingRate <>
 premium fundingRateHistory <>
+
+资金费率流水
+json fundingFee
 ```
+

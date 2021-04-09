@@ -10,32 +10,29 @@ default_config = {
     "binance_public_key": "",  # 币安的apikey
     "binance_private_key": "",  # 币安的私钥
 
-    "script_manager_listen_ip": "127.0.0.1",  # 脚本管理器服务端监听ip和端口
-    "script_manager_listen_port": 7721,
-
-    "script_client_connect_ip": "127.0.0.1",  # 脚本管理器客户端连接ip和端口
-    "script_client_connect_port": 7721,
-
-    "listen_ip": "0.0.0.0",  # 中央服务器http监听ip和端口
-    "listen_port": 11327,
-
-    "data_center_http_server_listen_ip": "0.0.0.0",  # 数据中心服务端监听ip和端口
-    "data_center_http_server_listen_port": 11327,
-
-    "data_center_http_client_connect_ip": "us.pwp.today",  # 数据中心服务端监听ip和端口
-    "data_center_http_client_connect_port": 11327,
-
-    # 数据中心服务端和客户端的websocket接口
-    "data_center_ws_server_listen_ip": "0.0.0.0",
-    "data_center_ws_server_listen_port": 11328,
-    "data_center_ws_client_connect_ip": "us.pwp.today",
-    "data_center_ws_client_connect_port": 11328,
+    "api": {
+        "server_ip": "0.0.0.0",
+        "server_port": 10000,
+        "use_ssl": True,
+        "ssl_pem": "5119066_us.pwp.today.pem",
+        "ssl_key": "5119066_us.pwp.today.key"
+    },
+    "data_center": {
+        "server_ip": "0.0.0.0",
+        "server_port": 10001,
+        "client_ip": "us.pwp.today",
+        "client_port": 10001,
+        "subscribe_server_ip": "0.0.0.0",
+        "subscribe_server_port": 10002,
+        "subscribe_client_ip": "us.pwp.today",
+        "subscribe_client_port": 10002
+    },
 
     "password": "defaultPassword"  # 中央服务器认证口令
 }
 
 try:
-    with open('scripts/config.json', 'r', encoding='utf-8') as f:
+    with open('config.json', 'r', encoding='utf-8') as f:
         config = json.loads(f.read())
 except FileNotFoundError:
     config = {}
@@ -51,5 +48,5 @@ for key in config.keys():
         print('警告：发现多余的key', key)
 
 # 把配置写入文件
-with open('scripts/config.json', 'w', encoding='utf-8') as f:
+with open('config.json', 'w', encoding='utf-8') as f:
     f.write(json.dumps(config))

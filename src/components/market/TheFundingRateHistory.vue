@@ -1,48 +1,48 @@
 <template>
-  <div class="p-2" style="background-color: #fafafa">
-    <div class="mb-2 d-flex justify-content-between">
-      <span class="font-weight-bold">100次资金费率图表</span>
+  <div class='p-2' style='background-color: #fafafa'>
+    <div class='mb-2 d-flex justify-content-between'>
+      <span class='font-weight-bold'>100次资金费率图表</span>
       <span>{{ pairSymbol }}</span>
     </div>
-    <TrendChart
-        :datasets="[
+    <trend-chart
+      :datasets='[
         {
           data: priceHistory,
           smooth: false,
           fill: true,
         },
-      ]"
-        :labels="{
+      ]'
+      :labels="{
         yLabels: 5,
         yLabelsTextFormatter: (val) => Math.round(val * 10000) / 100 + '%',
       }"
-        :grid="{
+      :grid='{
         horizontalLines: true,
         horizontalLinesNumber: 5,
         verticalLines: true,
         verticalLinesNumber: 1,
-      }"
+      }'
     >
-    </TrendChart>
+    </trend-chart>
   </div>
 </template>
 
 <script>
-import TrendChart from "vue-trend-chart";
+import TrendChart from 'vue-trend-chart'
 
 export default {
-  name: "PremiumHistory",
+  name: 'TheFundingRateHistory',
 
   props: {
     pairSymbol: ''
   },
 
-  data: function () {
+  data: function() {
     return {
       priceHistory: [0, 0, 0],
       cache: {},
-      ws: null,
-    };
+      ws: null
+    }
   },
 
   watch: {
@@ -50,17 +50,16 @@ export default {
       // 获取这个交易对的历史
       if (this.cache[newVal]) {
         this.priceHistory = this.cache[newVal]
-      }
-      else {
+      } else {
         let history = await this.ws.getData(['premium', 'fundingRateHistory', newVal])
         if (history === null) {
           this.priceHistory = [0, 0, 0]
         }
       }
-    },
+    }
   },
 
-  mounted: async function () {
+  mounted: async function() {
     this.ws = await this.connectDataCenter()
     this.sub = await this.connectSubscribe()
     // 把能拿到的交易对全部拿到做个cache
@@ -73,9 +72,9 @@ export default {
 
   methods: {},
   components: {
-    TrendChart,
-  },
-};
+    TrendChart
+  }
+}
 </script>
 
 <style scoped>

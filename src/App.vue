@@ -1,18 +1,24 @@
 <template>
-  <div class="d-flex flex-column" style="height: 100%">
-    <div class="d-flex" style="height: 100%">
-      <FuncSwitchBar :focus_page="focus_page" @click="switchPage" />
-      <div v-show="focus_page == 'premium'">
-        <premium />
+  <div class='d-flex flex-column' style='height: 100%'>
+    <div class='d-flex' style='height: 100%'>
+      <the-page-switch-bar :pages='pages' :focus-page='focusPage' @click='focusPage = $event' />
+      <div v-show="focusPage === 'market'">
+        <market />
       </div>
-      <div v-show="focus_page == 'setting'">
-        <Setting />
+      <div v-show="focusPage === 'statistics'">
+        <statistics />
       </div>
-      <div v-show="focus_page == 'running_script'">
-        <RunningScript />
+      <div v-show="focusPage === 'science'">
+        <science />
       </div>
-      <div v-show="focus_page == 'script_manage'">
-        <ScriptManage />
+      <div v-show="focusPage === 'setting'">
+        <setting />
+      </div>
+      <div v-show="focusPage === 'runningScript'">
+        <running-script />
+      </div>
+      <div v-show="focusPage === 'scriptManage'">
+        <script-manage />
       </div>
     </div>
   </div>
@@ -26,35 +32,60 @@
 </template>
 
 <script>
-// 单独改变背景颜色
-// document.body.style.backgroundColor = "#f5f5f5";
-// document.body.style.height = "100%";
 
-import premium from "@/components/premium.vue";
-import FuncSwitchBar from "@/components/FuncSwitchBar.vue";
-import Setting from "@/components/Setting.vue";
-import RunningScript from "@/components/RunningScript.vue";
-import ScriptManage from "@/components/ScriptManage.vue";
+import Market from '@/views/Market.vue'
+import ThePageSwitchBar from '@/views/ThePageSwitchBar.vue'
+import Setting from '@/views/Setting.vue'
+import RunningScript from '@/views/RunningScript.vue'
+import ScriptManage from '@/views/ScriptManage.vue'
+import Statistics from '@/views/Statistics'
+import Science from '@/views/Science'
 
 export default {
-  data: function () {
-    return {
-      focus_page: "premium",
-    };
-  },
-  methods: {
-    switchPage(name) {
-      this.focus_page = name;
-    },
-  },
   components: {
-    premium,
-    FuncSwitchBar,
+    Market,
+    ThePageSwitchBar,
     Setting,
     RunningScript,
     ScriptManage,
+    Statistics,
+    Science
   },
-};
+  data: function() {
+    return {
+      focusPage: 'market',
+      pages: [
+        {
+          name: 'market',
+          icon: 'ri-coins-line'
+        },
+        {
+          name: 'statistics',
+          icon: 'fa-regular-chart-bar'
+        },
+        {
+          name: 'science',
+          icon: 'fa-flask'
+        },
+        {
+          name: 'runningScript',
+          icon: 'fa-regular-play-circle'
+        },
+        {
+          name: 'scriptManage',
+          icon: 'fa-regular-list-alt'
+        },
+        {
+          name: 'setting',
+          icon: 'ri-settings-4-line'
+        }
+
+      ]
+    }
+  },
+  methods: {}
+
+}
 </script>
 
 
@@ -64,26 +95,4 @@ body {
   height: 100%;
   background-color: #f5f5f5;
 }
-
-/*
-#app {
-  font-family: Avenir, Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-align: center;
-  color: #2c3e50;
-}
-
-#nav {
-  padding: 30px;
-
-  a {
-    font-weight: bold;
-    color: #2c3e50;
-
-    &.router-link-exact-active {
-      color: #42b983;
-    }
-  }
-} */
 </style>

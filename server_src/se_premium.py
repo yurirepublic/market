@@ -26,25 +26,20 @@ class Script(script_manager.Script):
         self.subscribe = await data_center.create_subscribe()
         await self.subscribe.subscribe_dict({'price', 'main'}, self.calc_premium)
         await self.subscribe.subscribe_dict({'price', 'future'}, self.calc_premium)
-
         self.client = await data_center.create_client_adapter()
 
     async def calc_premium(self, msg):
         # 获取交易符号
         symbol = msg['special']
         # 获取双方价格
-        if 'main' in msg['tags']:
-            main_price = msg['data']
-            future_price = await self.client.get({'price', 'future', symbol})
-        elif 'future' in msg['tags']:
-            future_price = msg['data']
-            main_price = await self.client.get({'price', 'main', symbol})
-        else:
-            print('premium收到了不符合期望的数据')
-            return
+        price = await self.client.get_dict({'price', symbol})
         # 如果有一方数据缺失直接返回
-        if main_price is None or future_price is None:
+        keys = price.keys()
+        if 'main' not in keys or 'future' not in keys:
             return
+
+        main_price = price['main']
+        future_price = price['future']
         # 计算溢价并且放回去
         premium_price = future_price / main_price - 1
         asyncio.create_task(self.client.update({'premium', 'rate', symbol}, premium_price))

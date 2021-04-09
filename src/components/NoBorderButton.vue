@@ -1,9 +1,8 @@
 <template>
   <button
-      class="btn btn-light btn-sm float-right"
-      type="button"
-      @click="$emit('click', '$event')"
-      :disabled="disabled"
+    type='button'
+    @click="$emit('click', '$event')"
+    :disabled='disabled'
   >
     <slot></slot>
   </button>
@@ -11,29 +10,24 @@
 
 <script>
 export default {
-  name: "NoBorderButton",
+  name: 'NoBorderButton',
   props: {
-    disabled: false
+    disabled: {
+      type: Boolean,
+      default: false
+    }
   }
 }
 </script>
 
 <style scoped>
 button {
-  border: none;
+  border-radius: 5px;
+  border-style: none;
+  color: #000;
 }
 
 button:hover {
-  border: none;
+  background-color: #ddd;
 }
-
-button:focus {
-  border: none;
-  box-shadow: none;
-}
-
-button:not(:disabled):not(.disabled):active:focus {
-  box-shadow: none;
-}
-
 </style>

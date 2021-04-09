@@ -17,10 +17,9 @@ import numpy as np
 from typing import Union
 import asyncio
 
-# 导入币安api、脚本管理器、数据中心
+# 导入币安api、脚本管理器
 import binance_api
 import script_manager
-import data_center
 
 app = Flask(__name__)
 log = logging.getLogger('werkzeug')
@@ -189,52 +188,6 @@ async def transfer(trans_type, symbol, quantity):
     }
 
 
-async def bnb_asset():
-    """
-    获取账户内BNB资产
-    """
-    main_bnb = await operator.get_asset_amount('BNB', 'MAIN')
-
-    # 获取期货资产
-    future_bnb = await operator.get_asset_amount('BNB', 'FUTURE')
-
-    # 获取全仓资产
-    margin_bnb = await operator.get_asset_amount('BNB', 'MARGIN')
-
-    # 获取BNB最新现货价格（用于估算USDT市值）
-    bnb_price = await operator.get_latest_price('BNBUSDT', 'MAIN')
-
-    return {
-        'msg': 'success',
-        'data': {
-            'main_bnb': main_bnb,
-            'future_bnb': future_bnb,
-            'margin_bnb': margin_bnb,
-            'bnb_price': float(bnb_price)
-        }
-    }
-
-
-async def wallet_money():
-    """
-    获取账户内余额信息
-    """
-    print('正在获取账户余额')
-
-    main_free = await operator.get_asset_amount('USDT', 'MAIN')
-    future_free = await operator.get_asset_amount('USDT', 'FUTURE')
-    margin_free = await operator.get_asset_amount('USDT', 'MARGIN')
-
-    return {
-        'msg': 'success',
-        'data': {
-            'main_free': binance_api.float_to_str_round(main_free),
-            'future_free': binance_api.float_to_str_round(future_free),
-            'margin_free': binance_api.float_to_str_round(margin_free)
-        }
-    }
-
-
 async def trade_market(symbol: str, mode: str, amount: Union[str, float, int], side: str):
     """
     单向下单\n
@@ -275,32 +228,12 @@ async def trade_premium(symbol: str, amount: float, side: str, main_mode: str):
     }
 
 
-async def get_bnb_burn():
-    """
-    获取BNB燃烧状态
-    """
-    return {
-        'msg': 'success',
-        'data': await operator.get_bnb_burn()
-    }
-
-
-async def set_bnb_burn(spot_bnb_burn: bool, interest_bnb_burn: bool):
-    """
-    设置BNB燃烧状态\n
-    会顺带返回设置后的新状态
-    """
-    operator.set_bnb_burn(spot_bnb_burn, interest_bnb_burn)
-    return {
-        'msg': 'success',
-        'data': await operator.get_bnb_burn()
-    }
-
-
 async def analyze_premium():
     """
     分析并返回当前所有的套利交易对，还顺带返回孤立仓位
     """
+    # 连接数据中心准备获取数据
+
     # 获取当前所有现货资产
     main_asset = await operator.get_all_asset_amount('MAIN')
     # 去除掉现货资产的USDT
@@ -455,185 +388,6 @@ async def analyze_premium():
             'future_warning': future_warning,
             'margin_warning': margin_warning
         }
-    }
-
-    #
-    #
-    # # 取两边资产最小的一方作为套利仓位并返回
-    # pair = []  # 配对的双向仓位（期货必须是做空期货，暂不支持做空现货）
-    # single = []  # 不配对的孤立仓位
-    # for e in same:
-    #     if future_position[e] <= 0:
-    #         pair.append({
-    #             'symbol': e + 'USDT',
-    #             'quantity': str(min(main_asset[e], abs(future_position[e])))
-    #         })
-    #         # 两边有不对等的则算入孤立仓位
-    #         single.append({
-    #             'symbol': e + 'USDT',
-    #             # 仅保留10位小数消除浮点精度误差
-    #             'quantity': str(round((main_asset[e] + future_position[e]) * 10000000000) / 10000000000),
-    #             'type': 'MAIN' if main_asset[e] + future_position[e] > 0 else 'FUTURE'
-    #         })
-    #
-    # # 将全仓交易对也加入孤立仓位（暂时无法分析杠杆仓位）
-    # for key in margin_asset.keys():
-    #     single.append({
-    #         'symbol': key + 'USDT',
-    #         'quantity': binance_api.float_to_str_round(margin_asset[key]),
-    #         'type': 'MARGIN'
-    #     })
-    #
-    # # 将逐仓交易对也加入孤立仓位（暂时无法分析杠杆仓位）
-    # for key in isolated_asset.keys():
-    #     single.append({
-    #         'symbol': key + 'USDT',
-    #         'quantity': binance_api.float_to_str_round(isolated_asset[key]['quote_asset']),
-    #         'type': 'ISOLATED'
-    #     })
-    #
-    # # 筛选掉仓位为0的资产
-    # pair = list(filter(lambda x: float(x['quantity']) != 0, pair))
-    # single = list(filter(lambda x: float(x['quantity']) != 0 and x['symbol'] != 'USDTUSDT', single))
-
-
-async def request_premium():
-    """
-    获取资金费率交易所需要的表格数据
-    """
-    res = []  # 里面放的是字典
-
-    # 获取每个 现货 交易对的规则（下单精度）
-    info = await operator.request(
-        'api', '/api/v3/exchangeInfo', 'GET', {}, send_signature=False)
-    info = info['symbols']
-    precision = {}
-    for e in info:
-        # 只需要报价单位是USDT的(排除掉BUSD之类的)
-        if e['quoteAsset'] == 'USDT':
-            precision[e['symbol']] = e['baseAssetPrecision']
-
-    # 获取每个 期货 交易对的规则（下单精度）
-    info = await operator.request(
-        'fapi', '/fapi/v1/exchangeInfo', 'GET', {}, send_signature=False)
-    info = info['symbols']
-    precision_future = {}
-    for e in info:
-        precision_future[e['symbol']] = e['quantityPrecision']
-
-    # 统计两边交易对的交集
-    same_info = set(precision.keys()) & set(precision_future.keys())
-
-    # 将有效的交易对symbol以及精度放入列表
-    for name in same_info:
-        res.append({
-            "symbol": name,
-            "precision": min(precision[name], precision_future[name])
-        })
-
-    # 获取期货所有交易对的资金费率（这东西可能有假的，没上市的合约也能查出资金费率）
-    print('正在获取期货所有交易对的资金费率')
-    premium_index = await operator.request(
-        'fapi', '/fapi/v1/premiumIndex', 'GET', {})
-    premium = {}
-    premium_time = {}
-    for e in premium_index:
-        premium[e['symbol']] = e['lastFundingRate']
-        premium_time[e['symbol']] = e['nextFundingTime']
-
-    # 将资金费率放入数据中
-    for e in res:
-        e['rate'] = premium[e['symbol']]
-        e['next_time'] = premium_time[e['symbol']]
-
-    manager_dict = Manager().dict()
-
-    manager_dict['prices'] = await operator.request('api', '/api/v3/ticker/price', 'GET', {}, send_signature=False)
-    manager_dict['prices_future'] = await operator.request(
-        'fapi', '/fapi/v1/ticker/price', 'GET', {}, send_signature=False)
-
-    price_dict = {}
-    prices = manager_dict['prices']
-    for e in prices:
-        price_dict[e['symbol']] = e['price']
-    for e in res:
-        if e['symbol'] in price_dict.keys():
-            e['price'] = float(price_dict[e['symbol']])
-        else:
-            e['price'] = None
-    res = list(filter(lambda x: x['price'] is not None, res))
-
-    price_dict = {}
-    prices = manager_dict['prices_future']
-    for e in prices:
-        price_dict[e['symbol']] = e['price']
-    for e in res:
-        if e['symbol'] in price_dict.keys():
-            e['price_future'] = float(price_dict[e['symbol']])
-        else:
-            e['price_future'] = None
-    res = list(filter(lambda x: x['price_future'] is not None, res))
-
-    # 计算期货溢价
-    for e in res:
-        e['future_premium'] = '{:.2f}'.format(
-            (float(e['price_future']) / float(e['price']) - 1) * 100)
-
-    # # 查询现货是否有全仓和逐仓交易对
-    # allow_margin_symbols = json.loads(operator_future.request(
-    #     'api', '/sapi/v1/margin/allPairs', 'GET', {}))
-    # allow_margin_symbols_zhucang = json.loads(operator.request(
-    #     'api', '/sapi/v1/margin/isolated/allPairs', 'GET', {
-    #         'timestamp': binance_api.get_timestamp()
-    #     }))
-
-    # allow_margin_symbols = [x['symbol']
-    #                         for x in allow_margin_symbols if x['isMarginTrade']]
-    # allow_margin_symbols_zhucang = [
-    #     x['symbol'] for x in allow_margin_symbols_zhucang if x['isMarginTrade']]
-
-    # # 标记无法全仓和逐仓的交易对
-    # for e in res:
-    #     if e['symbol'] not in allow_margin_symbols:
-    #         e['quan_cang'] = '不可全仓'
-    #     else:
-    #         e['quan_cang'] = ''
-
-    #     if e['symbol'] not in allow_margin_symbols_zhucang:
-    #         e['zhu_cang'] = '不可逐仓'
-    #     else:
-    #         e['zhu_cang'] = ''
-
-    # 排个序
-    res = sorted(res, key=lambda x: abs(float(x['rate'])), reverse=True)
-
-    # 修改下格式
-    for e in res:
-        e['rate'] = '{:.4f}'.format(float(e['rate']) * 100)
-        e['next_time'] = time.strftime(
-            '%m-%d %H:%M:%S', time.localtime(int(e['next_time']) / 1000 + 28800))
-
-    # 查询资金费率
-    for e in res:
-        e['premium_history'] = (await premium_history(e['symbol']))['data']
-
-        # 计算平均资金费率
-        if len(e['premium_history']['rate']) == 0:
-            e['avg_rate'] = 0
-        else:
-            e['avg_rate'] = '{:.4f}'.format(
-                np.average(e['premium_history']['rate']) * 100)
-
-        # 如果长度不够100，则填充到100
-        if len(e['premium_history']['rate']) < 100:
-            e['premium_history']['rate'] = list(
-                np.zeros(100 - len(e['premium_history']['rate']))) + e['premium_history']['rate']
-            e['premium_history']['time'] = list(
-                np.zeros(100 - len(e['premium_history']['rate']))) + e['premium_history']['time']
-
-    return {
-        'msg': 'success',
-        'data': res
     }
 
 

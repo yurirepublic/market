@@ -1,7 +1,7 @@
 import request from 'request'
 import Vue from 'vue'
 
-function method_request(func, args) {
+function apiRequest(func, args) {
   // 发送请求
   return new Promise((resolve, reject) => {
     request.post(
@@ -10,11 +10,11 @@ function method_request(func, args) {
         form: {
           function: func,
           args: JSON.stringify(args),
-          password: localConfig.password,
+          password: localConfig.password
         },
-        timeout: 30000,
+        timeout: 30000
       },
-      function (err, httpResponse, body) {
+      function(err, httpResponse, body) {
         if (err) {
           console.error(err)
           reject(err)
@@ -25,8 +25,8 @@ function method_request(func, args) {
           reject(httpResponse)
           return
         }
-        let res = JSON.parse(body);
-        if (res["msg"] !== "success") {
+        let res = JSON.parse(body)
+        if (res['msg'] !== 'success') {
           console.error(res)
           reject(res)
           return
@@ -34,42 +34,42 @@ function method_request(func, args) {
         console.log(res)
         resolve(res)
       }
-    );
+    )
   })
 }
 
 // 用来方便判断是不是数字
 function isNumber(value) {
   if (undefined === value || null === value) {
-    return false;
+    return false
   }
-  if (typeof value == "number") {
-    return true;
+  if (typeof value == 'number') {
+    return true
   }
-  return !isNaN(value - 0);
+  return !isNaN(value - 0)
 }
 
 // 用来快速显示toast
 let showToast = {
-  success: function (text) {
+  success: function(text) {
     Vue.$toast.open({
       message: text,
       type: 'success'
     })
   },
-  error: function (text) {
+  error: function(text) {
     Vue.$toast.open({
       message: text,
       type: 'error'
     })
   },
-  warning: function (text) {
+  warning: function(text) {
     Vue.$toast.open({
       message: text,
       type: 'warning'
     })
   },
-  info: function (text) {
+  info: function(text) {
     Vue.$toast.open({
       message: text,
       type: 'info'
@@ -79,39 +79,86 @@ let showToast = {
 
 // 用来将数字转换为指定精度的str格式
 function float2strFloor(amount, precision) {
-  amount *= Math.pow(10, precision);
+  amount *= Math.pow(10, precision)
   // 向下取整
-  amount = Math.floor(amount);
+  amount = Math.floor(amount)
   // 将数字除以精度
-  amount /= Math.pow(10, precision);
+  amount /= Math.pow(10, precision)
   return amount.toString()
 }
 
 function float2strRound(amount, precision) {
-  amount *= Math.pow(10, precision);
+  amount *= Math.pow(10, precision)
   // 向下取整
-  amount = Math.round(amount);
+  amount = Math.round(amount)
   // 将数字除以精度
-  amount /= Math.pow(10, precision);
+  amount /= Math.pow(10, precision)
   return amount.toString()
 }
 
 function float2strCeil(amount, precision) {
-  amount *= Math.pow(10, precision);
+  amount *= Math.pow(10, precision)
   // 向下取整
-  amount = Math.ceil(amount);
+  amount = Math.ceil(amount)
   // 将数字除以精度
-  amount /= Math.pow(10, precision);
+  amount /= Math.pow(10, precision)
   return amount.toString()
 }
 
-function toPrecision(amount, precision) {
-  amount *= Math.pow(10, precision)
-  // 向下取整
-  amount = Math.round(amount)
-  // 除以精度
-  amount /= Math.pow(10, precision)
-  return amount
+function strip(num, precision = 12) {
+  try {
+    return +parseFloat(num.toPrecision(precision))
+  } catch (e) {
+    return NaN
+  }
+}
+
+function toFixed(num, n) {
+  if (n > 20 || n < 0) {
+    throw new RangeError('toFixed() digits argument must be between 0 and 20')
+  }
+  const number = num
+  if (isNaN(number) || number >= Math.pow(10, 21)) {
+    return number.toString()
+  }
+  if (typeof (n) == 'undefined' || n === 0) {
+    return (Math.round(number)).toString()
+  }
+
+  let result = number.toString()
+  const arr = result.split('.')
+
+  // 整数的情况
+  if (arr.length < 2) {
+    result += '.'
+    for (let i = 0; i < n; i += 1) {
+      result += '0'
+    }
+    return result
+  }
+
+  const integer = arr[0]
+  const decimal = arr[1]
+  if (decimal.length === n) {
+    return result
+  }
+  if (decimal.length < n) {
+    for (let i = 0; i < n - decimal.length; i += 1) {
+      result += '0'
+    }
+    return result
+  }
+  result = integer + '.' + decimal.substr(0, n)
+  const last = decimal.substr(n, 1)
+
+  // 四舍五入，转换为整数再处理，避免浮点数精度的损失
+  if (parseInt(last, 10) >= 5) {
+    const x = Math.pow(10, n)
+    result = (Math.round((parseFloat(result) * x)) + 1) / x
+    result = result.toFixed(n)
+  }
+
+  return result
 }
 
 // 为了出代码提示来减少错误以及方便重构，本地设置需要在这里获取
@@ -173,18 +220,18 @@ async function generateDataCenterWebsocket() {
       console.log(nickname, '数据连接被关闭', msg)
     }
   })
-  let getOrder = function () {
+  let getOrder = function() {
     return order++
   }
-  let generateGetPromise = function (order) {
+  let generateGetPromise = function(order) {
     return new Promise(resolve => {
-      buf[order] = function (data) {
+      buf[order] = function(data) {
         resolve(data)
       }
     })
   }
   return {
-    getData: async function (tags) {
+    getData: async function(tags) {
       let order = getOrder()
       let promise = generateGetPromise(order)
       ws.send(JSON.stringify({
@@ -194,7 +241,7 @@ async function generateDataCenterWebsocket() {
       }))
       return await promise
     },
-    getDict: async function (tags) {
+    getDict: async function(tags) {
       let order = getOrder()
       let promise = generateGetPromise(order)
       ws.send(JSON.stringify({
@@ -204,7 +251,7 @@ async function generateDataCenterWebsocket() {
       }))
       return await promise
     },
-    getFuzzy: async function (tags) {
+    getFuzzy: async function(tags) {
       let order = getOrder()
       let promise = generateGetPromise(order)
       ws.send(JSON.stringify({
@@ -214,7 +261,7 @@ async function generateDataCenterWebsocket() {
       }))
       return await promise
     },
-    getAll: async function (tags) {
+    getAll: async function(tags) {
       let order = getOrder()
       let promise = generateGetPromise(order)
       ws.send(JSON.stringify({
@@ -224,14 +271,14 @@ async function generateDataCenterWebsocket() {
       }))
       return await promise
     },
-    setData: async function (tags, val) {
+    setData: async function(tags, val) {
       ws.send(JSON.stringify({
         mode: 'SET',
         tags: tags,
         value: val
       }))
     },
-    close: async function (code = 1000) {
+    close: async function(code = 1000) {
       await ws.close(code)
     }
   }
@@ -248,7 +295,7 @@ async function generateSubscribeWebsocket() {
   let nickname = '全局订阅'
   let subscribe = {}    // 用来订阅的字典，key是分配的comment，value是回调函数
   let order = 0
-  let getOrder = function () {
+  let getOrder = function() {
     return order++
   }
   // 创建websocket
@@ -271,7 +318,7 @@ async function generateSubscribeWebsocket() {
 
 
   return {
-    precise: async function (tags, callback) {
+    precise: async function(tags, callback) {
       let order = getOrder()
       subscribe[order] = callback
       await ws.send(JSON.stringify({
@@ -280,7 +327,7 @@ async function generateSubscribeWebsocket() {
         comment: order
       }))
     },
-    dict: async function (tags, callback) {
+    dict: async function(tags, callback) {
       let order = getOrder()
       subscribe[order] = callback
       await ws.send(JSON.stringify({
@@ -289,7 +336,7 @@ async function generateSubscribeWebsocket() {
         comment: order
       }))
     },
-    fuzzy: async function (tags, callback) {
+    fuzzy: async function(tags, callback) {
       let order = getOrder()
       subscribe[order] = callback
       await ws.send(JSON.stringify({
@@ -298,7 +345,7 @@ async function generateSubscribeWebsocket() {
         comment: order
       }))
     },
-    all: async function (callback) {
+    all: async function(callback) {
       let order = getOrder()
       subscribe[order] = callback
       await ws.send(JSON.stringify({
@@ -310,7 +357,7 @@ async function generateSubscribeWebsocket() {
     set onmessage(func) {
       ws.onmessage = func
     },
-    close: async function (code = 1000) {
+    close: async function(code = 1000) {
       ws.close(code)
     }
   }
@@ -324,13 +371,14 @@ const average = arr => arr.reduce((acc, val) => acc + val, 0) / arr.length
 
 export default {
   install(Vue, option) {
-    Vue.prototype.method_request = method_request
+    Vue.prototype.apiRequest = apiRequest
     Vue.prototype.isNumber = isNumber
     Vue.prototype.showToast = showToast
     Vue.prototype.float2strFloor = float2strFloor
     Vue.prototype.float2strRound = float2strRound
     Vue.prototype.float2strCeil = float2strCeil
-    Vue.prototype.toPrecision = toPrecision
+    Vue.prototype.strip = strip
+    Vue.prototype.toFixed = toFixed
     Vue.prototype.average = average
     Vue.prototype.localConfig = localConfig
     Vue.prototype.connectDataCenter = connectDataCenter
