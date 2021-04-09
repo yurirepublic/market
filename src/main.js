@@ -36,6 +36,7 @@ import { FaRegularChartBar } from 'oh-vue-icons/icons'
 import { FaRegularPlayCircle } from 'oh-vue-icons/icons'
 import { FaRegularListAlt } from 'oh-vue-icons/icons'
 import { RiRefreshLine } from 'oh-vue-icons/icons'
+import { FaFlask } from 'oh-vue-icons/icons'
 
 OhVueIcon.add(
   RiArrowLeftRightLine,
@@ -50,7 +51,8 @@ OhVueIcon.add(
   FaRegularChartBar,
   FaRegularPlayCircle,
   FaRegularListAlt,
-  RiRefreshLine
+  RiRefreshLine,
+  FaFlask
 )
 Vue.component('v-icon', OhVueIcon)
 

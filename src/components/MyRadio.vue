@@ -12,7 +12,6 @@
 </template>
 
 <script>
-// TODO 有BUG，选项不跟随外部，所以销毁重建会重置
 export default {
   name: 'Radio',
   props: {

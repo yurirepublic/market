@@ -8,6 +8,9 @@
       <div v-show="focusPage === 'statistics'">
         <statistics />
       </div>
+      <div v-show="focusPage === 'science'">
+        <science />
+      </div>
       <div v-show="focusPage === 'setting'">
         <setting />
       </div>
@@ -36,8 +39,18 @@ import Setting from '@/views/Setting.vue'
 import RunningScript from '@/views/RunningScript.vue'
 import ScriptManage from '@/views/ScriptManage.vue'
 import Statistics from '@/views/Statistics'
+import Science from '@/views/Science'
 
 export default {
+  components: {
+    Market,
+    ThePageSwitchBar,
+    Setting,
+    RunningScript,
+    ScriptManage,
+    Statistics,
+    Science
+  },
   data: function() {
     return {
       focusPage: 'market',
@@ -51,6 +64,10 @@ export default {
           icon: 'fa-regular-chart-bar'
         },
         {
+          name: 'science',
+          icon: 'fa-flask'
+        },
+        {
           name: 'runningScript',
           icon: 'fa-regular-play-circle'
         },
@@ -62,18 +79,12 @@ export default {
           name: 'setting',
           icon: 'ri-settings-4-line'
         }
+
       ]
     }
   },
-  methods: {},
-  components: {
-    Market,
-    ThePageSwitchBar,
-    Setting,
-    RunningScript,
-    ScriptManage,
-    Statistics
-  }
+  methods: {}
+
 }
 </script>
 
