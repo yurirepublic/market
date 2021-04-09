@@ -45,14 +45,14 @@
         </div>
         <div class="mt-3 d-flex flex-column">
           <info-item header="货币精度">{{ quotePrecision }}</info-item>
-          <info-item header="预计8小时收益" footer="USDT">{{ toPrecision(benefit, 2) }}</info-item>
-          <info-item header="预计8小时收益" footer="USDT">{{ toPrecision(benefit, 2) }}</info-item>
-          <info-item header="总开仓手续费" footer="USDT">{{ toPrecision(totalTax, 2) }}</info-item>
+          <info-item header="预计8小时收益" footer="USDT">{{ toFixed(benefit, 2) }}</info-item>
+          <info-item header="预计8小时收益" footer="USDT">{{ toFixed(benefit, 2) }}</info-item>
+          <info-item header="总开仓手续费" footer="USDT">{{ toFixed(totalTax, 2) }}</info-item>
           <span class="text-muted small align-self-end">
-            现货手续费(以0.075%) {{ toPrecision(mainTax, 2) }} USDT
+            现货手续费(以0.075%) {{ toFixed(mainTax, 2) }} USDT
           </span>
           <span class="text-muted small align-self-end float-right">
-            期货手续费(以0.040%) {{ toPrecision(futureTax, 2) }} USDT
+            期货手续费(以0.040%) {{ toFixed(futureTax, 2) }} USDT
           </span>
           <div class="d-flex flex-row justify-content-between mt-2">
             <span class="align-middle text-muted small">现货下单位置</span>

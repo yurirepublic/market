@@ -32,4 +32,8 @@ premium rate <>
 premium dif <>
 premium fundingRate <>
 premium fundingRateHistory <>
+
+资金费率流水
+json fundingFee
 ```
+

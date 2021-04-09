@@ -105,13 +105,60 @@ function float2strCeil(amount, precision) {
   return amount.toString()
 }
 
-function toPrecision(amount, precision) {
-  amount *= Math.pow(10, precision)
-  // 向下取整
-  amount = Math.round(amount)
-  // 除以精度
-  amount /= Math.pow(10, precision)
-  return amount
+function strip(num, precision = 12) {
+  try {
+    return +parseFloat(num.toPrecision(precision))
+  } catch (e) {
+    return NaN
+  }
+}
+
+function toFixed(num, n) {
+  if (n > 20 || n < 0) {
+    throw new RangeError('toFixed() digits argument must be between 0 and 20')
+  }
+  const number = num
+  if (isNaN(number) || number >= Math.pow(10, 21)) {
+    return number.toString()
+  }
+  if (typeof (n) == 'undefined' || n === 0) {
+    return (Math.round(number)).toString()
+  }
+
+  let result = number.toString()
+  const arr = result.split('.')
+
+  // 整数的情况
+  if (arr.length < 2) {
+    result += '.'
+    for (let i = 0; i < n; i += 1) {
+      result += '0'
+    }
+    return result
+  }
+
+  const integer = arr[0]
+  const decimal = arr[1]
+  if (decimal.length === n) {
+    return result
+  }
+  if (decimal.length < n) {
+    for (let i = 0; i < n - decimal.length; i += 1) {
+      result += '0'
+    }
+    return result
+  }
+  result = integer + '.' + decimal.substr(0, n)
+  const last = decimal.substr(n, 1)
+
+  // 四舍五入，转换为整数再处理，避免浮点数精度的损失
+  if (parseInt(last, 10) >= 5) {
+    const x = Math.pow(10, n)
+    result = (Math.round((parseFloat(result) * x)) + 1) / x
+    result = result.toFixed(n)
+  }
+
+  return result
 }
 
 // 为了出代码提示来减少错误以及方便重构，本地设置需要在这里获取
@@ -330,7 +377,8 @@ export default {
     Vue.prototype.float2strFloor = float2strFloor
     Vue.prototype.float2strRound = float2strRound
     Vue.prototype.float2strCeil = float2strCeil
-    Vue.prototype.toPrecision = toPrecision
+    Vue.prototype.strip = strip
+    Vue.prototype.toFixed = toFixed
     Vue.prototype.average = average
     Vue.prototype.localConfig = localConfig
     Vue.prototype.connectDataCenter = connectDataCenter

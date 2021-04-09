@@ -62,7 +62,7 @@
           <span v-if="item['isolatedQuoteBorrowed'] !== 0">{{ -item['isolatedQuoteBorrowed'] }}</span>
         </td>
         <td class='text-monospace align-middle'>
-          <span v-if="item['isolatedRisk'] !== 99999">{{ toPrecision(item['isolatedRisk'], 2) }}%</span>
+          <span v-if="item['isolatedRisk'] !== 99999">{{ toFixed(item['isolatedRisk'], 2) }}%</span>
         </td>
         <td class='text-monospace align-middle'>
           <span v-if="item['future'] !== 0">{{ item['future'] }}</span>
@@ -74,21 +74,21 @@
           <span v-if="item['hedging'] !== 0">{{ item['hedging'] }}</span>
         </td>
         <td class='text-monospace align-middle' v-if='showDetail'>
-          <span v-if="item['value'] !== 0">{{ toPrecision(item['value'], 2) }}</span>
+          <span v-if="item['value'] !== 0">{{ toFixed(item['value'], 2) }}</span>
         </td>
       </tr>
       </tbody>
     </table>
     <div class='d-flex justify-content-between'>
-      <span class='font-weight-bold'>全仓风险 {{ toPrecision(marginRisk, 2) }}%</span>
-      <span class='font-weight-bold' v-if='marginWarning !== 99999'>0.8倍杠杆警告 {{ toPrecision(marginWarning, 2) }}%</span>
+      <span class='font-weight-bold'>全仓风险 {{ toFixed(marginRisk, 2) }}%</span>
+      <span class='font-weight-bold' v-if='marginWarning !== 99999'>0.8倍杠杆警告 {{ toFixed(marginWarning, 2) }}%</span>
       <span class='font-weight-bold' v-if='marginWarning === 99999'>0.8倍杠杆警告 安全</span>
 
     </div>
     <div class='d-flex justify-content-between'>
-      <span class='font-weight-bold'>期货风险 {{ toPrecision(futureRisk, 2) }}%</span>
+      <span class='font-weight-bold'>期货风险 {{ toFixed(futureRisk, 2) }}%</span>
       <span class='font-weight-bold'
-            v-if='futureWarning !== 99999'>5倍杠杆警告 {{ futureWarning > 0 ? '+' : '' }}{{ toPrecision(futureWarning, 2)
+            v-if='futureWarning !== 99999'>5倍杠杆警告 {{ futureWarning > 0 ? '+' : '' }}{{ toFixed(futureWarning, 2)
         }}%</span>
       <span class='font-weight-bold' v-if='futureWarning === 99999'>5倍杠杆警告 安全</span>
     </div>

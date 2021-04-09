@@ -54,4 +54,13 @@ class Script(script_manager.Script):
                 rate = [float(x['fundingRate']) for x in history]
                 asyncio.create_task(self.dc.update({'premium', 'fundingRateHistory', symbol}, rate))
 
+            # 获取收取的资金费率流水
+            res = await self.operator.request('fapi', '/fapi/v1/income', 'GET', {
+                'timestamp': binance_api.get_timestamp(),
+                'limit': str(1000),
+                'incomeType': 'FUNDING_FEE',
+                'startTime': str(int(binance_api.get_timestamp()) - 3600 * 24 * 30 * 1000)
+            })
+            asyncio.create_task(self.dc.update({'json', 'fundingFee'}, res))
+
             await asyncio.sleep(3600)

@@ -29,7 +29,7 @@
             v-bind:class="{ positive: item['fundingRate'] > 0, negative: item['fundingRate'] < 0}"
             nowrap='nowrap'
           >
-            {{ toPrecision(item['fundingRate'] * 100, 2) }}%
+            {{ toFixed(item['fundingRate'] * 100, 2) }}%
           </td>
 
           <td
@@ -37,7 +37,7 @@
             v-bind:class="{ positive: item['avgRate'] > 0, negative: item['avgRate'] < 0}"
             nowrap='nowrap'
           >
-            {{ toPrecision(item['avgRate'] * 100, 2) }}%
+            {{ toFixed(item['avgRate'] * 100, 2) }}%
           </td>
 
           <td class='text-monospace' nowrap='nowrap'>
@@ -49,7 +49,7 @@
             v-bind:class="{ positive: item['premiumRate'] > 0, negative: item['premiumRate'] < 0}"
             nowrap='nowrap'
           >
-            {{ toPrecision(item['premiumRate'] * 100, 2) }}%
+            {{ toFixed(item['premiumRate'] * 100, 2) }}%
           </td>
         </tr>
         </tbody>
