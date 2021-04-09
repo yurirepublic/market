@@ -32,9 +32,9 @@
 
     <div v-if='showTransfer'>
       <div class='py-1 d-flex justify-content-between align-items-center'>
-        <my-radio @click='fromMode = $event' init-active='现货' :options="['现货', '期货', '全仓']" />
+        <my-radio @click='fromMode = $event' :active='fromMode' :options="['现货', '期货', '全仓']" />
         <v-icon name='bi-arrow-right'></v-icon>
-        <my-radio @click='toMode = $event' init-active='期货' :options="['现货', '期货', '全仓']" />
+        <my-radio @click='toMode = $event' :active='toMode' :options="['现货', '期货', '全仓']" />
       </div>
       <div class='d-flex flex-column'>
         <transfer-input

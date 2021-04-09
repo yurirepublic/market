@@ -19,9 +19,9 @@
     <InfoItem header='可用全仓' footer='USDT'>{{ marginFree }}</InfoItem>
     <div v-if='showTransfer'>
       <div class='py-1 d-flex justify-content-between align-items-center'>
-        <Radio @click='fromMode = $event' init-active='现货' :options="['现货', '期货', '全仓']"></Radio>
+        <Radio @click='fromMode = $event' :active='fromMode' :options="['现货', '期货', '全仓']"></Radio>
         <v-icon name='bi-arrow-right'></v-icon>
-        <Radio @click='toMode = $event' init-active='期货' :options="['现货', '期货', '全仓']"></Radio>
+        <Radio @click='toMode = $event' v-bind:active='toMode' :options="['现货', '期货', '全仓']"></Radio>
       </div>
       <div class='d-flex flex-column'>
         <TransferInput
