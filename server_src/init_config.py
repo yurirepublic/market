@@ -3,19 +3,17 @@
 已有配置文件也可运行，只会添加没有的条目，不会覆盖
 对于多余的条目，会发出警告
 """
-import os
 import json
 
 default_config = {
-    "binance_public_key": "",  # 币安的apikey
-    "binance_private_key": "",  # 币安的私钥
+    "binance_public_key": "xxxxxxxx",  # 币安的apikey
+    "binance_private_key": "xxxxxxxx",  # 币安的私钥
 
     "api": {
         "server_ip": "0.0.0.0",
         "server_port": 10000,
-        "use_ssl": True,
-        "ssl_pem": "5119066_us.pwp.today.pem",
-        "ssl_key": "5119066_us.pwp.today.key"
+        "ssl_pem": "xxxxxxxx.pem",
+        "ssl_key": "xxxxxxxx.key"
     },
     "data_center": {
         "server_ip": "0.0.0.0",
@@ -27,6 +25,8 @@ default_config = {
         "subscribe_client_ip": "us.pwp.today",
         "subscribe_client_port": 10002
     },
+
+    "nickname": "defaultName",      # 此服务器的默认昵称
 
     "password": "defaultPassword"  # 中央服务器认证口令
 }

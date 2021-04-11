@@ -27,6 +27,10 @@ export default {
     return {
       chartData: {},
       options: {
+        tooltips: {
+          mode: 'x-axis',
+          intersect: false
+        },
         responsive: true,
         maintainAspectRatio: false,
         legend: {

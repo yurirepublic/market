@@ -9,12 +9,7 @@ import logging
 # 导入基本库
 import json
 import time
-import multiprocessing
-from multiprocessing import Process, Manager
-import threading
 import traceback
-import numpy as np
-from typing import Union
 import asyncio
 
 # 导入币安api、脚本管理器
@@ -22,9 +17,9 @@ import binance_api
 import script_manager
 
 app = Flask(__name__)
+CORS(app, supports_credentials=True)  # 允许跨域
 log = logging.getLogger('werkzeug')
 log.setLevel(logging.ERROR)
-CORS(app, supports_credentials=True)  # 允许跨域
 
 # 创建公用币安api对象
 operator = asyncio.get_event_loop().run_until_complete(binance_api.create_operator())
@@ -123,27 +118,6 @@ async def stop_script(pid):
     }
 
 
-async def premium_history(symbol):
-    """
-    查询资金费率历史
-    :param symbol:  要查询的交易对
-    """
-    res = await operator.request('fapi', '/fapi/v1/fundingRate', 'GET', {
-        'symbol': symbol
-    })
-    # 清洗一下数据再发回去
-    rate = [float(x['fundingRate']) for x in res]
-    rate_time = [x['fundingTime'] for x in res]
-
-    return {
-        'msg': 'success',
-        'data': {
-            'rate': rate,
-            'time': rate_time
-        }
-    }
-
-
 async def transfer(trans_type, symbol, quantity):
     """
     万向划转接口
@@ -182,17 +156,6 @@ async def transfer(trans_type, symbol, quantity):
         'amount': quantity,
         'timestamp': binance_api.get_timestamp()
     })
-
-    return {
-        'msg': 'success'
-    }
-
-
-async def trade_market(symbol: str, mode: str, amount: Union[str, float, int], side: str):
-    """
-    单向下单\n
-    """
-    await operator.trade_market(symbol, mode, amount, side)
 
     return {
         'msg': 'success'
@@ -391,18 +354,6 @@ async def analyze_premium():
     }
 
 
-def run_http_server():
-    """
-    注意，此函数会阻塞主线程
-    """
-    print('即将运行http服务器{}:{}'.format(config['api']['server_ip'], config['api']['server_port']))
-    if config['api']['use_ssl']:
-        app.run(config['api']['server_ip'], config['api']['server_port'],
-                ssl_context=(config['api']['ssl_pem'], config['api']['ssl_key']))
-    else:
-        app.run(config['api']['server_ip'], config['api']['server_port'])
-
-
 def memory_summary():
     # Only import Pympler when we need it. We don't want it to
     # affect our process if we never call memory_summary.
@@ -419,12 +370,13 @@ if __name__ == '__main__':
     # threading.Thread(target=memory_summary).start()
 
     # 运行数据中心的脚本
-    sm.exec('dc_websocket', {})
-    sm.exec('dc_static', {})
-    sm.exec('dc_static_realtime', {})
+    sm.exec('sc_websocket', {})
+    sm.exec('sc_static', {})
+    sm.exec('sc_static_realtime', {})
 
     # 运行二次处理脚本
-    sm.exec('se_premium', {})
+    sm.exec('sc_premium', {})
 
-    # 运行http服务器（会直接阻塞）
-    run_http_server()
+    print('即将运行http服务器{}:{}'.format(config['api']['server_ip'], config['api']['server_port']))
+    app.run(config['api']['server_ip'], config['api']['server_port'],
+            ssl_context=(config['api']['ssl_pem'], config['api']['ssl_key']))

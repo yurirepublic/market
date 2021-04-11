@@ -3,6 +3,7 @@ import traceback
 from multiprocessing import Process, Manager, Lock
 import os
 import time
+import asyncio
 
 
 class ScriptInput(object):
@@ -136,8 +137,8 @@ class Server(object):
         res = []
         # 将所有文件挨个导入，并检查是否符合规则可以返回
         for e in file_list:
-            # 只对名字前缀为dc_的文件进行扫描
-            if e.find('dc_') != 0:
+            # 只对名字前缀为sc_的文件进行扫描
+            if e.find('sc_') != 0:
                 continue
 
             # 另开进程来避免污染主进程，返回值用manager传递
