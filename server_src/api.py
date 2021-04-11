@@ -369,13 +369,14 @@ if __name__ == '__main__':
     # # 运行内存泄露检测
     # threading.Thread(target=memory_summary).start()
 
-    # 运行数据中心的脚本
+    # 运行数据爬取脚本
     sm.exec('sc_websocket', {})
     sm.exec('sc_static', {})
     sm.exec('sc_static_realtime', {})
-
-    # 运行二次处理脚本
+    # 运行数据二次处理脚本
     sm.exec('sc_premium', {})
+    # 运行服务器运行状况监控脚本
+    sm.exec('sc_server_status', {})
 
     print('即将运行http服务器{}:{}'.format(config['api']['server_ip'], config['api']['server_port']))
     app.run(config['api']['server_ip'], config['api']['server_port'],

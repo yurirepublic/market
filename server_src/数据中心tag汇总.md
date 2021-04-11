@@ -1,39 +1,48 @@
 ### 数据中心TAG汇总速查
 
 ```
-<>符号表示通配符，一般是某个交易对、资产的符号
-< 表示仅资产，无计价符号，例如BNB、USDT
-<>表示完整符号，例如BNBUSDT、BTCBUSD
+[]符号里面表示通配符
+通配符内符号意义
+asset 资产名，例如BNB
+symbol 交易对符号，例如BNBUSDT
+nickname 服务器识别昵称，例如us1
+
+特别注意：TAG不分前后，没有顺序
 
 下单精度
-precision quote main <>
-precision quote future <>
+precision quote main [symbol]
+precision quote future [symbol]
 
 资产余额
-asset main <
-asset future <
-asset margin <
-asset isolated base <>
-asset isolated quote <>
+asset main [asset]
+asset future [asset]
+asset margin [asset]
+asset isolated base [symbol]
+asset isolated quote [symbol]
 
 负债余额
-borrowed margin base <>
-borrowed isolated quote <>
+borrowed margin base [symbol]
+borrowed isolated quote [symbol]
 
 仓位
-position future <>
+position future [symbol]
 
 价格
-price main <>
-price future <>
+price main [symbol]
+price future [symbol]
 
 溢价
-premium rate <>
-premium dif <>
-premium fundingRate <>
-premium fundingRateHistory <>
+premium rate [symbol]
+premium dif [symbol]
+premium fundingRate [symbol]
+premium fundingRateHistory [symbol]
 
 资金费率流水
 json fundingFee
+
+服务器运行状况
+server status cpu usage percent [nickname]
+server status ram usage percent [nickname]
+server status disk usage percent [nickname]
 ```
 
