@@ -1,6 +1,6 @@
 <template>
   <card-frame>
-    <div class='mb-2 d-flex justify-content-between align-items-center'>
+    <div class='mb-2 d-flex justify-content-between align-items-center' style='width: 30rem'>
       <span class='font-weight-bold'>每日套利金额</span>
       <div>
         <span class='font-weight-bold'>平均 {{ toFixed(average, 2) }}＄</span>
@@ -8,34 +8,30 @@
       </div>
 
     </div>
-    <line-chart :chart-data='chartData' :options='options' style='height: 20rem; width: 25rem'></line-chart>
+    <ve-line-chart :data='chartData' :grid='grid' :settings='chartSettings' />
   </card-frame>
 
 </template>
 
 <script>
-import LineChart from '@/components/charts/LineChart.vue'
 import CardFrame from '@/components/CardFrame'
 
 export default {
   name: 'TheFundingFeeChart',
   components: {
-    LineChart,
     CardFrame
   },
   data: function() {
     return {
       chartData: {},
-      options: {
-        tooltips: {
-          mode: 'x-axis',
-          intersect: false
-        },
-        responsive: true,
-        maintainAspectRatio: false,
-        legend: {
-          display: false
+      chartSettings: {
+        legendOptions: {
+          show: false,
         }
+      },
+      grid: {
+        top: 10,
+        right: 10
       },
 
       sum: 0,
@@ -75,12 +71,14 @@ export default {
       this.average = sum / Object.values(eachDay).length
 
       this.chartData = {
-        labels: Object.keys(eachDay),
-        datasets: [
+        dimensions: {
+          name: '日期',
+          data: Object.keys(eachDay)
+        },
+        measures: [
           {
-            label: '套利收入',
-            data: Object.values(eachDay).map(x => this.toFixed(x, 2)),
-            backgroundColor: '#bbb'
+            name: '套利收入',
+            data: Object.values(eachDay).map(x => this.toFixed(x, 2))
           }
         ]
       }

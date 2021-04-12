@@ -20,6 +20,10 @@ import base from './base.js'
 
 Vue.use(base)
 
+// 导入ve-charts
+import VeCharts from 've-charts'
+Vue.use(VeCharts)
+
 // 导入oh-vue-icons
 import OhVueIcon from 'oh-vue-icons'
 

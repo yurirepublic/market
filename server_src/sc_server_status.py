@@ -1,6 +1,9 @@
 """
 获取配对的现货与期货价格，并计算溢价
 """
+import time
+
+import binance_api
 import data_center
 import script_manager
 import asyncio
@@ -36,12 +39,25 @@ class Script(script_manager.Script):
         asyncio.create_task(self.disk())
 
     async def cpu(self):
+        percent_history = [0] * 100
+        history_timestamp = [0] * 100
         while True:
             cpu_usage = await asyncio.get_running_loop().run_in_executor(None, psutil.cpu_percent)
+
+            timestamp = round(time.time() * 1000)
+            percent_history.pop(0)  # 移除第一个元素
+            percent_history.append(cpu_usage)  # 记录最新的元素
+            history_timestamp.pop(0)
+            history_timestamp.append(timestamp)
+
             await self.client.update({'server', 'status', 'cpu', 'usage', 'percent', self.nickname}, cpu_usage)
+            await self.client.update({'server', 'status', 'cpu', 'usage', 'percentHistory', self.nickname},
+                                     percent_history)
             await asyncio.sleep(5)
 
     async def ram(self):
+        percent_history = [0] * 100
+        history_timestamp = [0] * 100
         while True:
             ram = await asyncio.get_running_loop().run_in_executor(None, psutil.virtual_memory)
             total = ram[0]
@@ -49,22 +65,42 @@ class Script(script_manager.Script):
             percent = ram[2]
             used = ram[3]
             free = ram[4]
+
+            timestamp = round(time.time() * 1000)
+            percent_history.pop(0)  # 移除第一个元素
+            percent_history.append(percent)  # 记录最新的元素
+            history_timestamp.pop(0)
+            history_timestamp.append(timestamp)
+
             await self.client.update({'server', 'status', 'ram', 'usage', 'total', self.nickname}, total)
             await self.client.update({'server', 'status', 'ram', 'usage', 'available', self.nickname}, available)
             await self.client.update({'server', 'status', 'ram', 'usage', 'percent', self.nickname}, percent)
             await self.client.update({'server', 'status', 'ram', 'usage', 'used', self.nickname}, used)
             await self.client.update({'server', 'status', 'ram', 'usage', 'free', self.nickname}, free)
+            await self.client.update({'server', 'status', 'ram', 'usage', 'percentHistory', self.nickname},
+                                     percent_history)
             await asyncio.sleep(5)
 
     async def disk(self):
+        percent_history = [0] * 100
+        history_timestamp = [0] * 100
         while True:
             hdd = psutil.disk_usage('/')
             total = hdd.total
             free = hdd.free
             used = hdd.used
             percent = (used / total) * 100
+
+            timestamp = round(time.time() * 1000)
+            percent_history.pop(0)  # 移除第一个元素
+            percent_history.append(percent)  # 记录最新的元素
+            history_timestamp.pop(0)
+            history_timestamp.append(timestamp)
+
             await self.client.update({'server', 'status', 'disk', 'usage', 'total', self.nickname}, total)
             await self.client.update({'server', 'status', 'disk', 'usage', 'free', self.nickname}, free)
             await self.client.update({'server', 'status', 'disk', 'usage', 'used', self.nickname}, used)
             await self.client.update({'server', 'status', 'disk', 'usage', 'percent', self.nickname}, percent)
+            await self.client.update({'server', 'status', 'disk', 'usage', 'percentHistory', self.nickname},
+                                     percent_history)
             await asyncio.sleep(5)

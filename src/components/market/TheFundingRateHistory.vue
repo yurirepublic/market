@@ -4,34 +4,21 @@
       <span class='font-weight-bold'>100次资金费率图表</span>
       <span>{{ pairSymbol }}</span>
     </div>
-    <trend-chart
-      :datasets='[
-        {
-          data: priceHistory,
-          smooth: false,
-          fill: true,
-        },
-      ]'
-      :labels="{
-        yLabels: 5,
-        yLabelsTextFormatter: (val) => Math.round(val * 10000) / 100 + '%',
-      }"
-      :grid='{
-        horizontalLines: true,
-        horizontalLinesNumber: 5,
-        verticalLines: true,
-        verticalLinesNumber: 1,
-      }'
-    >
-    </trend-chart>
+    <ve-line-chart :data='chartData'
+                   :grid='grid'
+                   :tooltip-visible='false'
+                   :settings='chartSettings'
+                   :height='180'
+                   empty-text='请点击表格' />
+
   </div>
 </template>
 
 <script>
-import TrendChart from 'vue-trend-chart'
 
 export default {
   name: 'TheFundingRateHistory',
+  components: {},
 
   props: {
     pairSymbol: ''
@@ -39,6 +26,23 @@ export default {
 
   data: function() {
     return {
+      chartData: null,
+      chartSettings: {
+        legendOptions: {
+          show: false
+        },
+        xAxisLabelShow: false,
+        yAxisLabelType: 'percentage',
+        yAxisLabelDigits: 2,
+
+      },
+      grid: {
+        top: 10,
+        bottom: 10,
+        left: 50,
+        right: 10
+      },
+
       priceHistory: [0, 0, 0],
       cache: {},
       ws: null
@@ -46,15 +50,28 @@ export default {
   },
 
   watch: {
-    async pairSymbol(newVal) {
+    async pairSymbol(newSymbol) {
       // 获取这个交易对的历史
-      if (this.cache[newVal]) {
-        this.priceHistory = this.cache[newVal]
+      if (this.cache[newSymbol]) {
+        this.priceHistory = this.cache[newSymbol]
       } else {
-        let history = await this.ws.getData(['premium', 'fundingRateHistory', newVal])
+        let history = await this.ws.getData(['premium', 'fundingRateHistory', newSymbol])
         if (history === null) {
           this.priceHistory = [0, 0, 0]
         }
+      }
+    },
+
+    async priceHistory(newVal) {
+      this.chartData = {
+        dimensions: {
+          name: 'time',
+          data: [...Object.keys(newVal)]
+        },
+        measures: [{
+          name: '费率',
+          data: newVal
+        }]
       }
     }
   },
@@ -70,10 +87,8 @@ export default {
     })
   },
 
-  methods: {},
-  components: {
-    TrendChart
-  }
+  methods: {}
+
 }
 </script>
 

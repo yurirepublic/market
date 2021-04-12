@@ -1,15 +1,20 @@
 <template>
   <div class='d-flex justify-content-center p-1'>
     <the-funding-fee-chart />
+    <the-server-status class='ml-1' />
   </div>
 </template>
 
 <script>
-import TheFundingFeeChart from '@/components/charts/TheFundingFeeChart.vue'
+import TheFundingFeeChart from '@/components/statistics/TheFundingFeeChart'
+import TheServerStatus from '@/components/statistics/TheServerStatus'
 
 export default {
   name: 'Statistics',
-
+  components: {
+    TheServerStatus,
+    TheFundingFeeChart
+  },
   data: function() {
     return {
       ws: null,
@@ -21,11 +26,9 @@ export default {
     this.ws = await this.connectDataCenter()
     this.subscribe = await this.connectSubscribe()
 
-  },
-
-  components: {
-    TheFundingFeeChart
   }
+
+
 }
 </script>
 

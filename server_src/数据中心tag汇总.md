@@ -42,7 +42,18 @@ json fundingFee
 
 服务器运行状况
 server status cpu usage percent [nickname]
+server status cpu usage percentHistory [nickname]
 server status ram usage percent [nickname]
+server status ram usage percentHistory [nickname]
+server status ram usage total [nickname]
+server status ram usage available [nickname]
+server status ram usage used [nickname]
+server status ram usage free [nickname]
 server status disk usage percent [nickname]
+server status disk usage percentHistory [nickname]
+server status disk usage used [nickname]
+server status disk usage free [nickname]
+server status disk usage total [nickname]
+
 ```
 

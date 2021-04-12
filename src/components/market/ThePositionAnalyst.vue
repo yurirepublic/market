@@ -88,17 +88,17 @@
       </tbody>
     </table>
     <div class='d-flex justify-content-between'>
-      <span class='font-weight-bold'>全仓风险 {{ toFixed(marginRisk, 2) }}%</span>
-      <span class='font-weight-bold' v-if='marginWarning !== 99999'>0.8倍杠杆警告 {{ toFixed(marginWarning, 2) }}%</span>
-      <span class='font-weight-bold' v-if='marginWarning === 99999'>0.8倍杠杆警告 安全</span>
+      <span class=''>全仓风险 {{ toFixed(marginRisk, 2) }}%</span>
+      <span class='' v-if='marginWarning !== 99999'>0.8倍杠杆警告 {{ toFixed(marginWarning, 2) }}%</span>
+      <span class='' v-if='marginWarning === 99999'>0.8倍杠杆警告 安全</span>
 
     </div>
     <div class='d-flex justify-content-between'>
-      <span class='font-weight-bold'>期货风险 {{ toFixed(futureRisk, 2) }}%</span>
-      <span class='font-weight-bold'
+      <span class=''>期货风险 {{ toFixed(futureRisk, 2) }}%</span>
+      <span class=''
             v-if='futureWarning !== 99999'>5倍杠杆警告 {{ futureWarning > 0 ? '+' : '' }}{{ toFixed(futureWarning, 2)
         }}%</span>
-      <span class='font-weight-bold' v-if='futureWarning === 99999'>5倍杠杆警告 安全</span>
+      <span class='' v-if='futureWarning === 99999'>5倍杠杆警告 安全</span>
     </div>
 
   </div>
