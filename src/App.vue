@@ -11,6 +11,9 @@
       <div v-show="focusPage === 'science'">
         <science />
       </div>
+      <div v-show="focusPage === 'datacenterRealtime'">
+        <datacenter-realtime />
+      </div>
       <div v-show="focusPage === 'setting'">
         <setting />
       </div>
@@ -40,9 +43,11 @@ import RunningScript from '@/views/RunningScript.vue'
 import ScriptManage from '@/views/ScriptManage.vue'
 import Statistics from '@/views/Statistics'
 import Science from '@/views/Science'
+import DatacenterRealtime from '@/views/DatacenterRealtime'
 
 export default {
   components: {
+    DatacenterRealtime,
     Market,
     ThePageSwitchBar,
     Setting,
@@ -66,6 +71,10 @@ export default {
         {
           name: 'science',
           icon: 'fa-flask'
+        },
+        {
+          name: 'datacenterRealtime',
+          icon: 'fa-globe-americas'
         },
         {
           name: 'runningScript',

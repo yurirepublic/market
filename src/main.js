@@ -22,6 +22,7 @@ Vue.use(base)
 
 // 导入ve-charts
 import VeCharts from 've-charts'
+
 Vue.use(VeCharts)
 
 // 导入oh-vue-icons
@@ -41,6 +42,7 @@ import { FaRegularPlayCircle } from 'oh-vue-icons/icons'
 import { FaRegularListAlt } from 'oh-vue-icons/icons'
 import { RiRefreshLine } from 'oh-vue-icons/icons'
 import { FaFlask } from 'oh-vue-icons/icons'
+import { FaGlobeAmericas } from 'oh-vue-icons/icons'
 
 OhVueIcon.add(
   RiArrowLeftRightLine,
@@ -56,7 +58,8 @@ OhVueIcon.add(
   FaRegularPlayCircle,
   FaRegularListAlt,
   RiRefreshLine,
-  FaFlask
+  FaFlask,
+  FaGlobeAmericas
 )
 Vue.component('v-icon', OhVueIcon)
 

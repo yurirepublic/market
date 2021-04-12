@@ -5,16 +5,22 @@
     </div>
 
     <ve-line-chart :data='chartData' :settings='chartSettings' :grid='grid' :height='200'></ve-line-chart>
-    <span>CPU：{{ toFixed(cpuPercent, 1) }}%</span>
 
-    <span>内存：{{ toFixed(ramPercent, 1) }}%</span>
-    <span>内存可用空间：{{ toFixed(ramAvailable / (1 << 20), 2) }} MB</span>
-    <span>内存总大小：{{ toFixed(ramTotal / (1 << 20), 2) }} MB</span>
+    <div>
+      <span>CPU：{{ toFixed(cpuPercent, 1) }}%</span>
+    </div>
 
+    <div class='mt-1 d-flex flex-column'>
+      <span>内存：{{ toFixed(ramPercent, 1) }}%</span>
+      <span>内存可用空间：{{ toFixed(ramAvailable / (1 << 20), 2) }} MB</span>
+      <span>内存总大小：{{ toFixed(ramTotal / (1 << 20), 2) }} MB</span>
+    </div>
 
-    <span>硬盘：{{ toFixed(diskPercent, 1) }}%</span>
-    <span>硬盘可用空间：{{ toFixed(diskFree / (1 << 30), 2) }} GB</span>
-    <span>硬盘总大小：{{ toFixed(diskTotal / (1 << 30), 2) }} GB</span>
+    <div class='mt-1 d-flex flex-column'>
+      <span>硬盘：{{ toFixed(diskPercent, 1) }}%</span>
+      <span>硬盘可用空间：{{ toFixed(diskFree / (1 << 30), 2) }} GB</span>
+      <span>硬盘总大小：{{ toFixed(diskTotal / (1 << 30), 2) }} GB</span>
+    </div>
 
   </card-frame>
 </template>
@@ -33,12 +39,12 @@ export default {
       chartSettings: {
         xAxisLabelShow: false,
         yAxisLabelType: 'percentage',
-        percentage: true,
+        percentage: true
       },
       grid: {
         top: 30,
         right: 10,
-        bottom: 10,
+        bottom: 10
       },
 
       cpuPercent: 0,
