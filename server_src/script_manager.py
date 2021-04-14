@@ -58,6 +58,9 @@ class Script(object):
         except Exception:
             self.log(traceback.format_exc())
             self.manager_dict['except_exit'] = True
+            exit(0)
+        except KeyboardInterrupt:
+            exit(0)
 
     def main(self):
         """
@@ -236,6 +239,13 @@ class Server(object):
             if e.thread_id == thread_id:
                 e.handle.kill()
                 break
+
+    def kill_all(self):
+        """
+        结束掉服务器上所有的脚本
+        """
+        for e in self.running_scripts:
+            e.handle.kill()
 
     def get_log(self, thread_id: int) -> str:
         """
