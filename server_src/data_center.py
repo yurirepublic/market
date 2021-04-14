@@ -332,10 +332,10 @@ class WebsocketServerAdapter(object):
 
         self.subscribe_queue: asyncio.Queue[DataWrapper] = asyncio.Queue()  # 等待配布的订阅数据，由数据中心通过回调发送
 
-        self.subscribe_all_sockets: Set[websockets.WebSocketServerProtocol] = set()  # 用来存储订阅所有消息的列表
         self.subscribe_precise: Set[SubscriberWrapper] = set()  # 精确订阅列表
         self.subscribe_dict: Set[SubscriberWrapper] = set()  # 字典订阅列表
         self.subscribe_fuzzy: Set[SubscriberWrapper] = set()  # 模糊订阅列表
+        self.subscribe_all: Set[SubscriberWrapper] = set()  # 所有订阅列表
 
         self.adapter = None
         self.subscribe_adapter = None
@@ -386,19 +386,15 @@ class WebsocketServerAdapter(object):
             tags = data.get_tags()
             list_tags = list(tags)  # 写个缓存优化
 
-            # 先向订阅所有的进行配布
-            msg = json.dumps({
-                'tags': list_tags,
-                'data': data.get()
-            })
-            for ws in self.subscribe_all_sockets:
-                self.loop.create_task(self.subscribe_sender_all(ws, msg))
-
-            # 向可选订阅进行配布
+            # 向订阅进行配布
             msg = {
                 'tags': list_tags,
                 'data': data.get()
             }
+            for wrp in self.subscribe_all:
+                msg['comment'] = wrp.comment
+                self.loop.create_task(self.subscribe_sender_all(wrp, json.dumps(msg)))
+
             for wrp in self.subscribe_precise:
                 if wrp.tags == tags:
                     msg['comment'] = wrp.comment
@@ -418,15 +414,15 @@ class WebsocketServerAdapter(object):
                     msg['special'] = special
                     self.loop.create_task(self.subscribe_sender_dict(wrp, json.dumps(msg)))
 
-    async def subscribe_sender_all(self, ws, msg):
+    async def subscribe_sender_all(self, wrp: SubscriberWrapper, msg):
         """
         为了解决发送时的异常，需要在这里再开一个协程
         """
         try:
-            await ws.send(msg)
+            await wrp.ws.send(msg)
         except (websockets.exceptions.ConnectionClosedOK, websockets.exceptions.ConnectionClosed):
             try:
-                self.subscribe_all_sockets.remove(ws)
+                self.subscribe_all.remove(wrp)
             except KeyError:
                 # 对于重复删除直接无视。因为有可能被发现连接断开前，有多个协程开始拿着这个ws在运作
                 pass
@@ -519,7 +515,8 @@ class WebsocketServerAdapter(object):
                     self.subscribe_fuzzy.add(wrapper)
                 elif msg['mode'] == 'SUBSCRIBE_ALL':
                     # 将socket添加到所有订阅的列表
-                    self.subscribe_all_sockets.add(ws)
+                    wrapper = SubscriberWrapper(ws, set(), comment)
+                    self.subscribe_all.add(wrapper)
                 else:
                     print('订阅接口收到未知mode', msg['mode'])
         except websockets.exceptions.ConnectionClosedOK:

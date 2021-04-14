@@ -2,6 +2,8 @@
 此文件用于提供用于客户端的API
 """
 # 导入http框架
+import threading
+
 from flask import Flask, request
 from flask_cors import CORS
 import logging
@@ -365,19 +367,20 @@ def memory_summary():
         time.sleep(300)
 
 
-if __name__ == '__main__':
+def main():
     # # 运行内存泄露检测
     # threading.Thread(target=memory_summary).start()
 
-    # 运行数据爬取脚本
-    sm.exec('sc_websocket', {})
-    sm.exec('sc_static', {})
-    sm.exec('sc_static_realtime', {})
-    # 运行数据二次处理脚本
-    sm.exec('sc_premium', {})
-    # 运行服务器运行状况监控脚本
-    sm.exec('sc_server_status', {})
+    # 读取要自动启动的脚本
+    for name in config['exec']:
+        sm.exec(name, {})
 
-    print('即将运行http服务器{}:{}'.format(config['api']['server_ip'], config['api']['server_port']))
+    ip = config['api']['server_ip']
+    port = config['api']['server_port']
+    print('即将运行http服务器{}:{}'.format(ip, port))
     app.run(config['api']['server_ip'], config['api']['server_port'],
             ssl_context=(config['api']['ssl_pem'], config['api']['ssl_key']))
+
+
+if __name__ == '__main__':
+    main()
