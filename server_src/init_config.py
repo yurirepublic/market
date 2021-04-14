@@ -12,23 +12,25 @@ default_config = {
     "api": {
         "server_ip": "0.0.0.0",
         "server_port": 10000,
-        "ssl_pem": "xxxxxxxx.pem",
-        "ssl_key": "xxxxxxxx.key"
+        "ssl_pem": "ssl.pem",
+        "ssl_key": "ssl.key"
     },
     "data_center": {
         "server_ip": "0.0.0.0",
         "server_port": 10001,
-        "client_ip": "us.pwp.today",
+        "client_ip": "xxxxx",
         "client_port": 10001,
         "subscribe_server_ip": "0.0.0.0",
         "subscribe_server_port": 10002,
-        "subscribe_client_ip": "us.pwp.today",
+        "subscribe_client_ip": "xxxxxx",
         "subscribe_client_port": 10002
     },
 
     "nickname": "defaultName",      # 此服务器的默认昵称
 
-    "password": "defaultPassword"  # 中央服务器认证口令
+    "password": "defaultPassword",  # 中央服务器认证口令
+
+    "exec": []      # 需要运行时自动启动的脚本
 }
 
 try:

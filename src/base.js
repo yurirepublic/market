@@ -261,12 +261,11 @@ async function generateDataCenterWebsocket() {
       }))
       return await promise
     },
-    getAll: async function(tags) {
+    getAll: async function() {
       let order = getOrder()
       let promise = generateGetPromise(order)
       ws.send(JSON.stringify({
         mode: 'GET_ALL',
-        tags: tags,
         comment: order
       }))
       return await promise

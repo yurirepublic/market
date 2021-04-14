@@ -1,0 +1,4 @@
+websockets
+flask
+flask_cors
+psutil

@@ -26,8 +26,9 @@ export default {
       chartData: {},
       chartSettings: {
         legendOptions: {
-          show: false,
-        }
+          show: false
+        },
+        smooth: true
       },
       grid: {
         top: 10,
@@ -41,14 +42,26 @@ export default {
       subscribe: null
     }
   },
+  mounted: async function() {
+    this.ws = await this.connectDataCenter()
+    this.subscribe = await this.connectSubscribe()
+
+    let msg = await this.ws.getData(['json', 'fundingFee'])
+    await this.fillData(msg)
+
+    // TODO 这里改成订阅
+    await this.subscribe.precise(['json', 'fundingFee'], async msg => {
+      await this.fillData(msg['data'])
+    })
+
+  },
   methods: {
-    fillData: async function() {
-      let res = await this.ws.getData(['json', 'fundingFee'])
+    fillData: async function(msg) {
 
       // 将每日的统计写入到total当中
       let eachDay = {}
-      for (let i = 0; i < res.length; i++) {
-        let e = res[i]
+      for (let i = 0; i < msg.length; i++) {
+        let e = msg[i]
         let date = new Date(e['time'])
         let year = date.getFullYear()
         let month = date.getMonth() + 1
@@ -83,14 +96,8 @@ export default {
         ]
       }
     }
-  },
-  mounted: async function() {
-    this.ws = await this.connectDataCenter()
-    this.subscribe = await this.connectSubscribe()
-
-    setInterval(this.fillData, 2000)
-
   }
+
 
 }
 </script>
