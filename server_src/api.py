@@ -372,7 +372,9 @@ def main():
     # threading.Thread(target=memory_summary).start()
 
     # 读取要自动启动的脚本
+    print('正在执行自启动脚本:')
     for name in config['exec']:
+        print(name)
         sm.exec(name, {})
 
     ip = config['api']['server_ip']

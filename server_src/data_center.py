@@ -701,6 +701,7 @@ class WebsocketSubscribe(object):
             self.order += 1
             if self.order > 1000000:
                 self.order = 0
+            return self.order
 
     async def subscribe_dict(self, tags: Set[str], callback):
         order = await self._get_order()
