@@ -59,8 +59,6 @@
 </template>
 
 <script>
-import RefreshButton from '@/components/RefreshButton.vue'
-
 export default {
   name: 'TheMarketTable',
   data: function() {
@@ -108,14 +106,13 @@ export default {
     for (const symbol of Object.keys(fundingRate)) {
       if (symbol in this.cache) {
         let index = this.cache[symbol]
-        this.$set(this.items[index], 'fundingRateHistory', fundingRateHistory[symbol])
         // 计算平均费率
         if (fundingRateHistory[symbol] === undefined) {
-          this.$set(this.items[index], 'avgRate', NaN)
+          this.items[index]['avgRate'] = NaN
         } else if (fundingRateHistory[symbol].length === 0) {
-          this.$set(this.items[index], 'avgRate', 0)
+          this.items[index]['avgRate'] = 0
         } else {
-          this.$set(this.items[index], 'avgRate', this.average(fundingRateHistory[symbol]))
+          this.items[index]['avgRate'] = this.average(fundingRateHistory[symbol])
         }
       }
     }
@@ -126,7 +123,7 @@ export default {
     for (const symbol of Object.keys(mainPrice)) {
       if (symbol in this.cache) {
         let index = this.cache[symbol]
-        this.$set(this.items[index], 'mainPrice', mainPrice[symbol])
+        this.items[index]['mainPrice'] = mainPrice[symbol]
       }
     }
 
@@ -136,7 +133,7 @@ export default {
     for (const symbol of Object.keys(premiumRate)) {
       if (symbol in this.cache) {
         let index = this.cache[symbol]
-        this.$set(this.items[index], 'premiumRate', premiumRate[symbol])
+        this.items[index]['premiumRate'] = premiumRate[symbol]
       }
     }
 
@@ -145,7 +142,7 @@ export default {
       let symbol = msg['special']
       if (symbol in this.cache) {
         let index = this.cache[symbol]
-        this.$set(this.items[index], 'fundingRate', msg['data'])
+        this.items[index]['fundingRate'] = msg['data']
       }
     })
 
@@ -155,9 +152,9 @@ export default {
       if (symbol in this.cache) {
         let index = this.cache[symbol]
         if (msg['data'].length === 0) {
-          this.$set(this.items[index], 'avgRate', 0)
-        }else {
-          this.$set(this.items[index], 'avgRate', this.average(msg['data']))
+          this.items[index]['avgRate'] = 0
+        } else {
+          this.items[index]['avgRate'] = msg['data']
         }
       }
     })
@@ -167,7 +164,7 @@ export default {
       let symbol = msg['special']
       if (symbol in this.cache) {
         let index = this.cache[symbol]
-        this.$set(this.items[index], 'mainPrice', msg['data'])
+        this.items[index]['mainPrice'] = msg['data']
       }
     })
 
@@ -176,14 +173,13 @@ export default {
       let symbol = msg['special']
       if (symbol in this.cache) {
         let index = this.cache[symbol]
-        this.$set(this.items[index], 'premiumRate', msg['data'])
+        let obj = this.items[index]
+        obj['premiumRate'] = msg['data']
+        this.$set(this.items, index, obj)
       }
     })
 
 
-  },
-  components: {
-    RefreshButton
   }
 }
 </script>
