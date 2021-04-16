@@ -68,134 +68,118 @@ export default {
       cache: {},    // 将symbol作为键，可以快速查找相应的对象来修改数据
       items: [],    // 排序后的items
 
-      dataWs: null,
-      subWs: null,   // 当前正在连接的websocket
-
-      sortInterval: null
+      ws: null,
+      subscribe: null   // 当前正在连接的websocket
     }
   },
   methods: {},
   mounted: async function() {
-    if (this.sortInterval !== null) {
-      clearInterval(this.sortInterval)
-    }
-    this.cache = {}
-    this.items = []
+    this.ws = await this.connectDataCenter()
+    this.subscribe = await this.connectSubscribe()
 
-    this.dataWs = await this.connectDataCenter()
     // 获取当前资金费率
-    let fundingRate = await this.dataWs.getDict(['premium', 'fundingRate'])
+    let fundingRate = await this.ws.getDict(['premium', 'fundingRate'])
     console.log('当前资金费率', fundingRate)
-    // 以同步方式根据key来先把object创建好
-    let keys = Object.keys(fundingRate)
-    for (let i = 0; i < keys.length; i++) {
-      let symbol = keys[i]
+    // 根据key来先把object创建好
+    for (const symbol of Object.keys(fundingRate)) {
       // 如果symbol以USDT结尾，才允许创建
       if (symbol.endsWith('USDT')) {
-        let obj = {
+        this.items.push({
           symbol: symbol,
           fundingRate: fundingRate[symbol]
-        }
-        this.cache[symbol] = obj
-        this.items.push(obj)
+        })
       }
     }
-    this.$forceUpdate()
+
+    // 对列表排个序
+    this.items.sort((a, b) => {
+      return Math.abs(b['fundingRate']) - Math.abs(a['fundingRate'])
+    })
+
+    // 记录所有symbol的index
+    for (let i = 0; i < this.items.length; i++) {
+      this.cache[this.items[i]['symbol']] = i
+    }
 
     // 获取历史费率
-    let fundingRateHistory = await this.dataWs.getDict(['premium', 'fundingRateHistory'])
+    let fundingRateHistory = await this.ws.getDict(['premium', 'fundingRateHistory'])
     console.log('历史资金费率', fundingRateHistory)
-    Object.keys(fundingRateHistory).forEach(symbol => {
-      let obj = this.cache[symbol]
-      if (obj) {
-        obj['fundingRateHistory'] = fundingRateHistory[symbol]
+
+    for (const symbol of Object.keys(fundingRate)) {
+      if (symbol in this.cache) {
+        let index = this.cache[symbol]
+        this.$set(this.items[index], 'fundingRateHistory', fundingRateHistory[symbol])
         // 计算平均费率
-        if (fundingRateHistory[symbol].length === 0) {
-          obj['avgRate'] = 0
+        if (fundingRateHistory[symbol] === undefined) {
+          this.$set(this.items[index], 'avgRate', NaN)
+        } else if (fundingRateHistory[symbol].length === 0) {
+          this.$set(this.items[index], 'avgRate', 0)
         } else {
-          obj['avgRate'] = this.average(fundingRateHistory[symbol])
+          this.$set(this.items[index], 'avgRate', this.average(fundingRateHistory[symbol]))
         }
-        this.$forceUpdate()
       }
-    })
+    }
 
     // 获取现货币价
-    let mainPrice = await this.dataWs.getDict(['price', 'main'])
+    let mainPrice = await this.ws.getDict(['price', 'main'])
     console.log('现货币价', mainPrice)
-    Object.keys(mainPrice).forEach(symbol => {
-      let obj = this.cache[symbol]
-      if (obj) {
-        obj['mainPrice'] = mainPrice[symbol]
-        this.$forceUpdate()
+    for (const symbol of Object.keys(mainPrice)) {
+      if (symbol in this.cache) {
+        let index = this.cache[symbol]
+        this.$set(this.items[index], 'mainPrice', mainPrice[symbol])
       }
-    })
+    }
 
     // 获取期货溢价
-    let premiumRate = await this.dataWs.getDict(['premium', 'rate'])
+    let premiumRate = await this.ws.getDict(['premium', 'rate'])
     console.log('期货溢价', premiumRate)
-    Object.keys(premiumRate).forEach(symbol => {
-      let obj = this.cache[symbol]
-      if (obj) {
-        obj['premiumRate'] = premiumRate[symbol]
-        this.$forceUpdate()
+    for (const symbol of Object.keys(premiumRate)) {
+      if (symbol in this.cache) {
+        let index = this.cache[symbol]
+        this.$set(this.items[index], 'premiumRate', premiumRate[symbol])
       }
-    })
-
-    // 打开订阅连接
-    this.subWs = await this.connectSubscribe()
+    }
 
     // 订阅当前费率
-    await this.subWs.dict(['premium', 'fundingRate'], msg => {
+    await this.subscribe.dict(['premium', 'fundingRate'], msg => {
       let symbol = msg['special']
-      let obj = this.cache[symbol]
-      if (obj) {
-        obj['fundingRate'] = msg['data']
-        this.$forceUpdate()
+      if (symbol in this.cache) {
+        let index = this.cache[symbol]
+        this.$set(this.items[index], 'fundingRate', msg['data'])
       }
     })
 
     // 订阅历史费率（平均费率）
-    await this.subWs.dict(['premium', 'fundingRateHistory'], msg => {
+    await this.subscribe.dict(['premium', 'fundingRateHistory'], msg => {
       let symbol = msg['special']
-      let obj = this.cache[symbol]
-      if (obj) {
-        obj['fundingRateHistory'] = msg['data']
-        // 计算平均费率
+      if (symbol in this.cache) {
+        let index = this.cache[symbol]
         if (msg['data'].length === 0) {
-          obj['avgRate'] = 0
-        } else {
-          obj['avgRate'] = this.average(msg['data'])
+          this.$set(this.items[index], 'avgRate', 0)
+        }else {
+          this.$set(this.items[index], 'avgRate', this.average(msg['data']))
         }
-        this.$forceUpdate()
       }
     })
 
     // 订阅现货币价
-    await this.subWs.dict(['price', 'main'], msg => {
+    await this.subscribe.dict(['price', 'main'], msg => {
       let symbol = msg['special']
-      let obj = this.cache[symbol]
-      if (obj) {
-        obj['mainPrice'] = msg['data']
-        this.$forceUpdate()
+      if (symbol in this.cache) {
+        let index = this.cache[symbol]
+        this.$set(this.items[index], 'mainPrice', msg['data'])
       }
     })
 
     // 订阅期货溢价
-    await this.subWs.dict(['premium', 'rate'], msg => {
+    await this.subscribe.dict(['premium', 'rate'], msg => {
       let symbol = msg['special']
-      let obj = this.cache[symbol]
-      if (obj) {
-        obj['premiumRate'] = msg['data']
-        this.$forceUpdate()
+      if (symbol in this.cache) {
+        let index = this.cache[symbol]
+        this.$set(this.items[index], 'premiumRate', msg['data'])
       }
     })
 
-    // 每3s对列表排个序
-    this.sortInterval = setInterval(() => {
-      this.items.sort((a, b) => {
-        return Math.abs(b['fundingRate']) - Math.abs(a['fundingRate'])
-      })
-    }, 3000)
 
   },
   components: {
