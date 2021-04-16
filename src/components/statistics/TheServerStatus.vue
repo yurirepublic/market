@@ -140,6 +140,9 @@ export default {
           case 'available':
             this.status[nickname]['ramAvailable'] = msg['data']
             break
+          case 'percentHistory':
+            this.status[nickname]['chartData']['measures'][1]['data'] = msg['data'].map(x => parseFloat(this.toFixed(x / 100, 2)))
+            break
         }
       })
 
