@@ -20,7 +20,7 @@ export default {
       default: []
     },
     active: {
-      type: null,
+      type: String,
       default: ''
     }
   },

@@ -49,7 +49,6 @@ export default {
     let msg = await this.ws.getData(['json', 'fundingFee'])
     await this.fillData(msg)
 
-    // TODO 这里改成订阅
     await this.subscribe.precise(['json', 'fundingFee'], async msg => {
       await this.fillData(msg['data'])
     })

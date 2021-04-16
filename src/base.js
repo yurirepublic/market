@@ -118,6 +118,9 @@ function toFixed(num, n) {
     throw new RangeError('toFixed() digits argument must be between 0 and 20')
   }
   const number = num
+  if (num === undefined) {
+    return undefined
+  }
   if (isNaN(number) || number >= Math.pow(10, 21)) {
     return number.toString()
   }
