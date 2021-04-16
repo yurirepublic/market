@@ -103,7 +103,7 @@ export default {
       await this.subscribe.dict(['server', 'status', 'usage', 'cpu', nickname], (msg) => {
         switch (msg['special']) {
           case 'percent':
-            this.$set(this.status[nickname], 'cpuPercent', msg['data'])
+            this.status[nickname]['cpuPercent'] = msg['data']
             break
           case 'percentHistory':
             // 塞入默认数据
@@ -120,7 +120,6 @@ export default {
               ]
             }
             this.$set(this.status[nickname], 'chartData', chartData)
-            // this.status[nickname]['chartData'] = chartData
             break
         }
       })
@@ -128,13 +127,13 @@ export default {
       await this.subscribe.dict(['server', 'status', 'usage', 'ram', nickname], (msg) => {
         switch (msg['special']) {
           case 'percent':
-            this.$set(this.status[nickname], 'ramPercent', msg['data'])
+            this.status[nickname]['ramPercent'] = msg['data']
             break
           case 'total':
-            this.$set(this.status[nickname], 'ramTotal', msg['data'])
+            this.status[nickname]['ramTotal'] = msg['data']
             break
           case 'available':
-            this.$set(this.status[nickname], 'ramAvailable', msg['data'])
+            this.status[nickname]['ramAvailable'] = msg['data']
             break
         }
       })
@@ -142,51 +141,19 @@ export default {
       await this.subscribe.dict(['server', 'status', 'usage', 'disk', nickname], (msg) => {
         switch (msg['special']) {
           case 'percent':
-            this.$set(this.status[nickname], 'diskPercent', msg['data'])
+            this.status[nickname]['diskPercent'] = msg['data']
             break
           case 'total':
-            this.$set(this.status[nickname], 'diskTotal', msg['data'])
+            this.status[nickname]['diskTotal'] = msg['data']
             break
           case 'free':
-            this.$set(this.status[nickname], 'diskFree', msg['data'])
+            this.status[nickname]['diskFree'] = msg['data']
             break
         }
       })
     }
 
     this.loading = false
-
-    //
-    // setInterval(async () => {
-    //   // 塞入默认数据
-    //   let defaultData = {
-    //     dimensions: {
-    //       name: 'time',
-    //       data: [...new Array(100).keys()]
-    //     },
-    //
-    //     measures: []
-    //   }
-    //
-    //   // 每5s向服务器轮询图表（使用subscribe没法同步获取所有数据）
-    //   let msg = await this.ws.getDict(['server', 'status', 'usage', 'percentHistory', 'us1'])
-    //   defaultData['measures'].push({
-    //     name: 'cpu',
-    //     data: msg['cpu'].map(x => x / 100)
-    //   })
-    //   defaultData['measures'].push({
-    //     name: 'ram',
-    //     data: msg['ram'].map(x => x / 100)
-    //   })
-    //   defaultData['measures'].push({
-    //     name: 'disk',
-    //     data: msg['disk'].map(x => x / 100)
-    //   })
-    //   this.chartData = defaultData
-    //
-    // }, 5000)
-
-
   }
 }
 </script>
