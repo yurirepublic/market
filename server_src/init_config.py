@@ -26,11 +26,15 @@ default_config = {
         "subscribe_client_port": 10002
     },
 
-    "nickname": "defaultName",      # 此服务器的默认昵称
+    "nickname": "defaultName",  # 此服务器的默认昵称
+    "self_ip": "us.pwp.today",  # 此服务器的连接地址
+    "self_api_port": 10000,  # 此服务器的api端口
+    "self_datacenter_port": 10001,  # 此服务器的数据中心端口
+    "self_subscribe_port": 10002,  # 此服务器的订阅端口
 
     "password": "defaultPassword",  # 中央服务器认证口令
 
-    "exec": []      # 需要运行时自动启动的脚本
+    "exec": []  # 需要运行时自动启动的脚本
 }
 
 try:

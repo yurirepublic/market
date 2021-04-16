@@ -1,15 +1,13 @@
 <template>
-  <card-frame class='p-2 d-flex flex-column' style='width: 25rem' v-if='!loading'>
+  <card-frame class='p-2 d-flex flex-column' style='width: 18rem' v-if='!loading'>
     <div class='mb-2 d-flex justify-content-between align-items-center'>
       <span class='font-weight-bold'>服务器性能计数器</span>
     </div>
 
-    <div>
+    <div class='d-flex justify-content-between align-content-center'>
+      <span class='small'>选择服务器</span>
       <my-radio :options='radioOptions' :active='radioActive' @click='radioActive=$event' />
     </div>
-
-
-
 
     <div class='d-flex flex-column' v-for='(value, name) in status' :key='name' v-if='radioActive === name'>
       <ve-line-chart
@@ -20,19 +18,20 @@
       />
 
       <div>
-        <span>CPU：{{ toFixed(value['cpuPercent'], 1) }}%</span>
+        <info-item header='CPU' footer='%'>{{ toFixed(value['cpuPercent'], 1) }}</info-item>
       </div>
 
       <div class='mt-1 d-flex flex-column'>
-        <span>内存：{{ toFixed(value['ramPercent'], 1) }}%</span>
-        <span>内存可用空间：{{ toFixed(value['ramAvailable'] / (1 << 20), 2) }} MB</span>
-        <span>内存总大小：{{ toFixed(value['ramTotal'] / (1 << 20), 2) }} MB</span>
+
+        <info-item header='内存' footer='%'>{{ toFixed(value['ramPercent'], 1) }}</info-item>
+        <info-item header='内存可用空间' footer='MB'>{{ toFixed(value['ramAvailable'] / (1 << 20), 2) }}</info-item>
+        <info-item header='内存总大小' footer='MB'>{{ toFixed(value['ramTotal'] / (1 << 20), 2) }}</info-item>
       </div>
 
       <div class='mt-1 d-flex flex-column'>
-        <span>硬盘：{{ toFixed(value['diskPercent'], 1) }}%</span>
-        <span>硬盘可用空间：{{ toFixed(value['diskFree'] / (1 << 30), 2) }} GB</span>
-        <span>硬盘总大小：{{ toFixed(value['diskTotal'] / (1 << 30), 2) }} GB</span>
+        <info-item header='硬盘' footer='%'>{{ toFixed(value['diskPercent'], 1) }}</info-item>
+        <info-item header='硬盘可用空间' footer='MB'>{{ toFixed(value['diskFree'] / (1 << 30), 2) }}</info-item>
+        <info-item header='硬盘总大小' footer='MB'>{{ toFixed(value['diskTotal'] / (1 << 30), 2) }}</info-item>
       </div>
 
 
@@ -44,12 +43,14 @@
 <script>
 import CardFrame from '@/components/CardFrame'
 import MyRadio from '@/components/MyRadio'
+import InfoItem from '@/components/InfoItem'
 
 export default {
   name: 'TheServerStatus',
   components: {
     CardFrame,
-    MyRadio
+    MyRadio,
+    InfoItem
   },
   data: function() {
     return {
@@ -61,13 +62,13 @@ export default {
       grid: {
         top: 30,
         right: 10,
+        left: 40,
         bottom: 10
       },
 
       radioOptions: [],
       radioActive: '',
 
-      chartData: {},
       status: {},   // key是服务器昵称，内是运行状态
 
 
@@ -77,16 +78,10 @@ export default {
       loading: true
     }
   },
-  watch: {
-    // radioActive: function(newVal) {
-    //   // 将newVal的表单数据填充到变量上
-    //   this.chartData = this.status[newVal]['chartData']
-    //   console.log('a')
-    // }
-  },
   mounted: async function() {
     this.ws = await this.connectDataCenter()
     this.subscribe = await this.connectSubscribe()
+
 
     // 获取有什么服务器
     let msg = await this.ws.getDict(['server', 'status', 'cpu', 'usage', 'percent'])
@@ -99,6 +94,25 @@ export default {
     for (const nickname of this.radioOptions) {
       this.$set(this.status, nickname, {})
 
+      // 初始化图表
+      this.status[nickname]['chartData'] = {
+        dimensions: {
+          name: '时间序列',
+          data: [...new Array(100).keys()]
+        },
+        measures: [
+          {
+            name: 'CPU',
+            data: [...new Array(100).values()]
+          },
+          {
+            name: '内存',
+            data: [...new Array(100).values()]
+          }
+        ]
+      }
+
+
       // 订阅服务器计数器信息
       await this.subscribe.dict(['server', 'status', 'usage', 'cpu', nickname], (msg) => {
         switch (msg['special']) {
@@ -106,20 +120,11 @@ export default {
             this.status[nickname]['cpuPercent'] = msg['data']
             break
           case 'percentHistory':
-            // 塞入默认数据
-            let chartData = {
-              dimensions: {
-                name: '时间序列',
-                data: [...new Array(100).keys()]
-              },
-              measures: [
-                {
-                  name: 'CPU',
-                  data: msg['data'].map(x => x / 100)
-                }
-              ]
-            }
-            this.$set(this.status[nickname], 'chartData', chartData)
+            this.status[nickname]['chartData']['measures'][0]['data'] = msg['data'].map(x => parseFloat(this.toFixed(x / 100, 2)))
+            // chart需要使用浅拷贝再赋值才能刷新图表
+            let obj = Object.assign({}, this.status[nickname]['chartData'])
+            this.$set(this.status[nickname], 'chartData', obj)
+            this.$set(this.status, 'nickname', this.status[nickname])
             break
         }
       })

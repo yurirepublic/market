@@ -11,7 +11,7 @@
         </div>
       </div>
 
-      <div class='ml-1' style='max-width: 20rem'>
+      <div class='ml-1' style='width: 18rem'>
         <div>
           <the-funding-rate-history :pair-symbol='pairSymbol' />
         </div>

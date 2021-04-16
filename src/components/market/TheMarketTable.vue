@@ -154,7 +154,7 @@ export default {
         if (msg['data'].length === 0) {
           this.items[index]['avgRate'] = 0
         } else {
-          this.items[index]['avgRate'] = msg['data']
+          this.items[index]['avgRate'] = this.average(fundingRateHistory[symbol])
         }
       }
     })

@@ -2,11 +2,11 @@
   <div class=''>
     <div class='d-flex justify-content-between'>
       <div class='flex-shrink-0'>
-        <span class='text-muted small'>{{ header }}</span>
+        <span class='small' :class='{"text-muted": mutedHeader}'>{{ header }}</span>
       </div>
       <div>
         <span class='text-monospace ml-3'><slot></slot></span>
-        <span class='text-monospace small text-muted ml-2'>{{ footer }}</span>
+        <span class='text-monospace small ml-2' :class='{"text-muted": mutedFooter}'>{{ footer }}</span>
       </div>
     </div>
   </div>
@@ -23,6 +23,14 @@ export default {
     footer: {
       type: String,
       default: ''
+    },
+    mutedHeader: {
+      type: Boolean,
+      default: false
+    },
+    mutedFooter: {
+      type: Boolean,
+      default: true
     }
   }
 }

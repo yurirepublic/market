@@ -33,6 +33,12 @@ class Script(script_manager.Script):
         with open('config.json', 'r', encoding='utf-8') as f:
             config = json.loads(f.read())
         self.nickname = config['nickname']
+        # 上传自己的地址和端口信息
+        await self.client.update({'server', 'info', 'ip', self.nickname}, config['self_ip'])
+        await self.client.update({'server', 'info', 'port', 'api', self.nickname}, config['self_api_port'])
+        await self.client.update({'server', 'info', 'port', 'datacenter', self.nickname},
+                                 config['self_datacenter_port'])
+        await self.client.update({'server', 'info', 'port', 'subscribe', self.nickname}, config['self_subscribe_port'])
         # 启动监测上报
         asyncio.create_task(self.cpu())
         asyncio.create_task(self.ram())

@@ -33,8 +33,7 @@ export default {
         },
         xAxisLabelShow: false,
         yAxisLabelType: 'percentage',
-        yAxisLabelDigits: 2,
-
+        yAxisLabelDigits: 2
       },
       grid: {
         top: 10,

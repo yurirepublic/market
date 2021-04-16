@@ -692,9 +692,16 @@ class WebsocketSubscribe(object):
         分流订阅消息
         """
         while True:
-            msg = await self.ws.recv()
-            msg = json.loads(msg)
-            asyncio.create_task(self.buf[msg['comment']](msg))
+            try:
+                msg = await self.ws.recv()
+                msg = json.loads(msg)
+                asyncio.create_task(self.buf[msg['comment']](msg))
+            except websockets.exceptions.ConnectionClosedOK:
+                print('客户端订阅连接正常关闭')
+                break
+            except websockets.exceptions.ConnectionClosed:
+                print('客户端订阅连接断开，且没有收到关闭代码')
+                break
 
     async def _get_order(self):
         async with self.order_lock:
