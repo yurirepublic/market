@@ -3,7 +3,7 @@
     <card-frame>
       <div class='mb-2 d-flex justify-content-between align-items-center'>
         <span class='font-weight-bold'>数据中心全局展示</span>
-        <refresh-button :anime='refresh_button_anime' @click='Refresh' />
+        <refresh-button :anime='loading' @click='Refresh' />
       </div>
       <span>总共找到：{{ count }}个条目</span>
       <!--      <div v-for='(item, index) in data'>{{ item['tags'] }} {{ item['data'] }}</div>-->
@@ -28,7 +28,7 @@ export default {
       data: {},
       count: 0,   // 总条目数
 
-      refresh_button_anime: false,
+      loading: false,
 
       ws: null,
       subscribe: null
@@ -66,7 +66,7 @@ export default {
       }
     },
     Refresh: async function() {
-      this.refresh_button_anime = true
+      this.loading = true
       // 获取所有数据
       let msg = await this.ws.getAll()
       console.log('数据中心所有数据', msg)
@@ -92,7 +92,7 @@ export default {
       }
       console.log(this.data)
       this.$forceUpdate()
-      this.refresh_button_anime = false
+      this.loading = false
     }
   }
 }
