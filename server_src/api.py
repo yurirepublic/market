@@ -357,8 +357,7 @@ async def analyze_premium():
 
 
 def memory_summary():
-    # Only import Pympler when we need it. We don't want it to
-    # affect our process if we never call memory_summary.
+    # 只在需要的时候引入pympler！ 不然引入后就会影响程序运行
     while True:
         from pympler import summary, muppy
         mem_summary = summary.summarize(muppy.get_objects())

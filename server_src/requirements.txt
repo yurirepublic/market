@@ -2,6 +2,5 @@ websockets
 flask
 flask_cors
 psutil
-websocket-client
 requests
 pympler

@@ -173,18 +173,27 @@ class Script(script_manager.Script):
             })
             res = res['assets']
             for e in res:
-                symbol = e['symbol']
+                asyncio.create_task(self.update_isolated(e))
 
-                borrowed = float(e['baseAsset']['borrowed'])
-                free = float(e['baseAsset']['free'])
-                asyncio.create_task(self.dc.update({'asset', 'isolated', 'base', symbol}, free))
-                asyncio.create_task(self.dc.update({'borrowed', 'isolated', 'base', symbol}, borrowed))
-
-                borrowed = float(e['quoteAsset']['borrowed'])
-                free = float(e['quoteAsset']['free'])
-                asyncio.create_task(self.dc.update({'asset', 'isolated', 'quote', symbol}, free))
-                asyncio.create_task(self.dc.update({'borrowed', 'isolated', 'quote', symbol}, borrowed))
             await asyncio.sleep(1)
+
+    async def update_isolated(self, e):
+        symbol = e['symbol']
+
+        # 因为isolated是非推送式更新，所以推送前看看有没有变化，没有变化就不推送
+        free = float(e['baseAsset']['free'])
+        borrowed = float(e['baseAsset']['borrowed'])
+        if free != await self.dc.get({'asset', 'isolated', 'base', symbol}):
+            asyncio.create_task(self.dc.update({'asset', 'isolated', 'base', symbol}, free))
+        if borrowed != await self.dc.get({'borrowed', 'isolated', 'base', symbol}):
+            asyncio.create_task(self.dc.update({'borrowed', 'isolated', 'base', symbol}, borrowed))
+
+        free = float(e['quoteAsset']['free'])
+        borrowed = float(e['quoteAsset']['borrowed'])
+        if free != await self.dc.get({'asset', 'isolated', 'quote', symbol}):
+            asyncio.create_task(self.dc.update({'asset', 'isolated', 'quote', symbol}, free))
+        if borrowed != await self.dc.get({'borrowed', 'isolated', 'quote', symbol}):
+            asyncio.create_task(self.dc.update({'borrowed', 'isolated', 'quote', symbol}, borrowed))
 
     async def future_account_update(self):
         """

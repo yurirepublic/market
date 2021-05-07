@@ -7,6 +7,8 @@ asset 资产名，例如BNB
 symbol 交易对符号，例如BNBUSDT
 nickname 服务器识别昵称，例如us1
 
+json开头的一般是专供客户端显示用的，而且存储格式就是json
+
 特别注意：TAG不分前后，没有顺序
 
 下单精度
@@ -21,7 +23,8 @@ asset isolated base [symbol]
 asset isolated quote [symbol]
 
 负债余额
-borrowed margin base [symbol]
+borrowed margin [asset]
+borrowed isolated base [symbol]
 borrowed isolated quote [symbol]
 
 仓位
@@ -40,6 +43,9 @@ premium fundingRateHistory [symbol]
 资金费率流水
 json fundingFee
 
+聚合仓位信息
+json position
+
 服务器运行状况
 server status cpu usage percent [nickname]
 server status cpu usage percentHistory [nickname]
@@ -54,6 +60,10 @@ server status disk usage percentHistory [nickname]
 server status disk usage used [nickname]
 server status disk usage free [nickname]
 server status disk usage total [nickname]
+server info ip [nickname]
+server info port api [nickname]
+server info port datacenter [nickname]
+server info port subscribe [nickname]
 
 ```
 

@@ -1,12 +1,17 @@
 import request from 'request'
 import Vue from 'vue'
 
-function apiRequest(func, args) {
+function apiRequest(func, args, url) {
+  let useUrl = localConfig.serverUrl  // 默认使用设置的url
+  if (url !== undefined) {
+    useUrl = url
+  }
   // 发送请求
   return new Promise((resolve, reject) => {
     request.post(
       {
-        url: localConfig.serverUrl,
+        // url: localConfig.serverUrl
+        url: useUrl,
         form: {
           function: func,
           args: JSON.stringify(args),
