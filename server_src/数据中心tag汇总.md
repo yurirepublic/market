@@ -34,6 +34,12 @@ position future [symbol]
 price main [symbol]
 price future [symbol]
 
+风险率
+risk future usage       // 资金使用率
+risk future warning     // 五倍杠杆警告
+risk margin usage
+
+
 溢价
 premium rate [symbol]
 premium dif [symbol]

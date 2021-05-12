@@ -39,6 +39,20 @@ class Script(script_manager.Script):
         await self.subscribe.subscribe_dict({'asset', 'isolated', 'quote'}, self.calc_position)
         await self.subscribe.subscribe_dict({'position', 'future'}, self.calc_position)
 
+        # 启动风险率计算协程
+        asyncio.create_task(self.calc_risk_interval())
+
+    @staticmethod
+    def delete_usdt_symbol(data: dict):
+        """
+        用于删除字典中的USDT符号
+        """
+        temp = {}
+        for key, value in data.items():
+            if 'USDT' in key and key[-4:] == 'USDT':
+                temp[key.replace('USDT', '')] = value
+        return temp
+
     async def calc_premium(self, msg):
         # 获取交易符号
         symbol = msg['special']
@@ -54,7 +68,7 @@ class Script(script_manager.Script):
         # 计算溢价并且放回去
         premium_price = future_price / main_price - 1
         asyncio.create_task(self.client.update({'premium', 'rate', symbol}, premium_price))
-        # asyncio.create_task(self.client.update({'premium', 'dif', symbol}, future_price - main_price))
+        asyncio.create_task(self.client.update({'premium', 'dif', symbol}, future_price - main_price))
 
     async def calc_position(self, msg):
         """
@@ -65,15 +79,17 @@ class Script(script_manager.Script):
         asset_margin = await self.client.get_dict({'asset', 'margin'})
         margin_borrowed = await self.client.get_dict({'borrowed', 'margin'})
         position_future = await self.client.get_dict({'position', 'future'})
-        isolated_free = await self.client.get_dict({'asset', 'isolated', 'free'})
-        isolated_borrowed = await self.client.get_dict({'asset', 'isolated', 'borrowed'})
+        isolated_free = await self.client.get_dict({'asset', 'isolated', 'base'})
+        isolated_borrowed = await self.client.get_dict({'borrowed', 'isolated', 'base'})
+        isolated_quote_free = await self.client.get_dict({'asset', 'isolated', 'quote'})
+        isolated_quote_borrowed = await self.client.get_dict({'borrowed', 'isolated', 'quote'})
 
-        # 将期货的USDT交易对符号去掉
-        temp = {}
-        for key, value in position_future.items():
-            if 'USDT' in key:
-                temp[key.replace('USDT', '')] = value
-        position_future = temp
+        # 将期货和逐仓的USDT交易对符号去掉
+        position_future = self.delete_usdt_symbol(position_future)
+        isolated_free = self.delete_usdt_symbol(isolated_free)
+        isolated_borrowed = self.delete_usdt_symbol(isolated_borrowed)
+        isolated_quote_free = self.delete_usdt_symbol(isolated_quote_free)
+        isolated_quote_borrowed = self.delete_usdt_symbol(isolated_quote_borrowed)
 
         # 定义初始化的项目
         init_data = {
@@ -98,46 +114,45 @@ class Script(script_manager.Script):
         net = {}
         positive = {}
         negative = {}
-        res = {}        # 最终要返回的结果
+        res = {}  # 最终要返回的结果
         # 将net可能用到的symbol都初始化为0
-        for symbol in asset_main.keys():
-            net[symbol] = 0
-            positive[symbol] = 0
-            negative[symbol] = 0
-            res[symbol] = copy.copy(init_data)
-        for symbol in asset_margin.keys():
-            net[symbol] = 0
-            positive[symbol] = 0
-            negative[symbol] = 0
-            res[symbol] = copy.copy(init_data)
-        for symbol in position_future.keys():
+        need_init_symbol = set()
+        need_init_symbol = need_init_symbol | asset_main.keys()
+        need_init_symbol = need_init_symbol | asset_margin.keys()
+        need_init_symbol = need_init_symbol | position_future.keys()
+        need_init_symbol = need_init_symbol | isolated_free.keys()
+        need_init_symbol = need_init_symbol | isolated_borrowed.keys()
+
+        for symbol in need_init_symbol:
             net[symbol] = 0
             positive[symbol] = 0
             negative[symbol] = 0
             res[symbol] = copy.copy(init_data)
 
-        # 统计
+        # 开始统计净值和双持，依据不同影响，将数值加到净值或者双持上面
         for symbol in asset_main.keys():
-            num = asset_main[symbol]
-            net[symbol] += num
-            if num > 0:
-                positive[symbol] += num
-            if num < 0:
-                negative[symbol] += (-num)
+            amount = asset_main[symbol]
+            net[symbol] += amount
+            positive[symbol] += amount
         for symbol in asset_margin.keys():
-            num = asset_margin[symbol]
-            net[symbol] += num
-            if num > 0:
-                positive[symbol] += num
-            if num < 0:
-                negative[symbol] += (-num)
+            amount = asset_margin[symbol]
+            net[symbol] += amount
+            positive[symbol] += amount
         for symbol in position_future.keys():
-            num = position_future[symbol]
-            net[symbol] += num
-            if num > 0:
-                positive[symbol] += num
-            if num < 0:
-                negative[symbol] += (-num)
+            amount = position_future[symbol]
+            net[symbol] += amount
+            if amount > 0:
+                positive[symbol] += amount
+            if amount < 0:
+                negative[symbol] += (-amount)
+        for symbol in isolated_free:
+            amount = isolated_free[symbol]
+            net[symbol] += amount
+            positive[symbol] += amount
+        for symbol in isolated_borrowed:
+            amount = isolated_borrowed[symbol]
+            net[symbol] -= amount
+            negative[symbol] += amount
 
         for symbol in net.keys():
             res[symbol]['net'] = net[symbol]
@@ -151,12 +166,16 @@ class Script(script_manager.Script):
             res[key]['margin'] = value
         for key, value in margin_borrowed.items():
             res[key]['marginBorrowed'] = value
+        for key, value in position_future.items():
+            res[key]['future'] = value
         for key, value in isolated_free.items():
             res[key]['isolated'] = value
         for key, value in isolated_borrowed.items():
             res[key]['isolatedBorrowed'] = value
-        for key, value in position_future.items():
-            res[key]['future'] = value
+        for key, value in isolated_quote_free.items():
+            res[key]['isolatedQuote'] = value
+        for key, value in isolated_quote_borrowed.items():
+            res[key]['isolatedQuoteBorrowed'] = value
 
         # 获取价格计算双持市值
         for key, value in res.items():
@@ -178,6 +197,85 @@ class Script(script_manager.Script):
         for symbol in res:
             res[symbol]['symbol'] = symbol
 
+        # 将字典格式转为列表格式
         res = [res[symbol] for symbol in res.keys()]
 
         await self.client.update({'json', 'position'}, res)
+
+    async def calc_risk_interval(self):
+        """
+        计算风险率
+        """
+        while True:
+            asyncio.create_task(self.calc_risk())
+            await asyncio.sleep(1)
+
+    async def calc_risk(self):
+        # 获取期货的仓位和USDT余额
+        position = await self.client.get_dict({'position', 'future'})
+        usdt = await self.client.get({'asset', 'future', 'USDT'})
+
+        # 计算期货的总市值
+        total = 0
+        prices = await self.client.get_dict({'price', 'future'})
+        for key, value in position.items():
+            amount = value
+            if amount != 0:
+                price = prices[key]
+                total += abs(price * amount)
+
+        # 计算期货风险率
+        if usdt == 0:
+            usdt += 0.00000001      # 避免除零错误
+        await self.client.update({'risk', 'future', 'usage'}, total / usdt)
+
+        # 计算期货风险所需波动率（500%风险率）
+        warning = (total + (5 * usdt - total) / 6) / total
+        warning -= 1
+        await self.client.update({'risk', 'future', 'warning'}, warning)
+
+        # 获取全仓的仓位和USDT余额
+        margin = await self.client.get_dict({'asset', 'margin'})
+        borrowed = await self.client.get_dict({'borrowed', 'margin'})
+        usdt = margin['USDT']
+        if 'USDT' not in borrowed.keys():
+            usdt_borrowed = 0
+        else:
+            usdt_borrowed = borrowed['USDT']
+            del borrowed['USDT']
+        del margin['USDT']
+
+        # 统计全仓的总市值和总借贷市值
+        total = 0
+        total_borrowed = 0
+        prices = await self.client.get_dict({'price', 'main'})
+        for key, value in margin.items():
+            amount = value
+            if amount != 0:
+                price = prices[key + 'USDT']
+                total += price * amount
+        for key, value in borrowed.items():
+            amount = value
+            if amount != 0:
+                price = prices[key + 'USDT']
+                total += price * amount  # 借贷的钱也是自己手上的钱，所有要加上
+                total_borrowed += price * amount
+        total += usdt
+        total_borrowed += usdt_borrowed
+
+        # 计算全仓风险率
+        if total == 0:
+            margin_risk = 0
+        else:
+            margin_risk = ((total_borrowed + usdt_borrowed) / (total + usdt))
+
+        # # 计算全仓触发风险警告所需波动率
+        # if total_borrowed - 0.8 * total == 0:
+        #     margin_warning = 99999
+        # else:
+        #     margin_warning = ((0.8 * total - usdt_borrowed) / (total_borrowed - 0.8 * total))
+
+        await self.client.update({'risk', 'margin', 'usage'}, margin_risk)
+        # await self.client.update({'risk', 'margin', 'warning'}, margin_warning)
+
+

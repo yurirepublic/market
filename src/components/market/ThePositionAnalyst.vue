@@ -89,15 +89,15 @@
     </table>
     <div class='d-flex justify-content-between'>
       <span class=''>全仓风险 {{ toFixed(marginRisk, 2) }}%</span>
-      <span class='' v-if='marginWarning !== 99999'>0.8倍杠杆警告 {{ toFixed(marginWarning, 2) }}%</span>
-      <span class='' v-if='marginWarning === 99999'>0.8倍杠杆警告 安全</span>
+<!--      <span class='' v-if='marginWarning !== 99999'>0.8倍杠杆警告 {{ toFixed(marginWarning, 2) }}%</span>-->
+<!--      <span class='' v-if='marginWarning === 99999'>0.8倍杠杆警告 安全</span>-->
 
     </div>
     <div class='d-flex justify-content-between'>
-      <span class=''>期货风险 {{ toFixed(futureRisk, 2) }}%</span>
-      <span class=''
-            v-if='futureWarning !== 99999'>5倍杠杆警告 {{ futureWarning > 0 ? '+' : '' }}{{ toFixed(futureWarning, 2)
-        }}%</span>
+      <span class=''>期货风险 {{ toFixed(futureRisk * 100, 2) }}%</span>
+      <span class='' v-if='futureWarning !== 99999'>
+        5倍杠杆警告 {{ futureWarning > 0 ? '+' : '' }}{{ toFixed(futureWarning * 100, 2) }}%
+      </span>
       <span class='' v-if='futureWarning === 99999'>5倍杠杆警告 安全</span>
     </div>
 
@@ -164,78 +164,34 @@ export default {
     })
 
 
-    // 定时刷新一些数据
-    const updateHandle = async (item) => {
-      // 更新费率和溢价
-      item['fundingRate'] = await this.ws.getData(['premium', 'fundingRate', item['symbol'] + 'USDT'])
-      item['premiumRate'] = await this.ws.getData(['premium', 'rate', item['symbol'] + 'USDT'])
-    }
+    // 定时刷新费率、溢价和风险率
     this.updateInterval = setInterval(async () => {
+      // 逐条更新费率和溢价
+      const updateHandle = async (item) => {
+        item['fundingRate'] = await this.ws.getData(['premium', 'fundingRate', item['symbol'] + 'USDT'])
+        item['premiumRate'] = await this.ws.getData(['premium', 'rate', item['symbol'] + 'USDT'])
+      }
       this.items.forEach(e => {
         updateHandle(e)
       })
     }, 1000)
 
+    // 订阅风险率信息
+    await this.subscribe.precise(['risk', 'future', 'usage'], async (msg) =>{
+      this.futureRisk = msg['data']
+    })
+    await this.subscribe.precise(['risk', 'future', 'warning'], async (msg) => {
+      this.futureWarning = msg['data']
+    })
+    await this.subscribe.precise(['risk', 'margin', 'usage'], async (msg) => {
+      this.marginRisk = msg['data']
+    })
+    // await this.subscribe.precise(['risk', 'margin', 'warning'], async (msg) => {
+    //   this.marginWarning = msg['data']
+    // })
 
-    //
-    // // 获取及订阅当前所有现货资产
-    // let res = await this.ws.getDict(['asset', 'main'])
-    // let keys = Object.keys(res)
-    // keys.forEach(key => {
-    //   this.setItem(key, 'main', res[key])
-    // })
-    // await this.subscribe.dict(['asset', 'main'], async msg => {
-    //   let symbol = msg['special']
-    //   let data = msg['data']
-    //   await this.setItem(symbol, 'main', data)
-    // })
-    //
-    // // 获取及订阅当前所有全仓资产
-    // res = await this.ws.getDict(['asset', 'margin'])
-    // keys = Object.keys(res)
-    // keys.forEach(key => {
-    //   this.setItem(key, 'margin', res[key])
-    // })
-    // await this.subscribe.dict(['asset', 'margin'], msg => {
-    //   let symbol = msg['special']
-    //   let data = msg['data']
-    //   this.setItem(symbol, 'margin', data)
-    // })
-    //
-    // // 获取及订阅当前所有逐仓资产
-    // res = await this.ws.getDict(['asset', 'isolated', 'base'])
-    // keys = Object.keys(res)
-    // keys.forEach(key => {
-    //   this.setItem(key.replace('USDT', ''), 'isolated', res[key])
-    // })
-    // await this.subscribe.dict(['asset', 'isolated', 'base'], msg => {
-    //   let symbol = msg['special']
-    //   let data = msg['data']
-    //   this.setItem(symbol.replace('USDT', ''), 'isolated', data)
-    // })
-    //
-    // res = await this.ws.getDict(['asset', 'isolated', 'quote'])
-    // keys = Object.keys(res)
-    // keys.forEach(key => {
-    //   this.setItem(key.replace('USDT', ''), 'isolatedQuote', res[key])
-    // })
-    // await this.subscribe.dict(['asset', 'isolated', 'quote'], msg => {
-    //   let symbol = msg['special']
-    //   let data = msg['data']
-    //   this.setItem(symbol.replace('USDT', ''), 'isolatedQuote', data)
-    // })
-    //
-    // // 获取及订阅当前所有期货资产
-    // res = await this.ws.getDict(['position', 'future'])
-    // keys = Object.keys(res)
-    // keys.forEach(key => {
-    //   this.setItem(key.replace('USDT', ''), 'future', res[key])
-    // })
-    // await this.subscribe.dict(['position', 'future'], msg => {
-    //   let symbol = msg['special'].replace('USDT', '')
-    //   let data = msg['data']
-    //   this.setItem(symbol, 'future', data)
-    // })
+
+
 
 
   },
