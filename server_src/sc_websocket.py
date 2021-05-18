@@ -123,7 +123,7 @@ class Script(script_manager.Script):
         elif data['e'] == 'balanceUpdate':
             pass
         else:
-            self.log('无法识别的ws消息', data)
+            self.log('无法识别的现货、全仓或逐仓账户ws消息', data)
 
     async def main_account_update(self):
         """
@@ -234,7 +234,7 @@ class Script(script_manager.Script):
             elif data['e'] == 'ACCOUNT_CONFIG_UPDATE':
                 pass
             else:
-                self.log('无法识别的ws消息', data)
+                self.log('无法识别的期货账户ws消息', data)
 
     async def ping_future(self, key):
         while True:
@@ -256,7 +256,7 @@ class Script(script_manager.Script):
                     price = float(x['c'])  # 最新成交价格
                     asyncio.create_task(self.dc.update({'main', 'price', symbol}, price, timestamp))
                 else:
-                    self.log('无法识别的ws消息', x)
+                    self.log('无法识别的现货价格ws消息', x)
 
     async def future_price_update(self):
         """
@@ -273,4 +273,4 @@ class Script(script_manager.Script):
                     price = float(x['p'])  # 标记价格
                     asyncio.create_task(self.dc.update({'future', 'price', symbol}, price, timestamp))
                 else:
-                    self.log('无法识别的ws消息', x)
+                    self.log('无法识别的期货价格ws消息', x)

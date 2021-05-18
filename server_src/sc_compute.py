@@ -225,13 +225,18 @@ class Script(script_manager.Script):
                 total += abs(price * amount)
 
         # 计算期货风险率
-        if usdt == 0:
-            usdt += 0.00000001      # 避免除零错误
-        await self.client.update({'risk', 'future', 'usage'}, total / usdt)
+        try:
+            risk = total / usdt
+        except ZeroDivisionError:
+            risk = 0
+        await self.client.update({'risk', 'future', 'usage'}, risk)
 
         # 计算期货风险所需波动率（500%风险率）
-        warning = (total + (5 * usdt - total) / 6) / total
-        warning -= 1
+        try:
+            warning = (total + (5 * usdt - total) / 6) / total
+            warning -= 1
+        except ZeroDivisionError:
+            warning = 99999
         await self.client.update({'risk', 'future', 'warning'}, warning)
 
         # 获取全仓的仓位和USDT余额
