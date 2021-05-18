@@ -60,11 +60,12 @@ class DataWrapper(object):
         """
         更新数据，如果不带timestamp，则会自动获取timestamp\n
         如果欲更新的数据timestamp比当前的小，则会拒绝更新\n
+        需要注意的是，如果timestamp一样，也会更新数据
         """
         now_timestamp = time.time() * 1000
 
         # 根据时间戳判断是否要更新数据
-        if timestamp is not None and timestamp > self._timestamp:
+        if timestamp is not None and timestamp >= self._timestamp:
             self._data = value
             self._timestamp = timestamp
         elif timestamp is None and now_timestamp > self._timestamp:
