@@ -3,6 +3,7 @@
     <the-funding-fee-chart />
     <the-server-status class='ml-1' />
     <the-server-info class='ml-1' />
+<!--    <the-exchange-info />-->
   </div>
 </template>
 
@@ -10,13 +11,15 @@
 import TheFundingFeeChart from '@/components/statistics/TheFundingFeeChart'
 import TheServerStatus from '@/components/statistics/TheServerStatus'
 import TheServerInfo from '@/components/statistics/TheServerInfo'
+import TheExchangeInfo from '@/components/statistics/TheExchangeInfo'
 
 export default {
   name: 'Statistics',
   components: {
     TheServerStatus,
     TheFundingFeeChart,
-    TheServerInfo
+    TheServerInfo,
+    TheExchangeInfo
   },
   data: function() {
     return {}

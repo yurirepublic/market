@@ -30,8 +30,8 @@
 
       <div class='mt-1 d-flex flex-column'>
         <info-item header='硬盘' footer='%'>{{ toFixed(value['diskPercent'], 1) }}</info-item>
-        <info-item header='硬盘可用空间' footer='MB'>{{ toFixed(value['diskFree'] / (1 << 30), 2) }}</info-item>
-        <info-item header='硬盘总大小' footer='MB'>{{ toFixed(value['diskTotal'] / (1 << 30), 2) }}</info-item>
+        <info-item header='硬盘可用空间' footer='GB'>{{ toFixed(value['diskFree'] / (1 << 30), 2) }}</info-item>
+        <info-item header='硬盘总大小' footer='GB'>{{ toFixed(value['diskTotal'] / (1 << 30), 2) }}</info-item>
       </div>
 
 
