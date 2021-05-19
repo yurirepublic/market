@@ -1,10 +1,18 @@
 <template>
-  <div class='d-flex justify-content-center p-1'>
-    <the-funding-fee-chart />
-    <the-server-status class='ml-1' />
-    <the-server-info class='ml-1' />
-<!--    <the-exchange-info />-->
+  <div>
+    <div class='d-flex justify-content-center p-1'>
+      <the-funding-fee-chart />
+      <the-server-status class='ml-1' />
+      <the-server-info class='ml-1' />
+
+    </div>
+    <div class='d-flex'>
+      <the-exchange-info />
+    </div>
+
   </div>
+
+
 </template>
 
 <script>

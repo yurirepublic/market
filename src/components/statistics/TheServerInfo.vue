@@ -1,5 +1,5 @@
 <template>
-  <card-frame class='p-2 d-flex flex-column' style='width: 25rem'>
+  <card-frame class='p-2 d-flex flex-column' style='width: 18rem'>
     <div class='mb-2 d-flex justify-content-between align-items-center'>
       <span class='font-weight-bold'>服务器连接信息</span>
     </div>

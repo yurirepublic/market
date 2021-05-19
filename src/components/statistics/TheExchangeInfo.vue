@@ -3,11 +3,9 @@
     <div class='mb-2 d-flex justify-content-between align-items-center'>
       <span class='font-weight-bold'>交易所统计信息</span>
     </div>
-    <div class='d-flex flex-column' v-for='(value, name) in info' :key='name' v-if='radioActive === name'>
-      <info-item header='服务器地址'>{{ value['ip'] }}</info-item>
-      <info-item header='api端口'>{{ value['api'] }}</info-item>
-      <info-item header='数据中心端口'>{{ value['datacenter'] }}</info-item>
-      <info-item header='订阅端口'>{{ value['subscribe'] }}</info-item>
+    <div class='d-flex flex-column'>
+      <info-item header='现货交易对数量'>{{ mainNum }}</info-item>
+      <info-item header='期货交易对数量'>{{ futureNum }}</info-item>
     </div>
   </card-frame>
 
@@ -27,11 +25,23 @@ export default {
   },
   data() {
     return {
-      ws: null
+      ws: null,
+
+      mainNum: NaN,
+      futureNum: NaN,
+
     }
   },
   async mounted() {
     this.ws = await this.connectDataCenter()
+
+    this.ws.getDict(['price', 'main']).then(res =>{
+      this.mainNum = Object.keys(res).length
+    })
+
+    this.ws.getDict(['price', 'future']).then(res => {
+      this.futureNum = Object.keys(res).length
+    })
 
   }
 
