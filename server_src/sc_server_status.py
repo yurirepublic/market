@@ -28,7 +28,7 @@ class Script(script_manager.Script):
 
     async def _main(self):
         # 连接数据中心
-        self.client = await data_center.create_client_adapter()
+        self.client = await data_center.create_client()
         # 读取自己的服务器昵称
         with open('config.json', 'r', encoding='utf-8') as f:
             config = json.loads(f.read())

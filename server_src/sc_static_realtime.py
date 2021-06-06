@@ -24,7 +24,7 @@ class Script(script_manager.Script):
 
     async def _main(self):
         self.operator = await binance_api.create_operator()
-        self.dc = await data_center.create_client_adapter()
+        self.dc = await data_center.create_client()
 
         while True:
             premium = await self.operator.request('fapi', '/fapi/v1/premiumIndex', 'GET', {})

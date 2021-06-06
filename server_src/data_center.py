@@ -113,9 +113,9 @@ class SubscriberWrapper(object):
         self.comment = comment  # 用户对于该订阅的备注，传输订阅时会一起发送，用于连接复用时区分消息
 
 
-class Server(object):
+class Core(object):
     """
-    数据中心的服务端，纯Python对象，需要使用接口来远程使用
+    数据中心的核心 ，纯Python对象
     """
 
     def __init__(self):
@@ -320,12 +320,12 @@ class Server(object):
         self.subscribe.add(func)
 
 
-class WebsocketServerAdapter(object):
+class WebsocketCoreAdapter(object):
     """
-    数据中心的websocket接口服务端
+    数据中心的websocket接口服务端，包含了数据操作和订阅两个接口
     """
 
-    def __init__(self, data_center: Server):
+    def __init__(self, data_center: Core):
         self.data_center = data_center
 
         self.connect_identification = 0  # 用于给传入连接分配识别码的
@@ -353,7 +353,7 @@ class WebsocketServerAdapter(object):
         server_port = config['data_center']['server_port']
 
         self.adapter = await websockets.serve(self.recv, server_ip, server_port, ssl=ssl_context)
-        print('成功启动数据中心服务端websocket接口，运行在{}:{}'.format(server_ip, server_port))
+        print('成功启动数据中心操作接口，运行在{}:{}'.format(server_ip, server_port))
 
         # websocket订阅部分
         subscribe_ip = config['data_center']['subscribe_server_ip']
@@ -588,9 +588,9 @@ class WebsocketServerAdapter(object):
             print('{}连接断开，且没有收到关闭代码'.format(identification))
 
 
-class WebsocketClientAdapter(object):
+class WebsocketClient(object):
     """
-    数据中心的websocket接口客户端
+    Python版本的数据中心的websocket接口客户端
     """
 
     def __init__(self):
@@ -663,7 +663,7 @@ class WebsocketClientAdapter(object):
 
 class WebsocketSubscribe(object):
     """
-    数据中心的websocket接口客户端
+    Python版本的数据中心的websocket接口客户端
     """
 
     def __init__(self):
@@ -730,32 +730,46 @@ class WebsocketSubscribe(object):
         }))
 
 
-async def create_server():
-    return Server()
+async def create_core():
+    """
+    创建一个数据中心核心
+    """
+    return Core()
 
 
-async def create_server_adapter(server):
-    adapter = WebsocketServerAdapter(server)
+async def create_adapter(core: Core):
+    """
+    创建用于对外通信的接口
+    """
+    adapter = WebsocketCoreAdapter(core)
     await adapter.init()
     return adapter
 
 
-async def create_client_adapter():
-    adapter = WebsocketClientAdapter()
+async def create_client():
+    """
+    创建一个操作客户端
+    """
+    adapter = WebsocketClient()
     await adapter.init()
     return adapter
 
 
 async def create_subscribe():
+    """
+    创建一个订阅客户端
+    """
     obj = WebsocketSubscribe()
     await obj.init()
     return obj
 
 
 async def _main():
-    # 用于直接使用该脚本启动数据中心的情况
-    server = await create_server()
-    await create_server_adapter(server)
+    """
+    直接运行该脚本就会调用此函数来启动数据中心
+    """
+    server = await create_core()
+    await create_adapter(server)
 
 
 def memory_summary():
@@ -772,6 +786,5 @@ def memory_summary():
 if __name__ == '__main__':
     # # 运行内存泄露检测
     # threading.Thread(target=memory_summary).start()
-
     asyncio.get_event_loop().run_until_complete(_main())
     asyncio.get_event_loop().run_forever()

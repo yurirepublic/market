@@ -3,7 +3,7 @@ import data_center
 
 def main():
     print('使用websocket接口')
-    ws = data_center.WebsocketClientAdapter()
+    ws = data_center.WebsocketClient()
     print('所有数据', ws.get_all())
     print('不存在的数据', ws.get(['FUCK', 'BULLSHIT']))
     print('模糊数据', ws.get(['main', 'asset']))

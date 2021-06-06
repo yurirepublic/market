@@ -26,7 +26,7 @@ class Script(script_manager.Script):
 
     async def _main(self):
         self.subscribe = await data_center.create_subscribe()
-        self.client = await data_center.create_client_adapter()
+        self.client = await data_center.create_client()
 
         # 订阅期货和现货价格
         await self.subscribe.subscribe_dict({'price', 'main'}, self.calc_premium)

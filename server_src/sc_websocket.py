@@ -26,7 +26,7 @@ class Script(script_manager.Script):
         loop.run_forever()
 
     async def _main(self):
-        self.dc = await data_center.create_client_adapter()
+        self.dc = await data_center.create_client()
         self.operator = await binance_api.create_operator()
 
         # 针对必须展示的资产进行初始化（因为资产为0不会被查询到）
