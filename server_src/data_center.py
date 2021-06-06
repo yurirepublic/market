@@ -325,8 +325,8 @@ class WebsocketCoreAdapter(object):
     数据中心的websocket接口服务端，包含了数据操作和订阅两个接口
     """
 
-    def __init__(self, data_center: Core):
-        self.data_center = data_center
+    def __init__(self, core: Core):
+        self.core = core    # 数据中心内核
 
         self.connect_identification = 0  # 用于给传入连接分配识别码的
         self.identify_lock = asyncio.Lock()  # 计算识别码的锁
@@ -363,8 +363,8 @@ class WebsocketCoreAdapter(object):
                                                         ssl=ssl_context)
         print('成功启动数据中心订阅接口，运行在{}:{}'.format(subscribe_ip, subscribe_port))
 
-        # 向数据中心挂一个全局更新回调
-        self.data_center.subscribe_all(CallbackWrapper(self.subscribe_callback, set()))
+        # 向数据中心核心挂一个全局更新回调
+        self.core.subscribe_all(CallbackWrapper(self.subscribe_callback, set()))
 
         # 启动配布协程
         self.loop.create_task(self.subscribe_sender())
@@ -495,29 +495,48 @@ class WebsocketCoreAdapter(object):
             while True:
                 msg = json.loads(await ws.recv())
                 print('数据中心订阅收到消息', msg)
-                # 获取用户备注
+                # 接收用户备注
                 try:
                     comment = msg['comment']
                 except KeyError:
                     comment = ''
+
+                # 接收是否init，init的话订阅时就会传回一次当前数据用于初始化
+                try:
+                    init = msg['init']
+                except KeyError:
+                    init = False
+
                 # 判断用户的指令
                 if msg['mode'] == 'SUBSCRIBE_PRECISE':
                     tags = set(msg['tags'])
+                    if init:
+                        await ws.send(json.dumps(self.core.get(tags)))
                     # 将socket封装好，添加到可选订阅的列表
                     wrapper = SubscriberWrapper(ws, tags, comment)
                     self.subscribe_precise.add(wrapper)
+
                 elif msg['mode'] == 'SUBSCRIBE_DICT':
                     tags = set(msg['tags'])
+                    if init:
+                        await ws.send(json.dumps(self.core.get_dict(tags)))
                     wrapper = SubscriberWrapper(ws, tags, comment)
                     self.subscribe_dict.add(wrapper)
+
                 elif msg['mode'] == 'SUBSCRIBE_FUZZY':
                     tags = set(msg['tags'])
+                    if init:
+                        await ws.send(json.dumps(self.core.get_fuzzy(tags)))
                     wrapper = SubscriberWrapper(ws, tags, comment)
                     self.subscribe_fuzzy.add(wrapper)
+
                 elif msg['mode'] == 'SUBSCRIBE_ALL':
                     # 将socket添加到所有订阅的列表
+                    if init:
+                        await ws.send(json.dumps(self.core.get_all()))
                     wrapper = SubscriberWrapper(ws, set(), comment)
                     self.subscribe_all.add(wrapper)
+
                 else:
                     print('订阅接口收到未知mode', msg['mode'])
         except websockets.exceptions.ConnectionClosedOK:
@@ -542,39 +561,46 @@ class WebsocketCoreAdapter(object):
             print('{}口令验证成功'.format(identification))
             # 循环等待websocket发送消息
             while True:
+                # 接收用户备注
                 msg = json.loads(await ws.recv())
                 try:
                     comment = msg['comment']
                 except KeyError:
                     comment = ''
+
+                # 判断用户的指令
                 if msg['mode'] == 'GET':
                     tags = set(msg['tags'])
-                    res = self.data_center.get(tags)
+                    res = self.core.get(tags)
                     await ws.send(json.dumps({
                         'data': res,
                         'comment': comment
                     }))
+
                 elif msg['mode'] == 'GET_DICT':
                     tags = set(msg['tags'])
-                    res = self.data_center.get_dict(tags)
+                    res = self.core.get_dict(tags)
                     await ws.send(json.dumps({
                         'data': res,
                         'comment': comment
                     }))
+
                 elif msg['mode'] == 'GET_FUZZY':
                     tags = set(msg['tags'])
-                    res = self.data_center.get_fuzzy(tags)
+                    res = self.core.get_fuzzy(tags)
                     await ws.send(json.dumps({
                         'data': res,
                         'comment': comment
                     }))
+
                 elif msg['mode'] == 'SET':
                     tags = set(msg['tags'])
                     value = msg['value']
                     timestamp = msg['timestamp']
-                    self.data_center.update(tags, value, timestamp)
+                    self.core.update(tags, value, timestamp)
+
                 elif msg['mode'] == 'GET_ALL':
-                    res = self.data_center.get_all()
+                    res = self.core.get_all()
                     await ws.send(json.dumps({
                         'data': res,
                         'comment': comment
