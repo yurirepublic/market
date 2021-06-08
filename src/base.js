@@ -325,39 +325,43 @@ async function generateSubscribeWebsocket() {
 
 
   return {
-    precise: async function(tags, callback) {
+    precise: async function(tags, callback, init=false) {
       let order = getOrder()
       subscribe[order] = callback
       await ws.send(JSON.stringify({
         mode: 'SUBSCRIBE_PRECISE',
         tags: tags,
-        comment: order
+        comment: order,
+        init: init
       }))
     },
-    dict: async function(tags, callback) {
+    dict: async function(tags, callback, init=false) {
       let order = getOrder()
       subscribe[order] = callback
       await ws.send(JSON.stringify({
         mode: 'SUBSCRIBE_DICT',
         tags: tags,
-        comment: order
+        comment: order,
+        init: init
       }))
     },
-    fuzzy: async function(tags, callback) {
+    fuzzy: async function(tags, callback, init=false) {
       let order = getOrder()
       subscribe[order] = callback
       await ws.send(JSON.stringify({
         mode: 'SUBSCRIBE_FUZZY',
         tags: tags,
-        comment: order
+        comment: order,
+        init: init
       }))
     },
-    all: async function(callback) {
+    all: async function(callback, init=false) {
       let order = getOrder()
       subscribe[order] = callback
       await ws.send(JSON.stringify({
         mode: 'SUBSCRIBE_ALL',
-        comment: order
+        comment: order,
+        init: init
       }))
     },
     // 如果需要完整接管数据接收，可以修改此回调

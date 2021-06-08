@@ -5,6 +5,7 @@ import os
 import time
 import asyncio
 import data_center
+import json
 
 
 class ScriptInput(object):
@@ -105,19 +106,30 @@ class ScriptListItem(object):
         self.manager_dict = manager_dict  # 多进程共享变量的管理器
 
 
-class Server(object):
+class Core(object):
     """
-    服务端
+    脚本管理器内核
     """
 
-    def __init__(self) -> None:
+    def __init__(self, loop) -> None:
         self.running_scripts: List[ScriptListItem] = []  # 正在运行的脚本列表
         self._thread_id = 0  # 线程计数器，用于生成不重复的线程id，和threading的ident或者pid不是一回事
         self._thread_id_lock = Lock()  # 线程计数器的多进程锁
         """
         注：脚本的启动实现方式多样化，最开始是threading，现在是Process，以后会什么样子不知道
-            所以_thread_id变量的取名仅仅是作为工作的 线程/进程 编号，并不是thread就代表多线程
+            所以_thread_id变量的取名仅仅是作为工作的 线程/进程 编号，并不是thread就代表多线程3
         """
+        self.loop = loop
+        self.loop.create_task(self.running_status_observer())
+
+    async def running_status_observer(self):
+        """
+        此协程监控脚本的运行状况
+        """
+        ws = await data_center.create_client()
+        while True:
+            await ws.update({'json', 'scriptManager', 'status'}, json.dumps(self.status()))
+            await asyncio.sleep(3)
 
     def _generate_thread_id(self):
         """

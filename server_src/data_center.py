@@ -326,7 +326,7 @@ class WebsocketCoreAdapter(object):
     """
 
     def __init__(self, core: Core):
-        self.core = core    # 数据中心内核
+        self.core = core  # 数据中心内核
 
         self.connect_identification = 0  # 用于给传入连接分配识别码的
         self.identify_lock = asyncio.Lock()  # 计算识别码的锁
@@ -511,7 +511,7 @@ class WebsocketCoreAdapter(object):
                 if msg['mode'] == 'SUBSCRIBE_PRECISE':
                     tags = set(msg['tags'])
                     if init:
-                        await ws.send(json.dumps(self.core.get(tags)))
+                        await ws.send(self.make_data_response(self.core.get(tags), comment))
                     # 将socket封装好，添加到可选订阅的列表
                     wrapper = SubscriberWrapper(ws, tags, comment)
                     self.subscribe_precise.add(wrapper)
@@ -519,21 +519,21 @@ class WebsocketCoreAdapter(object):
                 elif msg['mode'] == 'SUBSCRIBE_DICT':
                     tags = set(msg['tags'])
                     if init:
-                        await ws.send(json.dumps(self.core.get_dict(tags)))
+                        await ws.send(self.make_data_response(self.core.get_dict(tags), comment))
                     wrapper = SubscriberWrapper(ws, tags, comment)
                     self.subscribe_dict.add(wrapper)
 
                 elif msg['mode'] == 'SUBSCRIBE_FUZZY':
                     tags = set(msg['tags'])
                     if init:
-                        await ws.send(json.dumps(self.core.get_fuzzy(tags)))
+                        await ws.send(self.make_data_response(self.core.get_fuzzy(tags), comment))
                     wrapper = SubscriberWrapper(ws, tags, comment)
                     self.subscribe_fuzzy.add(wrapper)
 
                 elif msg['mode'] == 'SUBSCRIBE_ALL':
                     # 将socket添加到所有订阅的列表
                     if init:
-                        await ws.send(json.dumps(self.core.get_all()))
+                        await ws.send(self.make_data_response(self.core.get_all(), comment))
                     wrapper = SubscriberWrapper(ws, set(), comment)
                     self.subscribe_all.add(wrapper)
 
@@ -572,26 +572,17 @@ class WebsocketCoreAdapter(object):
                 if msg['mode'] == 'GET':
                     tags = set(msg['tags'])
                     res = self.core.get(tags)
-                    await ws.send(json.dumps({
-                        'data': res,
-                        'comment': comment
-                    }))
+                    await ws.send(self.make_data_response(res, comment))
 
                 elif msg['mode'] == 'GET_DICT':
                     tags = set(msg['tags'])
                     res = self.core.get_dict(tags)
-                    await ws.send(json.dumps({
-                        'data': res,
-                        'comment': comment
-                    }))
+                    await ws.send(self.make_data_response(res, comment))
 
                 elif msg['mode'] == 'GET_FUZZY':
                     tags = set(msg['tags'])
                     res = self.core.get_fuzzy(tags)
-                    await ws.send(json.dumps({
-                        'data': res,
-                        'comment': comment
-                    }))
+                    await ws.send(self.make_data_response(res, comment))
 
                 elif msg['mode'] == 'SET':
                     tags = set(msg['tags'])
@@ -601,10 +592,7 @@ class WebsocketCoreAdapter(object):
 
                 elif msg['mode'] == 'GET_ALL':
                     res = self.core.get_all()
-                    await ws.send(json.dumps({
-                        'data': res,
-                        'comment': comment
-                    }))
+                    await ws.send(self.make_data_response(res, comment))
                 else:
                     print('数据接口收到未知mode', msg['mode'])
 
@@ -612,6 +600,13 @@ class WebsocketCoreAdapter(object):
             print('{}连接正常关闭'.format(identification))
         except websockets.exceptions.ConnectionClosed:
             print('{}连接断开，且没有收到关闭代码'.format(identification))
+
+    @staticmethod
+    def make_data_response(data, comment):
+        return json.dumps({
+            'data': data,
+            'comment': comment
+        })
 
 
 class WebsocketClient(object):

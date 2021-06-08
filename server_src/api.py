@@ -13,24 +13,28 @@ import json
 import time
 import traceback
 import asyncio
+import nest_asyncio
+import functools
 
 # 导入币安api、脚本管理器
 import binance_api
 import script_manager
+
+nest_asyncio.apply()
 
 app = Flask(__name__)
 CORS(app, supports_credentials=True)  # 允许跨域
 log = logging.getLogger('werkzeug')
 log.setLevel(logging.ERROR)
 
+# 创建公用loop
+loop = asyncio.get_event_loop()
+
 # 创建公用币安api对象
-operator = asyncio.get_event_loop().run_until_complete(binance_api.create_operator())
+operator: binance_api.Operator = loop.run_until_complete(binance_api.create_operator())
 
 # 创建公用脚本管理器对象
-sm = script_manager.Server()
-
-# 创建公用loop
-loop = asyncio.new_event_loop()
+sm: script_manager.Core = script_manager.Core(loop)
 
 # 读取配置文件
 with open('config.json', 'r', encoding='utf-8') as f:
@@ -44,41 +48,37 @@ def root():
     # 接收指定函数名以及参数并运行
     # 需接收验证口令正确才可运行，口令可以为自定义字符串
     # 接收格式为表单内 { function: '函数名', args: [...参数字符串列表]， password: '口令' }
-    # 如果新增了函数，不要忘记把有效函数加入到列表里
     if request.form['password'] != config['password']:
         return json.dumps({
             'msg': 'error',
             'exception': 'password error'
         })
-    valid_functions = [
-        'running_script',
-        'script_list',
-        'script_log',
-        'run_script',
-        'stop_script',
-        'transfer',
-        'trade_premium'
-    ]
+    func_name = request.form['function']
+    args = json.loads(request.form['args'])
     try:
-        func_name = request.form['function']
-        if func_name not in valid_functions:
-            return json.dumps({
-                'msg': 'function name invalid.'
-            })
-
-        args = json.loads(request.form['args'])
+        # 使用协程执行指令
         res = loop.run_until_complete(_exec_function(func_name, args))
         res = json.dumps(res)
         return res
-    except Exception:
+    except Exception as e:
         return json.dumps({
             'msg': 'error',
-            'exception': traceback.format_exc()
+            'traceback': traceback.format_exc(),
+            'exception': e,
+            'func': func_name,
+            'args': args
         })
 
 
 async def _exec_function(func_name, args):
-    return await eval(func_name)(*args)
+    if func_name == 'running_script':
+        return await running_script()
+    elif func_name == 'script_list':
+        return await script_list()
+    else:
+        return json.dumps({
+            'msg': 'function name invalid.'
+        })
 
 
 async def running_script():
@@ -205,6 +205,7 @@ async def trade_premium(symbol: str, amount: float, side: str, main_mode: str):
     return {
         'msg': 'success'
     }
+
 
 #
 # async def analyze_premium():
@@ -380,7 +381,7 @@ def memory_summary():
         time.sleep(300)
 
 
-def main():
+async def main():
     # # 运行内存泄露检测
     # threading.Thread(target=memory_summary).start()
 
@@ -392,10 +393,14 @@ def main():
 
     ip = config['api']['server_ip']
     port = config['api']['server_port']
+
     print('即将运行http服务器{}:{}'.format(ip, port))
-    app.run(config['api']['server_ip'], config['api']['server_port'],
-            ssl_context=(config['api']['ssl_pem'], config['api']['ssl_key']))
+    loop.run_in_executor(None, functools.partial(app.run, config['api']['server_ip'],
+                                                 config['api']['server_port'],
+                                                 ssl_context=(config['api']['ssl_pem'],
+                                                              config['api']['ssl_key'])))
 
 
 if __name__ == '__main__':
-    main()
+    loop.run_until_complete(main())
+    loop.run_forever()

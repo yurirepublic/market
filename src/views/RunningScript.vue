@@ -106,7 +106,8 @@ export default {
       focusLog: '', // 选中脚本的log
       focusUrl: '', // 当前选中服务器的的url，包含ip和端口，可直接访问
 
-      ws: null
+      ws: null,
+      subscribe: null
     }
   },
   watch: {
@@ -117,6 +118,7 @@ export default {
   },
   mounted: async function() {
     this.ws = await this.connectDataCenter()
+    this.subscribe = await this.connectSubscribe()
 
     // 获取服务器和端口
     let ip = await this.ws.getDict(['server', 'info', 'ip'])
@@ -130,7 +132,13 @@ export default {
 
     this.radioActive = this.radioOptions[0]
 
-    // await this.Refresh()
+    // 订阅脚本运行状态
+    await this.subscribe.precise(['json', 'scriptManager', 'status'], msg => {
+      console.log('脚本运行状态订阅', msg)
+    }, true)
+
+
+
   },
   methods: {
     Refresh: async function() {

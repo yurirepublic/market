@@ -71,5 +71,9 @@ server info port api [nickname]
 server info port datacenter [nickname]
 server info port subscribe [nickname]
 
+脚本管理器
+json scriptManager status
+
+
 ```
 
