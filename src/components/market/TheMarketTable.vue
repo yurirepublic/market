@@ -2,6 +2,10 @@
   <div class='p-2' style='background-color: #fafafa'>
     <div class='mb-2 d-flex justify-content-between align-items-center'>
       <span class='font-weight-bold'>套利行情</span>
+      <no-border-button @click='showDetail = !showDetail'>
+        <input class='align-middle' type='checkbox' :checked='showDetail' />
+        <span class='text-muted small ml-1 align-middle'>显示详细信息</span>
+      </no-border-button>
     </div>
     <div style='overflow: auto; max-height: 15rem'>
       <table class='table table-hover table-borderless table-sm small'>
@@ -12,6 +16,7 @@
           <th class='font-weight-normal' nowrap='nowrap'>平均费率</th>
           <th class='font-weight-normal' nowrap='nowrap'>现货币价(U)</th>
           <th class='font-weight-normal' nowrap='nowrap'>期货溢价</th>
+          <th class='font-weight-normal' nowrap='nowrap' v-if='showDetail'>杠杆支持</th>
         </tr>
         </thead>
         <tbody>
@@ -51,6 +56,14 @@
           >
             {{ toFixed(item['premiumRate'] * 100, 2) }}%
           </td>
+
+          <td
+            class='text-monospace'
+            nowrap='nowrap'
+            v-if='showDetail'
+          >
+            {{ item['allow'] }}
+          </td>
         </tr>
         </tbody>
       </table>
@@ -59,12 +72,19 @@
 </template>
 
 <script>
+import NoBorderButton from '@/components/NoBorderButton.vue'
+
 export default {
   name: 'TheMarketTable',
+  components: {
+    NoBorderButton
+  },
   data: function() {
     return {
       cache: {},    // 将symbol作为键，可以快速查找相应的对象来修改数据
       items: [],    // 排序后的items
+
+      showDetail: false,
 
       ws: null,
       subscribe: null   // 当前正在连接的websocket
@@ -116,6 +136,34 @@ export default {
         }
       }
     }
+
+    // 获取杠杆支持
+    let allowMargin = await this.ws.getDict(['allow', 'margin'])
+    let allowIsolated = await this.ws.getDict(['allow', 'isolated'])
+    console.log('全仓支持', allowMargin)
+    console.log('逐仓支持', allowIsolated)
+    for (const symbol of Object.keys(allowMargin)) {
+      if (symbol in this.cache) {
+        let index = this.cache[symbol]
+        this.items[index]['allow'] = '全仓'
+      }
+    }
+    for (const symbol of Object.keys(allowIsolated)) {
+      if (symbol in this.cache) {
+        let index = this.cache[symbol]
+        if (this.items[index]['allow'] === undefined) {
+          this.items[index]['allow'] = '逐仓'
+        } else {
+          this.items[index]['allow'] += ' 逐仓'
+        }
+      }
+    }
+    for (const e of this.items) {
+      if (e['allow'] === undefined) {
+        e['allow'] = '无'
+      }
+    }
+
 
     // 获取现货币价
     let mainPrice = await this.ws.getDict(['price', 'main'])

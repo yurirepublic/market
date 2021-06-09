@@ -21,22 +21,22 @@ function apiRequest(func, args, url) {
       },
       function(err, httpResponse, body) {
         if (err) {
-          console.error(err)
+          console.error('http请求错误', err)
           reject(err)
           return
         }
         if (httpResponse.statusCode !== 200) {
-          console.error(httpResponse)
+          console.error('http响应码错误', httpResponse)
           reject(httpResponse)
           return
         }
         let res = JSON.parse(body)
         if (res['msg'] !== 'success') {
-          console.error(res)
+          console.error('服务器响应非成功', res)
           reject(res)
           return
         }
-        console.log(res)
+        console.log('http请求返回', res)
         resolve(res)
       }
     )

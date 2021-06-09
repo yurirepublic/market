@@ -130,7 +130,7 @@ class Operator(object):
         self.session = requests.Session()
 
     async def request(self, area_url: str, path_url, method: str, data: dict, test=False, send_signature=True,
-                      retry_count: int = 3, retry_interval: int = 0) -> Dict:
+                      retry_count: int = 3, retry_interval: int = 0, auto_timestamp: bool = False) -> Dict:
         """
         用于向币安发送请求的内部API\n
         如果请求状态码不是200，会引发BinanceException\n
@@ -143,6 +143,7 @@ class Operator(object):
         :param send_signature: 是否发送签名，有的api不接受多余的参数，就不能默认发送签名
         :param retry_count: 返回状态码不为200时，自动重试的次数
         :param retry_interval: 自动尝试的间隔(秒)
+        :param auto_timestamp: 是否自动添加timestamp并且在重试时自动更新timestamp TODO
         :return: 返回的数据文本格式
         """
         method = method.upper()

@@ -15,6 +15,10 @@ json开头的一般是专供客户端显示用的，而且存储格式就是json
 precision quote main [symbol]
 precision quote future [symbol]
 
+全仓逐仓支持
+allow margin [asset]
+allow isolated [symbol]
+
 资产余额
 asset main [asset]
 asset future [asset]

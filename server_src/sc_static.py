@@ -27,7 +27,7 @@ class Script(script_manager.Script):
         self.dc = await data_center.create_client()
 
         while True:
-            # 获取每个 现货 交易对的规则（下单精度）
+            # 获取每个 现货 交易对的规则（下单精度、全仓逐仓支持情况）
             info = await self.operator.request('api', '/api/v3/exchangeInfo', 'GET', {}, send_signature=False)
             server_time = info['serverTime']
             info = info['symbols']
@@ -36,6 +36,34 @@ class Script(script_manager.Script):
                 quote_precision = e['quotePrecision']
                 asyncio.create_task(
                     self.dc.update({'precision', 'quote', 'main', symbol}, quote_precision, server_time))
+
+            # 查询所有全仓交易对
+            info = await self.operator.request('api', '/sapi/v1/margin/allPairs', 'GET', {})
+            for e in info:
+                # 只保留quote是USDT的交易对
+                if e['quote'] != 'USDT':
+                    continue
+
+                base = e['base']
+                if e['isBuyAllowed'] and e['isMarginTrade'] and e['isSellAllowed']:
+                    asyncio.create_task(self.dc.update({'allow', 'margin', base + 'USDT'}, True))
+                else:
+                    asyncio.create_task(self.dc.update({'allow', 'margin', base + 'USDT'}, False))
+
+            # 查询所有逐仓交易对
+            info = await self.operator.request('api', '/sapi/v1/margin/isolated/allPairs', 'GET', {
+                'timestamp': binance_api.get_timestamp()
+            })
+            for e in info:
+                # 只保留quote是USDT的交易对
+                if e['quote'] != 'USDT':
+                    continue
+
+                base = e['base']
+                if e['isBuyAllowed'] and e['isMarginTrade'] and e['isSellAllowed']:
+                    asyncio.create_task(self.dc.update({'allow', 'isolated', base + 'USDT'}, True))
+                else:
+                    asyncio.create_task(self.dc.update({'allow', 'isolated', base + 'USDT'}, False))
 
             # 获取每个 期货 交易对的规则（下单精度）
             info = await self.operator.request('fapi', '/fapi/v1/exchangeInfo', 'GET', {}, send_signature=False)
