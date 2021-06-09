@@ -214,6 +214,8 @@ class Script(script_manager.Script):
         # 获取期货的仓位和USDT余额
         position = await self.client.get_dict({'position', 'future'})
         usdt = await self.client.get({'asset', 'future', 'USDT'})
+        if usdt is None:
+            usdt = 0
 
         # 计算期货的总市值
         total = 0
@@ -242,13 +244,18 @@ class Script(script_manager.Script):
         # 获取全仓的仓位和USDT余额
         margin = await self.client.get_dict({'asset', 'margin'})
         borrowed = await self.client.get_dict({'borrowed', 'margin'})
-        usdt = margin['USDT']
-        if 'USDT' not in borrowed.keys():
-            usdt_borrowed = 0
+
+        if 'USDT' in margin.keys():
+            usdt = margin['USDT']
+            del margin['USDT']  # 必须要删除，不然等下会把USDT纳入base资产
         else:
+            usdt = 0
+
+        if 'USDT' in borrowed.keys():
             usdt_borrowed = borrowed['USDT']
-            del borrowed['USDT']
-        del margin['USDT']
+            del borrowed['USDT']    # 必须要删除，不然等下会把USDT纳入base资产
+        else:
+            usdt_borrowed = 0
 
         # 统计全仓的总市值和总借贷市值
         total = 0
