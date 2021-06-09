@@ -72,9 +72,19 @@ def root():
 
 async def _exec_function(func_name, args):
     if func_name == 'running_script':
-        return await running_script()
+        return await running_script(*args)
     elif func_name == 'script_list':
-        return await script_list()
+        return await script_list(*args)
+    elif func_name == 'script_log':
+        return await script_log(*args)
+    elif func_name == 'run_script':
+        return await running_script(*args)
+    elif func_name == 'stop_script':
+        return await stop_script(*args)
+    elif func_name == 'transfer':
+        return await transfer(*args)
+    elif func_name == 'trade_premium':
+        return await trade_premium(*args)
     else:
         return json.dumps({
             'msg': 'function name invalid.'

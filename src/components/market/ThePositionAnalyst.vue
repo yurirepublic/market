@@ -164,17 +164,17 @@ export default {
     })
 
 
-    // 定时刷新费率、溢价和风险率
-    this.updateInterval = setInterval(async () => {
-      // 逐条更新费率和溢价
-      const updateHandle = async (item) => {
-        item['fundingRate'] = await this.ws.getData(['premium', 'fundingRate', item['symbol'] + 'USDT'])
-        item['premiumRate'] = await this.ws.getData(['premium', 'rate', item['symbol'] + 'USDT'])
-      }
-      this.items.forEach(e => {
-        updateHandle(e)
-      })
-    }, 1000)
+    // // 定时刷新费率、溢价和风险率
+    // this.updateInterval = setInterval(async () => {
+    //   // 逐条更新费率和溢价
+    //   const updateHandle = async (item) => {
+    //     item['fundingRate'] = await this.ws.getData(['premium', 'fundingRate', item['symbol'] + 'USDT'])
+    //     item['premiumRate'] = await this.ws.getData(['premium', 'rate', item['symbol'] + 'USDT'])
+    //   }
+    //   this.items.forEach(e => {
+    //     updateHandle(e)
+    //   })
+    // }, 1000)
 
     // 订阅风险率信息
     await this.subscribe.precise(['risk', 'future', 'usage'], async (msg) =>{

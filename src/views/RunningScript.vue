@@ -5,7 +5,6 @@
       <card-frame>
         <div class='mb-2 d-flex justify-content-between align-items-center'>
           <span class='font-weight-bold'>运行中的脚本</span>
-          <refresh-button :anime='loading' @click='Refresh' />
         </div>
         <div class='d-flex justify-content-between align-content-center'>
           <span class='small'>选择服务器</span>
@@ -23,26 +22,26 @@
             </thead>
             <tbody>
             <tr
-              v-for='item in runningScriptList'
-              :key="item['thread_id']"
-              @click='ShowFocusLog(item)'
+              v-for='(value, name) in scriptStatusDict[radioActive]'
+              :key="value['thread_id']"
+              @click='ShowFocusLog(value)'
             >
               <td class='align-middle'>
-                {{ item['thread_id'] }}
+                {{ value['thread_id'] }}
               </td>
               <td class='align-middle'>
-                {{ item['name'] }}
+                {{ value['name'] }}
               </td>
               <td class='align-middle'>
-                {{ item['status'] }}
+                {{ value['status'] }}
               </td>
               <td>
                 <button
                   class='btn btn-secondary btn-sm'
                   type='button'
-                  @click='StopScript(item)'
+                  @click='StopScript(value)'
                   @click.stop
-                  :disabled='loading'
+                  :disabled='waiting'
                 >
                   终止
                 </button>
@@ -91,14 +90,14 @@ export default {
   },
   data: function() {
     return {
-      runningScriptList: [],
+      scriptStatusDict: {},
 
       radioOptions: [],
       radioActive: '',
 
       apiUrl: {},   // key是nickname， value是可以直接访问的url
 
-      loading: false, // 正在加载脚本
+      waiting: false,   // 正在等待回复
 
       loadingLog: false,    // 正在加载log
       loadingThreadId: null,    // 正在加载线程ID
@@ -113,7 +112,6 @@ export default {
   watch: {
     radioActive: function(newVal) {
       this.focusUrl = this.apiUrl[newVal]
-      this.Refresh()
     }
   },
   mounted: async function() {
@@ -132,27 +130,15 @@ export default {
 
     this.radioActive = this.radioOptions[0]
 
-    // 订阅脚本运行状态
-    await this.subscribe.precise(['json', 'scriptManager', 'status'], msg => {
-      console.log('脚本运行状态订阅', msg)
-    }, true)
-
-
+    // 根据当前已有的服务器，订阅脚本运行状态
+    for (const nickname of this.radioOptions) {
+      await this.subscribe.precise(['json', 'scriptManager', 'status', nickname], msg => {
+        this.$set(this.scriptStatusDict, nickname, JSON.parse(msg['data']))
+      }, true)
+    }
 
   },
   methods: {
-    Refresh: async function() {
-      this.loading = true
-      try {
-        let res = await this.apiRequest('running_script', [], this.focusUrl)
-        this.runningScriptList = res.data
-        this.showToast.success('运行中的脚本列表获取成功')
-      } catch {
-        this.showToast.error('运行中的脚本列表获取失败')
-      } finally {
-        this.loading = false
-      }
-    },
     RefreshLog: async function() {
       this.loadingLog = true
       try {
@@ -166,15 +152,14 @@ export default {
       }
     },
     StopScript: async function(item) {
-      this.loading = true
+      this.waiting = true
       try {
         await this.apiRequest('stop_script', [item['thread_id']], this.focusUrl)
         this.showToast.success('脚本终止成功')
       } catch {
         this.showToast.error('脚本终止失败')
       } finally {
-        // 无论如何都要调用Refresh重加载
-        await this.Refresh()
+        this.waiting = false
       }
     },
     ShowFocusLog: async function(item) {

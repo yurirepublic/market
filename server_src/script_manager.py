@@ -127,8 +127,12 @@ class Core(object):
         此协程监控脚本的运行状况
         """
         ws = await data_center.create_client()
+        # 读取自己的服务器昵称
+        with open('config.json', 'r', encoding='utf-8') as f:
+            config = json.loads(f.read())
+        nickname = config['nickname']
         while True:
-            await ws.update({'json', 'scriptManager', 'status'}, json.dumps(self.status()))
+            await ws.update({'json', 'scriptManager', 'status', nickname}, json.dumps(self.status()))
             await asyncio.sleep(3)
 
     def _generate_thread_id(self):
