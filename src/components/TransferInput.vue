@@ -60,7 +60,7 @@ export default {
 
 .card {
   border: none;
-  border-radius: 5px;
+  border-radius: 0.5rem;
 }
 
 input {

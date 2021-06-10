@@ -12,9 +12,7 @@
       </div>
 
       <div class='ml-1' style='width: 18rem'>
-        <div>
-          <the-funding-rate-history :pair-symbol='pairSymbol' />
-        </div>
+
 
         <div class='mt-1'>
           <the-usdt-wallet />
@@ -23,10 +21,18 @@
         <div class='mt-1'>
           <the-bnb-wallet />
         </div>
+
+        <div class='mt-1'>
+          <the-isolated-transfer />
+        </div>
       </div>
 
       <div class='ml-1'>
         <div>
+          <the-funding-rate-history :pair-symbol='pairSymbol' />
+        </div>
+
+        <div class='mt-1'>
           <the-position-analyst @click='clickTable' />
         </div>
       </div>
@@ -41,6 +47,7 @@ import TheUsdtWallet from '@/components/market/TheUsdtWallet.vue'
 import ThePositionCreator from '@/components/market/ThePositionCreator.vue'
 import TheBnbWallet from '@/components/market/TheBnbWallet.vue'
 import TheFundingRateHistory from '@/components/market/TheFundingRateHistory.vue'
+import TheIsolatedTransfer from '@/components/market/TheIsolatedTransfer'
 
 export default {
   name: 'Market',
@@ -60,6 +67,7 @@ export default {
   mounted: function() {
   },
   components: {
+    TheIsolatedTransfer,
     TheMarketTable,
     ThePositionAnalyst,
     TheUsdtWallet,

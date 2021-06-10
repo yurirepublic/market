@@ -20,7 +20,7 @@ import functools
 import binance_api
 import script_manager
 
-nest_asyncio.apply()
+nest_asyncio.apply()    # 开启async嵌套
 
 app = Flask(__name__)
 CORS(app, supports_credentials=True)  # 允许跨域
@@ -85,6 +85,8 @@ async def _exec_function(func_name, args):
         return await transfer(*args)
     elif func_name == 'trade_premium':
         return await trade_premium(*args)
+    elif func_name == 'isolated_transfer':
+        return await isolated_transfer(*args)
     else:
         return json.dumps({
             'msg': 'function name invalid.'
@@ -211,6 +213,40 @@ async def trade_premium(symbol: str, amount: float, side: str, main_mode: str):
             operator.trade_market(symbol, main_mode, amount, 'SELL'),
             operator.trade_market(symbol, 'FUTURE', amount, 'BUY')
         )
+
+    return {
+        'msg': 'success'
+    }
+
+
+async def isolated_transfer(asset: str, symbol: str, to: str, amount):
+    """
+    用于逐仓账户的划转，逐仓账户没法用万向划转，只能用这个
+    :param asset: 被划转的资产，例如BTC
+    :param symbol: 操作的逐仓symbol，例如BTCUSDT
+    :param to: 转账的目标，只有SPOT和ISOLATED_MARGIN，代表现货和逐仓
+    :param amount: 划转的数量
+    """
+    asset = asset.upper()
+    symbol = symbol.upper()
+    to = to.upper()
+    if to == 'SPOT':
+        _from = 'ISOLATED_MARGIN'
+    elif to == 'ISOLATED_MARGIN':
+        _from = 'SPOT'
+    else:
+        return {
+            'msg': 'transfer to invalid.',
+        }
+
+    await operator.request('api', '/sapi/v1/margin/isolated/transfer', 'POST', {
+        'asset': asset,
+        'symbol': symbol,
+        'transFrom': _from,
+        'transTo': to,
+        'amount': amount,
+        'timestamp': binance_api.get_timestamp()
+    })
 
     return {
         'msg': 'success'
