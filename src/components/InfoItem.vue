@@ -1,13 +1,11 @@
 <template>
-  <div class=''>
-    <div class='d-flex justify-content-between'>
-      <div class='flex-shrink-0'>
-        <span class='small' :class='{"text-muted": mutedHeader}'>{{ header }}</span>
-      </div>
-      <div>
-        <span class='text-monospace ml-3'><slot></slot></span>
-        <span class='text-monospace small ml-2' :class='{"text-muted": mutedFooter}'>{{ footer }}</span>
-      </div>
+  <div class='d-flex justify-content-between align-items-center'>
+    <div>
+      <span class='small' :class='{"text-muted": mutedHeader}'>{{ header }}</span>
+    </div>
+    <div>
+      <span class='text-monospace'><slot></slot></span>
+      <span class='text-monospace small ml-2' :class='{"text-muted": mutedFooter}' v-if='footer !== ""'>{{ footer }}</span>
     </div>
   </div>
 </template>

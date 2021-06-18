@@ -12,7 +12,9 @@
       </div>
 
       <div class='ml-1' style='width: 18rem'>
-
+        <div>
+          <the-funding-rate-history :pair-symbol='pairSymbol' />
+        </div>
 
         <div class='mt-1'>
           <the-usdt-wallet />
@@ -25,11 +27,13 @@
         <div class='mt-1'>
           <the-isolated-transfer />
         </div>
+
+
       </div>
 
       <div class='ml-1'>
-        <div>
-          <the-funding-rate-history :pair-symbol='pairSymbol' />
+        <div class='mt-1'>
+          <the-borrowed-panel style='width: 18rem' />
         </div>
 
         <div class='mt-1'>
@@ -48,9 +52,20 @@ import ThePositionCreator from '@/components/market/ThePositionCreator.vue'
 import TheBnbWallet from '@/components/market/TheBnbWallet.vue'
 import TheFundingRateHistory from '@/components/market/TheFundingRateHistory.vue'
 import TheIsolatedTransfer from '@/components/market/TheIsolatedTransfer'
+import TheBorrowedPanel from '@/components/market/TheBorrowedPanel'
 
 export default {
   name: 'Market',
+  components: {
+    TheIsolatedTransfer,
+    TheMarketTable,
+    ThePositionAnalyst,
+    TheUsdtWallet,
+    ThePositionCreator,
+    TheBnbWallet,
+    TheFundingRateHistory,
+    TheBorrowedPanel
+  },
   data: function() {
     return {
       pairSymbol: '' // 被选中的符号
@@ -65,16 +80,8 @@ export default {
 
   },
   mounted: function() {
-  },
-  components: {
-    TheIsolatedTransfer,
-    TheMarketTable,
-    ThePositionAnalyst,
-    TheUsdtWallet,
-    ThePositionCreator,
-    TheBnbWallet,
-    TheFundingRateHistory
   }
+
 }
 </script>
 

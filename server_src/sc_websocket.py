@@ -121,7 +121,14 @@ class Script(script_manager.Script):
                 # 发送到数据中心
                 asyncio.create_task(self.dc.update({'asset', mode, asset}, free, timestamp))
         elif data['e'] == 'balanceUpdate':
-            pass
+            self.log('被忽略的余额更新事件', data)
+        elif data['e'] == 'executionReport':
+            if data['X'] == 'NEW':
+                self.log('被忽略的NEW事件', data)
+            elif data['X'] == 'PARTIALLY_FILLED':
+                self.log('被忽略的PARTIALLY_FILLED事件')
+            elif data['X'] == 'FILLED':
+
         else:
             self.log('无法识别的现货、全仓或逐仓账户ws消息', data)
 

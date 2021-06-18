@@ -20,7 +20,7 @@ import functools
 import binance_api
 import script_manager
 
-nest_asyncio.apply()    # 开启async嵌套
+nest_asyncio.apply()  # 开启async嵌套
 
 app = Flask(__name__)
 CORS(app, supports_credentials=True)  # 允许跨域
@@ -64,7 +64,6 @@ def root():
         return json.dumps({
             'msg': 'error',
             'traceback': traceback.format_exc(),
-            'exception': e,
             'func': func_name,
             'args': args
         })
@@ -87,6 +86,12 @@ async def _exec_function(func_name, args):
         return await trade_premium(*args)
     elif func_name == 'isolated_transfer':
         return await isolated_transfer(*args)
+    elif func_name == 'query_interest':
+        return await query_interest(*args)
+    elif func_name == 'loan':
+        return await loan(*args)
+    elif func_name == 'repay':
+        return await repay(*args)
     else:
         return json.dumps({
             'msg': 'function name invalid.'
@@ -247,6 +252,91 @@ async def isolated_transfer(asset: str, symbol: str, to: str, amount):
         'amount': amount,
         'timestamp': binance_api.get_timestamp()
     })
+
+    return {
+        'msg': 'success'
+    }
+
+
+async def query_interest(asset):
+    """
+    查询某个资产的借贷利息
+    """
+    asset = asset.upper()
+    info = await operator.request('api', '/sapi/v1/margin/interestRateHistory', 'GET', {
+        'asset': asset,
+        'timestamp': binance_api.get_timestamp()
+    })
+
+    return {
+        'msg': 'success',
+        'data': info[0]['dailyInterestRate']
+    }
+
+
+async def loan(asset, is_isolated, symbol, amount):
+    """
+    归还某个资产
+    """
+    asset = asset.upper()
+    if isinstance(is_isolated, bool):
+        if is_isolated:
+            is_isolated = 'TRUE'
+        else:
+            is_isolated = 'FALSE'
+    if is_isolated == 'TRUE':
+        symbol = symbol.upper()
+        await operator.request('api', '/sapi/v1/margin/loan', 'POST', {
+            'asset': asset,
+            'isIsolated': is_isolated,
+            'symbol': symbol,
+            'amount': amount,
+            'timestamp': binance_api.get_timestamp()
+        })
+    elif is_isolated == 'FALSE':
+        await operator.request('api', '/sapi/v1/margin/loan', 'POST', {
+            'asset': asset,
+            'isIsolated': is_isolated,
+            'amount': amount,
+            'timestamp': binance_api.get_timestamp()
+        })
+    else:
+        return {
+            'msg': 'isolated param invalid.'
+        }
+
+    return {
+        'msg': 'success'
+    }
+
+
+async def repay(asset, is_isolated, symbol, amount):
+    asset = asset.upper()
+    if isinstance(is_isolated, bool):
+        if is_isolated:
+            is_isolated = 'TRUE'
+        else:
+            is_isolated = 'FALSE'
+    if is_isolated == 'TRUE':
+        symbol = symbol.upper()
+        await operator.request('api', '/sapi/v1/margin/repay', 'POST', {
+            'asset': asset,
+            'isIsolated': is_isolated,
+            'symbol': symbol,
+            'amount': amount,
+            'timestamp': binance_api.get_timestamp()
+        })
+    elif is_isolated == 'FALSE':
+        await operator.request('api', '/sapi/v1/margin/repay', 'POST', {
+            'asset': asset,
+            'isIsolated': is_isolated,
+            'amount': amount,
+            'timestamp': binance_api.get_timestamp()
+        })
+    else:
+        return {
+            'msg': 'isolated param invalid.'
+        }
 
     return {
         'msg': 'success'

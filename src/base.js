@@ -225,7 +225,7 @@ async function generateDataCenterWebsocket() {
       delete buf[comment]
     }
     ws.onclose = msg => {
-      console.log(nickname, '数据连接被关闭', msg)
+      console.warn(nickname, '数据连接被关闭', msg)
     }
   })
   let getOrder = function() {
@@ -319,7 +319,7 @@ async function generateSubscribeWebsocket() {
       subscribe[msg['comment']](msg)
     }
     ws.onclose = msg => {
-      console.log(nickname, '订阅连接被关闭', msg)
+      console.warn(nickname, '订阅连接被关闭', msg)
     }
   })
 

@@ -1,17 +1,24 @@
 <template>
-  <div class='card' style='background-color: #f0f1f2'>
-    <div class='input-group'>
-      <span v-if="header !== ''" class='input-group-text text-muted'>{{ header }}</span>
+  <div class='card p-2' style='background-color: #f0f1f2'>
+    <div class='d-flex justify-content-around'>
+      <div class='d-flex align-items-center mr-2' v-if="header !== ''">
+        <span class='text-muted no-wrap'>{{ header }}</span>
+      </div>
+
       <input
-        class='form-control text-right'
+        class='text-right'
         :type='type'
         :placeholder='placeholder'
         :value='value'
         @input="$emit('input', $event.target.value)"
         :disabled='disabled'
       />
-      <span v-if="footer !== ''" class='input-group-text text-muted'>{{ footer }}</span>
+      <div class='d-flex align-items-center ml-2' v-if="footer !== ''">
+        <span class='text-muted no-wrap'>{{ footer }}</span>
+      </div>
+
     </div>
+
   </div>
 </template>
 
@@ -55,25 +62,32 @@ export default {
   border-radius: 0.5rem;
 }
 
-.input-group-text {
-  border: 0;
-  background-color: transparent;
+.no-wrap {
+  white-space: nowrap;
 }
 
-.form-control {
-  border: 0;
-  box-shadow: none;
-  background-color: transparent;
-  font-family: "JetBrainsMono";
+input {
+  font-family: 'JetBrains Mono';
+  border: none;
+  background: transparent;
+  width: 100%;
 }
 
-.form-control:disabled {
-  background-color: transparent;
+input:focus {
+  outline: none;
 }
 
-.form-control:focus {
-  border-color: transparent;
-  box-shadow: none;
-  background-color: transparent;
+button {
+  border-radius: 5px;
+  border-style: none;
+  color: #000;
+}
+
+button:hover {
+  background-color: #ddd;
+}
+
+button:disabled {
+  color: #888;
 }
 </style>
