@@ -4,3 +4,4 @@ flask_cors
 psutil
 requests
 pympler
+nest_asyncio

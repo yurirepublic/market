@@ -15,6 +15,7 @@ import traceback
 import asyncio
 import nest_asyncio
 import functools
+import base64
 
 # 导入币安api、脚本管理器
 import binance_api
@@ -37,14 +38,14 @@ operator: binance_api.Operator = loop.run_until_complete(binance_api.create_oper
 sm: script_manager.Core = script_manager.Core(loop)
 
 # 读取配置文件
-with open('config.json', 'r', encoding='utf-8') as f:
-    config = json.loads(f.read())
+with open('config.json', 'r', encoding='utf-8') as _f:
+    config = json.loads(_f.read())
 
 
 # 用于客户端进行HTTP交互的端口
 @app.route('/', methods=['POST'])
 def root():
-    print(request.form)
+    print(str(request.form)[:200])
     # 接收指定函数名以及参数并运行
     # 需接收验证口令正确才可运行，口令可以为自定义字符串
     # 接收格式为表单内 { function: '函数名', args: [...参数字符串列表]， password: '口令' }
@@ -92,6 +93,8 @@ async def _exec_function(func_name, args):
         return await loan(*args)
     elif func_name == 'repay':
         return await repay(*args)
+    elif func_name == 'dev_sync':
+        return await dev_sync(*args)
     else:
         return json.dumps({
             'msg': 'function name invalid.'
@@ -268,9 +271,16 @@ async def query_interest(asset):
         'timestamp': binance_api.get_timestamp()
     })
 
+    res_data = []
+    for e in info:
+        res_data.append({
+            'dailyInterestRate': float(e['dailyInterestRate']),
+            'timestamp': e['timestamp']
+        })
+
     return {
         'msg': 'success',
-        'data': info[0]['dailyInterestRate']
+        'data': res_data
     }
 
 
@@ -337,6 +347,19 @@ async def repay(asset, is_isolated, symbol, amount):
         return {
             'msg': 'isolated param invalid.'
         }
+
+    return {
+        'msg': 'success'
+    }
+
+
+async def dev_sync(data):
+    for e in data:
+        name = e['name']
+        base = e['data']
+        with open(name, 'wb') as f:
+            buf = base64.b64decode(base.encode('utf-8'))
+            f.write(buf)
 
     return {
         'msg': 'success'
