@@ -215,7 +215,7 @@ async function generateDataCenterWebsocket() {
       resolve()
     }
     ws.onmessage = msg => {
-      // 将消息提取出来，根据buf
+      // 将消息提取出来，根据buf内的回调函数传递数据
       msg = JSON.parse(msg.data)
       let comment = msg['comment']
       let data = msg['data']
@@ -300,7 +300,7 @@ let globalSubscribeWebsocket = generateSubscribeWebsocket()   // 全局公用的
 
 async function generateSubscribeWebsocket() {
   let nickname = '全局订阅'
-  let subscribe = {}    // 用来订阅的字典，key是分配的comment，value是回调函数
+  let subscribe = {}    // 用来订阅的字典，key是分配的comment，value是{prepare: 分流类型, callback: 回调函数}
   let order = 0
   let getOrder = function() {
     return order++
@@ -316,7 +316,21 @@ async function generateSubscribeWebsocket() {
     }
     ws.onmessage = msg => {
       msg = JSON.parse(msg.data)
-      subscribe[msg['comment']](msg)
+      let buf = subscribe[msg['comment']]
+      if (buf['prepare'] === 'PRECISE') {
+        let res = msg['data']
+        buf['callback'](res)
+      } else if (buf['prepare'] === 'DICT') {
+        let res = msg['data']
+        buf['callback'](res)
+      } else if (buf['prepare'] === 'FUZZY') {
+        delete msg['comment']
+        buf['callback'](msg)
+      } else if (buf['prepare'] === 'ALL') {
+        delete msg['comment']
+        buf['callback'](msg)
+      }
+
     }
     ws.onclose = msg => {
       console.warn(nickname, '订阅连接被关闭', msg)
@@ -325,9 +339,12 @@ async function generateSubscribeWebsocket() {
 
 
   return {
-    precise: async function(tags, callback, init=false) {
+    precise: async function(tags, callback, init = false) {
       let order = getOrder()
-      subscribe[order] = callback
+      subscribe[order] = {
+        prepare: 'PRECISE',
+        callback: callback
+      }
       await ws.send(JSON.stringify({
         mode: 'SUBSCRIBE_PRECISE',
         tags: tags,
@@ -335,9 +352,12 @@ async function generateSubscribeWebsocket() {
         init: init
       }))
     },
-    dict: async function(tags, callback, init=false) {
+    dict: async function(tags, callback, init = false) {
       let order = getOrder()
-      subscribe[order] = callback
+      subscribe[order] = {
+        prepare: 'DICT',
+        callback: callback
+      }
       await ws.send(JSON.stringify({
         mode: 'SUBSCRIBE_DICT',
         tags: tags,
@@ -345,9 +365,12 @@ async function generateSubscribeWebsocket() {
         init: init
       }))
     },
-    fuzzy: async function(tags, callback, init=false) {
+    fuzzy: async function(tags, callback, init = false) {
       let order = getOrder()
-      subscribe[order] = callback
+      subscribe[order] = {
+        prepare: 'FUZZY',
+        callback: callback
+      }
       await ws.send(JSON.stringify({
         mode: 'SUBSCRIBE_FUZZY',
         tags: tags,
@@ -355,9 +378,12 @@ async function generateSubscribeWebsocket() {
         init: init
       }))
     },
-    all: async function(callback, init=false) {
+    all: async function(callback, init = false) {
       let order = getOrder()
-      subscribe[order] = callback
+      subscribe[order] = {
+        prepare: 'ALL',
+        callback: callback
+      }
       await ws.send(JSON.stringify({
         mode: 'SUBSCRIBE_ALL',
         comment: order,

@@ -411,9 +411,10 @@ class WebsocketCoreAdapter(object):
                     # 筛选出特殊的tag
                     special = tags - wrp.tags
                     special = list(special)[0]
-                    msg['comment'] = wrp.comment
-                    msg['special'] = special
-                    self.loop.create_task(self.subscribe_sender_dict(wrp, json.dumps(msg)))
+                    want_send = msg.copy()
+                    want_send['comment'] = wrp.comment
+                    want_send['data'] = {special: msg['data']}
+                    self.loop.create_task(self.subscribe_sender_dict(wrp, json.dumps(want_send)))
 
     async def subscribe_sender_all(self, wrp: SubscriberWrapper, msg):
         """
@@ -511,7 +512,7 @@ class WebsocketCoreAdapter(object):
                 if msg['mode'] == 'SUBSCRIBE_PRECISE':
                     tags = set(msg['tags'])
                     if init:
-                        await ws.send(self.make_data_response(self.core.get(tags), comment))
+                        await ws.send(self.make_data_response(self.core.get(tags), comment, tags=tags))
                     # 将socket封装好，添加到可选订阅的列表
                     wrapper = SubscriberWrapper(ws, tags, comment)
                     self.subscribe_precise.add(wrapper)
@@ -519,14 +520,14 @@ class WebsocketCoreAdapter(object):
                 elif msg['mode'] == 'SUBSCRIBE_DICT':
                     tags = set(msg['tags'])
                     if init:
-                        await ws.send(self.make_data_response(self.core.get_dict(tags), comment))
+                        await ws.send(self.make_data_response(self.core.get_dict(tags), comment, tags=tags))
                     wrapper = SubscriberWrapper(ws, tags, comment)
                     self.subscribe_dict.add(wrapper)
 
                 elif msg['mode'] == 'SUBSCRIBE_FUZZY':
                     tags = set(msg['tags'])
                     if init:
-                        await ws.send(self.make_data_response(self.core.get_fuzzy(tags), comment))
+                        await ws.send(self.make_data_response(self.core.get_fuzzy(tags), comment, tags=tags))
                     wrapper = SubscriberWrapper(ws, tags, comment)
                     self.subscribe_fuzzy.add(wrapper)
 
@@ -572,17 +573,17 @@ class WebsocketCoreAdapter(object):
                 if msg['mode'] == 'GET':
                     tags = set(msg['tags'])
                     res = self.core.get(tags)
-                    await ws.send(self.make_data_response(res, comment))
+                    await ws.send(self.make_data_response(res, comment, tags=tags))
 
                 elif msg['mode'] == 'GET_DICT':
                     tags = set(msg['tags'])
                     res = self.core.get_dict(tags)
-                    await ws.send(self.make_data_response(res, comment))
+                    await ws.send(self.make_data_response(res, comment, tags=tags))
 
                 elif msg['mode'] == 'GET_FUZZY':
                     tags = set(msg['tags'])
                     res = self.core.get_fuzzy(tags)
-                    await ws.send(self.make_data_response(res, comment))
+                    await ws.send(self.make_data_response(res, comment, tags=tags))
 
                 elif msg['mode'] == 'SET':
                     tags = set(msg['tags'])
@@ -602,16 +603,23 @@ class WebsocketCoreAdapter(object):
             print('{}连接断开，且没有收到关闭代码'.format(identification))
 
     @staticmethod
-    def make_data_response(data, comment):
-        return json.dumps({
-            'data': data,
-            'comment': comment
-        })
+    def make_data_response(data, comment, tags=None):
+        if tags is not None:
+            return json.dumps({
+                'tags': list(tags),
+                'data': data,
+                'comment': comment
+            })
+        else:
+            return json.dumps({
+                'data': data,
+                'comment': comment
+            })
 
 
 class WebsocketClient(object):
     """
-    Python版本的数据中心的websocket接口客户端
+    Python版本的数据中心的操作接口客户端
     """
 
     def __init__(self):
@@ -684,7 +692,7 @@ class WebsocketClient(object):
 
 class WebsocketSubscribe(object):
     """
-    Python版本的数据中心的websocket接口客户端
+    Python版本的数据中心的订阅接口客户端
     """
 
     def __init__(self):
@@ -717,7 +725,17 @@ class WebsocketSubscribe(object):
             try:
                 msg = await self.ws.recv()
                 msg = json.loads(msg)
-                asyncio.create_task(self.buf[msg['comment']](msg))
+                buf = self.buf[msg['comment']]
+                if buf['prepare'] == 'PRECISE':
+                    asyncio.create_task(self._prepare_precise(msg, buf['callback']))
+                elif buf['prepare'] == 'DICT':
+                    asyncio.create_task(self._prepare_dict(msg, buf['callback']))
+                elif buf['prepare'] == 'FUZZY':
+                    asyncio.create_task(self._prepare_fuzzy(msg, buf['callback']))
+                elif buf['prepare'] == 'ALL':
+                    asyncio.create_task(self._prepare_all(msg, buf['callback']))
+                else:
+                    print('无效的prepare识别码', buf['prepare'])
             except websockets.exceptions.ConnectionClosedOK:
                 print('客户端订阅连接正常关闭')
                 break
@@ -732,23 +750,91 @@ class WebsocketSubscribe(object):
                 self.order = 0
             return self.order
 
-    async def subscribe_dict(self, tags: Set[str], callback):
+    @staticmethod
+    async def _prepare_precise(msg, callback):
+        """
+        由于订阅数据的特殊性，comment这种多余的数据几乎不可能去掉，去掉就没法识别了
+        所以不可以在分流的地方处理
+        那么就写一个前置函数，让前置函数处理完数据格式之后，再调用用户的callback把东西发回去
+        所以调用流程是
+        _on_message -> _prepare -> callback
+        """
+        res = msg['data']
+        asyncio.create_task(callback(res))
+
+    @staticmethod
+    async def _prepare_dict(msg, callback):
+        res = msg['data']
+        asyncio.create_task(callback(res))
+
+    @staticmethod
+    async def _prepare_fuzzy(msg, callback):
+        del msg['comment']
+        asyncio.create_task(callback([msg]))
+
+    @staticmethod
+    async def _prepare_all(msg, callback):
+        del msg['comment']
+        asyncio.create_task(callback([msg]))
+
+    async def subscribe_precise(self, tags: Set[str], callback, init=False):
         order = await self._get_order()
-        self.buf[order] = callback
-        await self.ws.send(json.dumps({
+        self.buf[order] = {
+            'prepare': 'PRECISE',
+            'callback': callback
+        }
+        want_send = {
+            'mode': 'SUBSCRIBE_PRECISE',
+            'tags': list(tags),
+            'comment': order
+        }
+        if init:
+            want_send['init'] = True
+        await self.ws.send(json.dumps(want_send))
+
+    async def subscribe_dict(self, tags: Set[str], callback, init=False):
+        order = await self._get_order()
+        self.buf[order] = {
+            'prepare': 'DICT',
+            'callback': callback
+        }
+        want_send = {
             'mode': 'SUBSCRIBE_DICT',
             'tags': list(tags),
             'comment': order
-        }))
+        }
+        if init:
+            want_send['init'] = True
+        await self.ws.send(json.dumps(want_send))
 
-    async def subscribe_fuzzy(self, tags: Set[str], callback):
+    async def subscribe_fuzzy(self, tags: Set[str], callback, init=False):
         order = await self._get_order()
-        self.buf[order] = callback
-        await self.ws.send(json.dumps({
+        self.buf[order] = {
+            'prepare': 'FUZZY',
+            'callback': callback
+        }
+        want_send = {
             'mode': 'SUBSCRIBE_FUZZY',
             'tags': list(tags),
             'comment': order
-        }))
+        }
+        if init:
+            want_send['init'] = True
+        await self.ws.send(json.dumps(want_send))
+
+    async def subscribe_all(self, callback, init=False):
+        order = await self._get_order()
+        self.buf[order] = {
+            'prepare': 'ALL',
+            'callback': callback
+        }
+        want_send = {
+            'mode': 'SUBSCRIBE_ALL',
+            'comment': order
+        }
+        if init:
+            want_send['init'] = True
+        await self.ws.send(json.dumps(want_send))
 
 
 async def create_core():
