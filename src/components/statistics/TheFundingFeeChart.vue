@@ -46,31 +46,25 @@ export default {
     this.ws = await this.connectDataCenter()
     this.subscribe = await this.connectSubscribe()
 
-    let msg = await this.ws.getData(['json', 'fundingFee'])
-    await this.fillData(msg)
-
     await this.subscribe.precise(['json', 'fundingFee'], async msg => {
-      await this.fillData(msg['data'])
-    })
+      await this.fillData(msg)
+    }, true)
 
   },
   methods: {
+    // 将传入的数据经过处理后填充到表格
     fillData: async function(msg) {
 
       // 将每日的统计写入到total当中
       let eachDay = {}
       for (let i = 0; i < msg.length; i++) {
         let e = msg[i]
-        let date = new Date(e['time'])
-        let year = date.getFullYear()
-        let month = date.getMonth() + 1
-        let day = date.getDate()
-        let time = year + '-' + month + '-' + day
-        let obj = eachDay[time]
+        let timeStr = this.timestamp2str(e['time'])
+        let obj = eachDay[timeStr]
         if (obj === undefined) {
-          eachDay[time] = 0
+          eachDay[timeStr] = 0
         }
-        eachDay[time] += parseFloat(e['income'])
+        eachDay[timeStr] += parseFloat(e['income'])
       }
 
       // 获取全部收入统计

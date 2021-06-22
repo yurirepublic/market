@@ -187,44 +187,51 @@ export default {
 
     // 订阅当前费率
     await this.subscribe.dict(['premium', 'fundingRate'], msg => {
-      let symbol = msg['special']
-      if (symbol in this.cache) {
-        let index = this.cache[symbol]
-        this.items[index]['fundingRate'] = msg['data']
+      for (const symbol of Object.keys(msg)) {
+        if (symbol in this.cache) {
+          let index = this.cache[symbol]
+          this.items[index]['fundingRate'] = msg[symbol]
+        }
       }
     })
 
     // 订阅历史费率（平均费率）
     await this.subscribe.dict(['premium', 'fundingRateHistory'], msg => {
-      let symbol = msg['special']
-      if (symbol in this.cache) {
-        let index = this.cache[symbol]
-        if (msg['data'].length === 0) {
-          this.items[index]['avgRate'] = 0
-        } else {
-          this.items[index]['avgRate'] = this.average(fundingRateHistory[symbol])
+      for (const symbol of Object.keys(msg)) {
+        if (symbol in this.cache) {
+          let index = this.cache[symbol]
+          if (msg[symbol].length === 0) {
+            this.items[index]['avgRate'] = 0
+          } else {
+            this.items[index]['avgRate'] = this.average(fundingRateHistory[symbol])
+          }
         }
       }
+
     })
 
     // 订阅现货币价
     await this.subscribe.dict(['price', 'main'], msg => {
-      let symbol = msg['special']
-      if (symbol in this.cache) {
-        let index = this.cache[symbol]
-        this.items[index]['mainPrice'] = msg['data']
+      for (const symbol of Object.keys(msg)) {
+        if (symbol in this.cache) {
+          let index = this.cache[symbol]
+          this.items[index]['mainPrice'] = msg[symbol]
+        }
       }
+
     })
 
     // 订阅期货溢价
     await this.subscribe.dict(['premium', 'rate'], msg => {
-      let symbol = msg['special']
-      if (symbol in this.cache) {
-        let index = this.cache[symbol]
-        let obj = this.items[index]
-        obj['premiumRate'] = msg['data']
-        this.$set(this.items, index, obj)
+      for (const symbol of Object.keys(msg)) {
+        if (symbol in this.cache) {
+          let index = this.cache[symbol]
+          let obj = this.items[index]
+          obj['premiumRate'] = msg[symbol]
+          this.$set(this.items, index, obj)
+        }
       }
+
     })
 
 

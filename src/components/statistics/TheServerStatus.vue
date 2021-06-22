@@ -115,49 +115,62 @@ export default {
 
       // 订阅服务器计数器信息
       await this.subscribe.dict(['server', 'status', 'usage', 'cpu', nickname], (msg) => {
-        switch (msg['special']) {
-          case 'percent':
-            this.status[nickname]['cpuPercent'] = msg['data']
-            break
-          case 'percentHistory':
-            this.status[nickname]['chartData']['measures'][0]['data'] = msg['data'].map(x => parseFloat(this.toFixed(x / 100, 2)))
-            // chart需要使用浅拷贝再赋值才能刷新图表
-            let obj = Object.assign({}, this.status[nickname]['chartData'])
-            this.$set(this.status[nickname], 'chartData', obj)
-            this.$set(this.status, 'nickname', this.status[nickname])
-            break
+        for (const key of Object.keys(msg)) {
+          switch (key) {
+            case 'percent':
+              this.status[nickname]['cpuPercent'] = msg[key]
+              break
+            case 'percentHistory':
+              this.status[nickname]['chartData']['measures'][0]['data'] = msg[key].map(x => parseFloat(this.toFixed(x / 100, 2)))
+
+              // chart需要使用浅拷贝再赋值才能刷新图表
+              let obj = Object.assign({}, this.status[nickname]['chartData'])
+              this.$set(this.status[nickname], 'chartData', obj)
+              this.$set(this.status, 'nickname', this.status[nickname])
+
+              // TODO 暂时使用强制刷新，没什么好方法，也许后面共用一个图表的时候就不需要这样了
+              this.$forceUpdate()
+              break
+          }
         }
+
       })
 
       await this.subscribe.dict(['server', 'status', 'usage', 'ram', nickname], (msg) => {
-        switch (msg['special']) {
-          case 'percent':
-            this.status[nickname]['ramPercent'] = msg['data']
-            break
-          case 'total':
-            this.status[nickname]['ramTotal'] = msg['data']
-            break
-          case 'available':
-            this.status[nickname]['ramAvailable'] = msg['data']
-            break
-          case 'percentHistory':
-            this.status[nickname]['chartData']['measures'][1]['data'] = msg['data'].map(x => parseFloat(this.toFixed(x / 100, 2)))
-            break
+        for (const key of Object.keys(msg)) {
+          switch (key) {
+            case 'percent':
+              this.status[nickname]['ramPercent'] = msg[key]
+              break
+            case 'total':
+              this.status[nickname]['ramTotal'] = msg[key]
+              break
+            case 'available':
+              this.status[nickname]['ramAvailable'] = msg[key]
+              break
+            case 'percentHistory':
+              this.status[nickname]['chartData']['measures'][1]['data'] = msg[key].map(x => parseFloat(this.toFixed(x / 100, 2)))
+              break
+          }
         }
+
       })
 
       await this.subscribe.dict(['server', 'status', 'usage', 'disk', nickname], (msg) => {
-        switch (msg['special']) {
-          case 'percent':
-            this.status[nickname]['diskPercent'] = msg['data']
-            break
-          case 'total':
-            this.status[nickname]['diskTotal'] = msg['data']
-            break
-          case 'free':
-            this.status[nickname]['diskFree'] = msg['data']
-            break
+        for (const key of Object.keys(msg)) {
+          switch (key) {
+            case 'percent':
+              this.status[nickname]['diskPercent'] = msg[key]
+              break
+            case 'total':
+              this.status[nickname]['diskTotal'] = msg[key]
+              break
+            case 'free':
+              this.status[nickname]['diskFree'] = msg[key]
+              break
+          }
         }
+
       })
     }
 

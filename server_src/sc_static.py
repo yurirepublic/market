@@ -80,7 +80,9 @@ class Script(script_manager.Script):
                     'symbol': symbol
                 })
                 rate = [float(x['fundingRate']) for x in history]
+                funding_time = [int(x['fundingTime']) for x in history]
                 asyncio.create_task(self.dc.update({'premium', 'fundingRateHistory', symbol}, rate))
+                asyncio.create_task(self.dc.update({'premium', 'fundingRateHistory', 'timestamp', symbol}, funding_time))
 
             # 获取收取的资金费率流水
             res = await self.operator.request('fapi', '/fapi/v1/income', 'GET', {

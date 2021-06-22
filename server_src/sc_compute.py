@@ -54,21 +54,22 @@ class Script(script_manager.Script):
         return temp
 
     async def calc_premium(self, msg):
-        # 获取交易符号
-        symbol = msg['special']
-        # 获取双方价格
-        price = await self.client.get_dict({'price', symbol})
-        # 如果有一方数据缺失直接返回
-        keys = price.keys()
-        if 'main' not in keys or 'future' not in keys:
-            return
+        for key in msg.keys():
+            # 获取交易符号
+            symbol = key
+            # 获取双方价格
+            price = await self.client.get_dict({'price', symbol})
+            # 如果有一方数据缺失直接返回
+            keys = price.keys()
+            if 'main' not in keys or 'future' not in keys:
+                return
 
-        main_price = price['main']
-        future_price = price['future']
-        # 计算溢价并且放回去
-        premium_price = future_price / main_price - 1
-        asyncio.create_task(self.client.update({'premium', 'rate', symbol}, premium_price))
-        asyncio.create_task(self.client.update({'premium', 'dif', symbol}, future_price - main_price))
+            main_price = price['main']
+            future_price = price['future']
+            # 计算溢价并且放回去
+            premium_price = future_price / main_price - 1
+            asyncio.create_task(self.client.update({'premium', 'rate', symbol}, premium_price))
+            asyncio.create_task(self.client.update({'premium', 'dif', symbol}, future_price - main_price))
 
     async def calc_position(self, msg):
         """

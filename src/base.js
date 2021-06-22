@@ -1,5 +1,6 @@
 import request from 'request'
 import Vue from 'vue'
+import { createAxisLabels } from 'echarts/lib/coord/axisTickLabelBuilder'
 
 function apiRequest(func, args, url) {
   let useUrl = localConfig.serverUrl  // 默认使用设置的url
@@ -406,6 +407,21 @@ async function connectSubscribe() {
 
 const average = arr => arr.reduce((acc, val) => acc + val, 0) / arr.length
 
+// 将时间戳格式化为字符串的工具，使用毫秒级时间戳
+function timestamp2str(timestamp, showHour = false) {
+  let date = new Date(timestamp)
+  // let year = date.getFullYear()
+  let month = date.getMonth() + 1
+  let day = date.getDate()
+  let hour = date.getHours()
+  let minute = date.getMinutes()
+  let timeStr = month + '-' + day
+  if (showHour) {
+    timeStr += ' ' + hour + ':' + minute
+  }
+  return timeStr
+}
+
 export default {
   install(Vue, option) {
     Vue.prototype.apiRequest = apiRequest
@@ -420,5 +436,6 @@ export default {
     Vue.prototype.localConfig = localConfig
     Vue.prototype.connectDataCenter = connectDataCenter
     Vue.prototype.connectSubscribe = connectSubscribe
+    Vue.prototype.timestamp2str = timestamp2str
   }
 }

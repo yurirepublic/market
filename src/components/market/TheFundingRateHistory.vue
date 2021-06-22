@@ -6,10 +6,9 @@
     </div>
     <ve-line-chart :data='chartData'
                    :grid='grid'
-                   :tooltip-visible='false'
                    :settings='chartSettings'
                    :height='180'
-                   empty-text='请点击表格' />
+                   :empty-text='emptyText' />
 
   </div>
 </template>
@@ -41,8 +40,9 @@ export default {
         left: 50,
         right: 10
       },
+      emptyText: '请点击表格',
 
-      priceHistory: [0, 0, 0],
+      // priceHistory: [0, 0, 0],
       cache: {},
       ws: null
     }
@@ -51,20 +51,33 @@ export default {
   watch: {
     async pairSymbol(newSymbol) {
       // 获取这个交易对的历史
-      if (this.cache[newSymbol]) {
-        this.priceHistory = this.cache[newSymbol]
-      } else {
-        let history = await this.ws.getData(['premium', 'fundingRateHistory', newSymbol])
-        if (history === null) {
-          this.priceHistory = [0, 0, 0]
+      if (this.cache[newSymbol] !== undefined) {
+        let history = this.cache[newSymbol]['rate']
+        let timestamp = this.cache[newSymbol]['timestamp']
+        if (history !== undefined && timestamp !== undefined) {
+          for (let i = 0; i < timestamp.length; i++) {
+            timestamp[i] = this.timestamp2str(timestamp[i], true)
+          }
+          this.chartData = {
+            dimensions: {
+              name: '日期',
+              data: timestamp
+            },
+            measures: [{
+              name: '费率',
+              data: history
+            }]
+          }
+          return
         }
       }
+      this.emptyText = '无历史数据'
     },
 
     async priceHistory(newVal) {
       this.chartData = {
         dimensions: {
-          name: 'time',
+          name: '日期',
           data: [...Object.keys(newVal)]
         },
         measures: [{
@@ -78,12 +91,26 @@ export default {
   mounted: async function() {
     this.ws = await this.connectDataCenter()
     this.sub = await this.connectSubscribe()
-    // 把能拿到的交易对全部拿到做个cache
-    this.cache = await this.ws.getDict(['premium', 'fundingRateHistory'])
+
     // 订阅一下History
     await this.sub.dict(['premium', 'fundingRateHistory'], msg => {
-      this.cache[msg['special']] = msg['data']
-    })
+      for (const key of Object.keys(msg)) {
+        if (this.cache[key] === undefined) {
+          this.cache[key] = {}
+        }
+        this.cache[key]['rate'] = msg[key]
+      }
+
+    }, true)
+    await this.sub.dict(['premium', 'fundingRateHistory', 'timestamp'], msg => {
+      for (const key of Object.keys(msg)) {
+        if (this.cache[key] === undefined) {
+          this.cache[key] = {}
+        }
+        this.cache[key]['timestamp'] = msg[key]
+      }
+
+    }, true)
   },
 
   methods: {}

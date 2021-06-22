@@ -49,6 +49,7 @@ premium rate [symbol]
 premium dif [symbol]
 premium fundingRate [symbol]
 premium fundingRateHistory [symbol]
+premium fundingRateHistory timestamp [symbol]  // 上面那个的时间戳
 
 资金费率流水
 json fundingFee

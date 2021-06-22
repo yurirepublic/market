@@ -28,13 +28,14 @@ class Script(script_manager.Script):
 
     @staticmethod
     def write_data(msg, f):
-        obj = {
-            't': round(time.time() * 1000),
-            's': msg['special'],
-            'd': msg['data']
-        }
-        obj = json.dumps(obj)
-        f.write(obj + '\n')
+        for key in msg.keys():
+            obj = {
+                't': round(time.time() * 1000),
+                's': key,
+                'd': msg[key]
+            }
+            obj = json.dumps(obj)
+            f.write(obj + '\n')
 
     async def funding_rate(self, msg):
         with open('database_funding_rate.txt', 'a+', encoding='utf-8') as f:

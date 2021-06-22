@@ -133,7 +133,7 @@ export default {
     // 根据当前已有的服务器，订阅脚本运行状态
     for (const nickname of this.radioOptions) {
       await this.subscribe.precise(['json', 'scriptManager', 'status', nickname], msg => {
-        this.$set(this.scriptStatusDict, nickname, JSON.parse(msg['data']))
+        this.$set(this.scriptStatusDict, nickname, JSON.parse(msg))
       }, true)
     }
 

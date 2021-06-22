@@ -128,7 +128,7 @@ class Script(script_manager.Script):
             elif data['X'] == 'PARTIALLY_FILLED':
                 self.log('被忽略的PARTIALLY_FILLED事件')
             elif data['X'] == 'FILLED':
-
+                self.log('被忽略的FILLED事件')
         else:
             self.log('无法识别的现货、全仓或逐仓账户ws消息', data)
 
