@@ -55,9 +55,6 @@ export default {
         let history = this.cache[newSymbol]['rate']
         let timestamp = this.cache[newSymbol]['timestamp']
         if (history !== undefined && timestamp !== undefined) {
-          for (let i = 0; i < timestamp.length; i++) {
-            timestamp[i] = this.timestamp2str(timestamp[i], true)
-          }
           this.chartData = {
             dimensions: {
               name: '日期',
@@ -107,7 +104,11 @@ export default {
         if (this.cache[key] === undefined) {
           this.cache[key] = {}
         }
-        this.cache[key]['timestamp'] = msg[key]
+        let timestamp = []
+        for (const e of msg[key]) {
+          timestamp.push(this.timestamp2str(e, true))
+        }
+        this.cache[key]['timestamp'] = timestamp
       }
 
     }, true)

@@ -417,7 +417,7 @@ function timestamp2str(timestamp, showHour = false) {
   let minute = date.getMinutes()
   let timeStr = month + '-' + day
   if (showHour) {
-    timeStr += ' ' + hour + ':' + minute
+    timeStr += ' ' + hour + '点'
   }
   return timeStr
 }
