@@ -32,12 +32,13 @@
       </div>
 
       <div class='ml-1'>
-        <div class='mt-1'>
-          <the-borrowed-panel style='width: 18rem' />
+        <div class='mt-1 d-flex flex-row'>
+          <the-borrowed-panel style='width: 18rem' @query='QueryInterest' />
+          <the-interest-history style='width: 15rem' :history-data='interestHistoryData' />
         </div>
 
         <div class='mt-1'>
-          <the-position-analyst @click='clickTable' />
+          <the-position-analyst style='min-width: 17rem;' @click='clickTable' />
         </div>
       </div>
     </div>
@@ -53,6 +54,7 @@ import TheBnbWallet from '@/components/market/TheBnbWallet.vue'
 import TheFundingRateHistory from '@/components/market/TheFundingRateHistory.vue'
 import TheIsolatedTransfer from '@/components/market/TheIsolatedTransfer'
 import TheBorrowedPanel from '@/components/market/TheBorrowedPanel'
+import TheInterestHistory from '@/components/market/TheInterestHistory'
 
 export default {
   name: 'Market',
@@ -64,16 +66,22 @@ export default {
     ThePositionCreator,
     TheBnbWallet,
     TheFundingRateHistory,
-    TheBorrowedPanel
+    TheBorrowedPanel,
+    TheInterestHistory
   },
   data: function() {
     return {
-      pairSymbol: '' // 被选中的符号
+      pairSymbol: '', // 被选中的符号
+      interestHistoryData: []   // 借贷利息历史数据
+
     }
   },
   methods: {
     clickTable(event) {
       this.pairSymbol = event
+    },
+    QueryInterest(event) {
+      this.interestHistoryData = event
     }
   },
   created: function() {

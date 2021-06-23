@@ -82,7 +82,8 @@ export default {
       this.waiting = true
       this.apiRequest('query_interest', [this.asset]).then(res => {
         this.showToast.success('查询成功')
-        this.interestRate = res['data'] / 3
+        this.interestRate = res['data'][0]['dailyInterestRate'] / 3
+        this.$emit('query', res['data'])
       }).catch(err => {
         this.showToast.error('查询失败')
         this.interestRate = NaN
