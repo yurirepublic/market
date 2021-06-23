@@ -50,7 +50,11 @@ export default {
 
     // 获取服务器的地址信息
     for (const nickname of Object.keys(ip)) {
-      this.$set(this.info, nickname, {})
+      this.$set(this.info, nickname, {
+        'ip': null,
+        'datacenter': null,
+        'subscribe': null
+      })
       this.info[nickname]['ip'] = ip[nickname]
 
       // 获取服务器端口信息
