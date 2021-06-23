@@ -143,35 +143,38 @@ class Operator(object):
         :param send_signature: 是否发送签名，有的api不接受多余的参数，就不能默认发送签名
         :param retry_count: 返回状态码不为200时，自动重试的次数
         :param retry_interval: 自动尝试的间隔(秒)
-        :param auto_timestamp: 是否自动添加timestamp并且在重试时自动更新timestamp TODO
+        :param auto_timestamp: 是否自动添加timestamp并且在重试时自动更新timestamp
         :return: 返回的数据文本格式
         """
-        method = method.upper()
-        if method != 'POST' and method != 'GET' and method != 'PUT':
-            raise Exception('请求方法必须为POST、GET、PUT，大小写不限')
-        headers = {
-            'X-MBX-APIKEY': self.public_key
-        }
-        if test:
-            test_path = '/test'
-        else:
-            test_path = ''
-        if isinstance(data, dict):
-            data = make_query_string(**data)
-        elif isinstance(data, str):
-            pass
-        else:
-            raise Exception('data格式错误，必须为dict，或者使用make_query_string转换后的str')
-        signature = hmac.new(self.private_key.encode('ascii'),
-                             data.encode('ascii'), digestmod=sha256).hexdigest()
-        if send_signature:
-            url = 'https://{}.{}{}{}?{}&signature={}'.format(
-                area_url, base_url, path_url, test_path, data, signature)
-        else:
-            url = 'https://{}.{}{}{}?{}'.format(
-                area_url, base_url, path_url, test_path, data)
-
         while True:
+            method = method.upper()
+            if method != 'POST' and method != 'GET' and method != 'PUT':
+                raise Exception('请求方法必须为POST、GET、PUT，大小写不限')
+            headers = {
+                'X-MBX-APIKEY': self.public_key
+            }
+            if test:
+                test_path = '/test'
+            else:
+                test_path = ''
+            if isinstance(data, dict):
+                # 如果启用了auto_timestamp，则忽略掉用户传入的timestamp，并且重新生成一个新的
+                if auto_timestamp:
+                    data['timestamp'] = get_timestamp()
+                data = make_query_string(**data)
+            elif isinstance(data, str):
+                pass
+            else:
+                raise Exception('data格式错误，必须为dict，或者使用make_query_string转换后的str')
+            signature = hmac.new(self.private_key.encode('ascii'),
+                                 data.encode('ascii'), digestmod=sha256).hexdigest()
+            if send_signature:
+                url = 'https://{}.{}{}{}?{}&signature={}'.format(
+                    area_url, base_url, path_url, test_path, data, signature)
+            else:
+                url = 'https://{}.{}{}{}?{}'.format(
+                    area_url, base_url, path_url, test_path, data)
+
             if method == 'GET':
                 func = self.session.get
             elif method == 'POST':
@@ -215,6 +218,8 @@ class Operator(object):
                     raise BinanceException(r.status_code, r.text)
             else:
                 return r.json()
+
+            # 等待一定时间之后再重试
             await asyncio.sleep(retry_interval)
 
     async def create_listen_key(self, mode: str, symbol: str = None) -> str:
