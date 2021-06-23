@@ -319,7 +319,7 @@ async function generateSubscribeWebsocket() {
       msg = JSON.parse(msg.data)
       let buf = subscribe[msg['comment']]
       if (buf['prepare'] === 'PRECISE') {
-        let res = msg['data']
+        let res = msg
         buf['callback'](res)
       } else if (buf['prepare'] === 'DICT') {
         let res = msg['data']
