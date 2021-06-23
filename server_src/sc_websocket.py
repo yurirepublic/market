@@ -38,9 +38,7 @@ class Script(script_manager.Script):
         asyncio.create_task(self.dc.update({'asset', 'margin', 'BNB'}, 0))
 
         # 获取现货的资产数量
-        res = await self.operator.request('api', '/api/v3/account', 'GET', {
-            'timestamp': binance_api.get_timestamp()
-        })
+        res = await self.operator.request('api', '/api/v3/account', 'GET', {}, auto_timestamp=True)
         res = res['balances']
         for e in res:
             asset = e['asset']
@@ -48,9 +46,7 @@ class Script(script_manager.Script):
             asyncio.create_task(self.dc.update({'asset', 'main', asset}, free))
 
         # 获取期货的资产和头寸信息
-        res = await self.operator.request('fapi', '/fapi/v2/account', 'GET', {
-            'timestamp': binance_api.get_timestamp()
-        })
+        res = await self.operator.request('fapi', '/fapi/v2/account', 'GET', {}, auto_timestamp=True)
         for e in res['assets']:
             asset = e['asset']
             free = float(e['maxWithdrawAmount'])
@@ -61,9 +57,7 @@ class Script(script_manager.Script):
             asyncio.create_task(self.dc.update({'position', 'future', symbol}, position))
 
         # 获取全仓的资产和借贷数量
-        res = await self.operator.request('api', '/sapi/v1/margin/account', 'GET', {
-            'timestamp': binance_api.get_timestamp()
-        })
+        res = await self.operator.request('api', '/sapi/v1/margin/account', 'GET', {}, auto_timestamp=True)
         res = res['userAssets']
         for e in res:
             asset = e['asset']

@@ -190,8 +190,7 @@ async def transfer(trans_type, symbol, quantity):
         'type': trans_type,
         'asset': symbol,
         'amount': quantity,
-        'timestamp': binance_api.get_timestamp()
-    })
+    }, auto_timestamp=True)
 
     return {
         'msg': 'success'
