@@ -83,20 +83,17 @@ export default {
 
     this.BNBPrice = await this.ws.getData(['price', 'main', 'BNBUSDT'])
     await this.subWs.precise(['asset', 'main', 'BNB'], msg => {
-      this.mainBNB = msg['data']
-    })
+      this.mainBNB = msg
+    }, true)
     await this.subWs.precise(['asset', 'future', 'BNB'], msg => {
-      this.futureBNB = msg['data']
-    })
+      this.futureBNB = msg
+    }, true)
     await this.subWs.precise(['asset', 'margin', 'BNB'], msg => {
-      this.marginBNB = msg['data']
-    })
+      this.marginBNB = msg
+    }, true)
     await this.subWs.precise(['price', 'main', 'BNBUSDT'], msg => {
-      this.BNBPrice = msg['data']
-    })
-    this.mainBNB = await this.ws.getData(['asset', 'main', 'BNB'])
-    this.futureBNB = await this.ws.getData(['asset', 'future', 'BNB'])
-    this.marginBNB = await this.ws.getData(['asset', 'margin', 'BNB'])
+      this.BNBPrice = msg
+    }, true)
   },
   methods: {
     // 转账操作

@@ -51,9 +51,8 @@ class Script(script_manager.Script):
                     asyncio.create_task(self.dc.update({'allow', 'margin', base + 'USDT'}, False))
 
             # 查询所有逐仓交易对
-            info = await self.operator.request('api', '/sapi/v1/margin/isolated/allPairs', 'GET', {
-                'timestamp': binance_api.get_timestamp()
-            })
+            info = await self.operator.request('api', '/sapi/v1/margin/isolated/allPairs', 'GET', {},
+                                               auto_timestamp=True)
             for e in info:
                 # 只保留quote是USDT的交易对
                 if e['quote'] != 'USDT':
@@ -82,15 +81,15 @@ class Script(script_manager.Script):
                 rate = [float(x['fundingRate']) for x in history]
                 funding_time = [int(x['fundingTime']) for x in history]
                 asyncio.create_task(self.dc.update({'premium', 'fundingRateHistory', symbol}, rate))
-                asyncio.create_task(self.dc.update({'premium', 'fundingRateHistory', 'timestamp', symbol}, funding_time))
+                asyncio.create_task(
+                    self.dc.update({'premium', 'fundingRateHistory', 'timestamp', symbol}, funding_time))
 
             # 获取收取的资金费率流水
             res = await self.operator.request('fapi', '/fapi/v1/income', 'GET', {
-                'timestamp': binance_api.get_timestamp(),
                 'limit': str(1000),
                 'incomeType': 'FUNDING_FEE',
                 'startTime': str(int(binance_api.get_timestamp()) - 3600 * 24 * 30 * 1000)
-            })
+            }, auto_timestamp=True)
             asyncio.create_task(self.dc.update({'json', 'fundingFee'}, res))
 
             await asyncio.sleep(3600)

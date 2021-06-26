@@ -90,7 +90,9 @@ export default {
       subscribe: null   // 当前正在连接的websocket
     }
   },
-  methods: {},
+  methods: {
+
+  },
   mounted: async function() {
     this.ws = await this.connectDataCenter()
     this.subscribe = await this.connectSubscribe()

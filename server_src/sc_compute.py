@@ -34,18 +34,25 @@ class Script(script_manager.Script):
 
         # 订阅自己持仓情况
         await self.subscribe.subscribe_dict({'asset', 'main'}, self.calc_position)
+
         await self.subscribe.subscribe_dict({'asset', 'margin'}, self.calc_position)
+        await self.subscribe.subscribe_dict({'borrowed', 'margin'}, self.calc_position)
+
         await self.subscribe.subscribe_dict({'asset', 'isolated', 'base'}, self.calc_position)
+        await self.subscribe.subscribe_dict({'borrowed', 'isolated', 'base'}, self.calc_position)
+
         await self.subscribe.subscribe_dict({'asset', 'isolated', 'quote'}, self.calc_position)
+        await self.subscribe.subscribe_dict({'borrowed', 'isolated', 'quote'}, self.calc_position)
+
         await self.subscribe.subscribe_dict({'position', 'future'}, self.calc_position)
 
         # 启动风险率计算协程
         asyncio.create_task(self.calc_risk_interval())
 
     @staticmethod
-    def delete_usdt_symbol(data: dict):
+    def delete_usdt_symbol(data: dict) -> dict:
         """
-        用于删除字典中的USDT符号
+        用于删除字典中所有key的USDT符号
         """
         temp = {}
         for key, value in data.items():
@@ -53,7 +60,7 @@ class Script(script_manager.Script):
                 temp[key.replace('USDT', '')] = value
         return temp
 
-    async def calc_premium(self, msg):
+    async def calc_premium(self, msg) -> None:
         for key in msg.keys():
             # 获取交易符号
             symbol = key
@@ -71,19 +78,24 @@ class Script(script_manager.Script):
             asyncio.create_task(self.client.update({'premium', 'rate', symbol}, premium_price))
             asyncio.create_task(self.client.update({'premium', 'dif', symbol}, future_price - main_price))
 
-    async def calc_position(self, msg):
+    async def calc_position(self, msg) -> None:
         """
-        持仓信息有更新的时候计算双持、净持等信息
+        持仓信息有更新的时候计算双持、净持等信息\n
+        并且会将数据上传到数据中心
         """
         # 获取自己所有的持仓情况
         asset_main = await self.client.get_dict({'asset', 'main'})
+
         asset_margin = await self.client.get_dict({'asset', 'margin'})
         margin_borrowed = await self.client.get_dict({'borrowed', 'margin'})
-        position_future = await self.client.get_dict({'position', 'future'})
+
         isolated_free = await self.client.get_dict({'asset', 'isolated', 'base'})
         isolated_borrowed = await self.client.get_dict({'borrowed', 'isolated', 'base'})
+
         isolated_quote_free = await self.client.get_dict({'asset', 'isolated', 'quote'})
         isolated_quote_borrowed = await self.client.get_dict({'borrowed', 'isolated', 'quote'})
+
+        position_future = await self.client.get_dict({'position', 'future'})
 
         # 将期货和逐仓的USDT交易对符号去掉
         position_future = self.delete_usdt_symbol(position_future)
@@ -101,7 +113,7 @@ class Script(script_manager.Script):
             'isolatedBorrowed': 0,  # 逐仓借入
             'isolatedQuote': 0,  # 逐仓合约币（一般是USDT）余额
             'isolatedQuoteBorrowed': 0,  # 逐仓合约币借入
-            # 'isolatedRisk': 99999,  # 逐仓风险率
+            'isolatedRisk': 0,  # 逐仓贷款占比
             'future': 0,  # 期货余额
             'net': 0,  # 净持仓
             'hedging': 0,  # 双向持仓
@@ -120,9 +132,12 @@ class Script(script_manager.Script):
         need_init_symbol = set()
         need_init_symbol = need_init_symbol | asset_main.keys()
         need_init_symbol = need_init_symbol | asset_margin.keys()
+        need_init_symbol = need_init_symbol | margin_borrowed.keys()
         need_init_symbol = need_init_symbol | position_future.keys()
         need_init_symbol = need_init_symbol | isolated_free.keys()
         need_init_symbol = need_init_symbol | isolated_borrowed.keys()
+        need_init_symbol = need_init_symbol | isolated_quote_free.keys()
+        need_init_symbol = need_init_symbol | isolated_quote_borrowed.keys()
 
         for symbol in need_init_symbol:
             net[symbol] = 0

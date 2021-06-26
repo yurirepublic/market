@@ -70,17 +70,14 @@ export default {
     this.subWs = await this.connectSubscribe()
     // 订阅资产变动
     await this.subWs.precise(['asset', 'main', 'USDT'], msg => {
-      this.mainFree = msg['data']
-    })
+      this.mainFree = msg
+    }, true)
     await this.subWs.precise(['asset', 'future', 'USDT'], msg => {
-      this.futureFree = msg['data']
-    })
+      this.futureFree = msg
+    }, true)
     await this.subWs.precise(['asset', 'margin', 'USDT'], msg => {
-      this.marginFree = msg['data']
-    })
-    this.mainFree = await this.ws.getData(['asset', 'main', 'USDT'])
-    this.futureFree = await this.ws.getData(['asset', 'future', 'USDT'])
-    this.marginFree = await this.ws.getData(['asset', 'margin', 'USDT'])
+      this.marginFree = msg
+    }, true)
   },
   methods: {
     // 转账操作

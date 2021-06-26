@@ -1,5 +1,6 @@
 <template>
   <button
+    class='d-flex flex-row align-items-center py-1'
     type='button'
     @click="$emit('click', '$event')"
     :disabled='disabled'

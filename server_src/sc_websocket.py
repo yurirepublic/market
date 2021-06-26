@@ -67,10 +67,10 @@ class Script(script_manager.Script):
             asyncio.create_task(self.dc.update({'borrowed', 'margin', asset}, borrowed))
 
         # 启动websocket进行追踪
-        asyncio.create_task(self.main_account_update())
-        asyncio.create_task(self.margin_account_update())
-        asyncio.create_task(self.future_account_update())
-        asyncio.create_task(self.isolated_account_update())
+        asyncio.create_task(self.account_main_update())
+        asyncio.create_task(self.account_margin_update())
+        asyncio.create_task(self.account_future_update())
+        asyncio.create_task(self.account_isolated_update())
 
         # 期货比较特殊，纸面浮盈不会推送，所以暂定为5s刷新一次
         asyncio.create_task(self.future_usdt())
@@ -104,6 +104,7 @@ class Script(script_manager.Script):
         """
         data = json.loads(data)
         if data['e'] == 'outboundAccountPosition':
+            self.log('捕获到现货outboundAccountPosition', data)
             # 扫描数据
             for x in data['B']:
                 asset = x['a']
@@ -115,18 +116,34 @@ class Script(script_manager.Script):
                 # 发送到数据中心
                 asyncio.create_task(self.dc.update({'asset', mode, asset}, free, timestamp))
         elif data['e'] == 'balanceUpdate':
-            self.log('被忽略的余额更新事件', data)
+            self.log('已忽略现货余额更新事件', data)
         elif data['e'] == 'executionReport':
             if data['X'] == 'NEW':
-                self.log('被忽略的NEW事件', data)
+                self.log('已忽略现货NEW事件', data)
             elif data['X'] == 'PARTIALLY_FILLED':
-                self.log('被忽略的PARTIALLY_FILLED事件')
+                self.log('已忽略现货PARTIALLY_FILLED事件', data)
             elif data['X'] == 'FILLED':
-                self.log('被忽略的FILLED事件')
+                self.log('已忽略现货FILLED事件', data)
+                # # 获取当前的仓位
+                # symbol = data['s']
+                # position_now = await self.dc.get({'asset', mode, symbol})
+                # if position_now is None:
+                #     position_now = 0
+                # # 获取本次交易的方向
+                # amount = float(data['q'])
+                # if data['S'] == 'BUY':
+                #     position_now += amount
+                # elif data['S'] == 'SELL':
+                #     position_now -= amount
+                # else:
+                #     self.log('未知的期货交易方向', data['S'])
+                # await self.dc.update({'position', 'future', symbol}, position_now)
+            else:
+                self.log('已忽略现货executionReport', data)
         else:
             self.log('无法识别的现货、全仓或逐仓账户ws消息', data)
 
-    async def main_account_update(self):
+    async def account_main_update(self):
         """
         处理现货账户更新
         """
@@ -137,15 +154,7 @@ class Script(script_manager.Script):
             data = await ws.recv()
             await self.main_update('main', data)
 
-    async def ping_main(self, key):
-        """
-        每30分钟发送一个ping来延长ws有效时间
-        """
-        while True:
-            await asyncio.sleep(1800)
-            await self.operator.overtime_listen_key('MAIN', key)
-
-    async def margin_account_update(self):
+    async def account_margin_update(self):
         """
         处理全仓账户更新
         """
@@ -157,28 +166,69 @@ class Script(script_manager.Script):
             data = await ws.recv()
             await self.main_update('margin', data)
 
-    async def ping_margin(self, key):
-        while True:
-            await asyncio.sleep(1800)
-            await self.operator.overtime_listen_key('MARGIN', key)
-
-    async def isolated_account_update(self):
+    async def account_future_update(self):
         """
-        处理逐仓账户更新
+        处理期货账户更新
         """
-        # 逐仓更新起来十分麻烦，而且仓位更新不频繁，所以1s调用http接口刷新一次
+        # 连接期货账户ws
+        listen_key = await self.operator.create_listen_key('FUTURE')
+        ws = await self.operator.connect_websocket('FUTURE', listen_key)
+        asyncio.create_task(self.ping_future(listen_key))
         while True:
-            # 获取逐仓的资产和借贷数量
-            res = await self.operator.request('api', '/sapi/v1/margin/isolated/account', 'GET', {
-                'timestamp': binance_api.get_timestamp()
-            })
-            res = res['assets']
-            for e in res:
-                asyncio.create_task(self.update_isolated(e))
+            data = await ws.recv()
+            data = json.loads(data)
+            # 账户更新推送
+            timestamp = int(data['E'])
+            if data['e'] == 'ACCOUNT_UPDATE':
+                """
+                注：根据API说明，事件原因为FUNDING FEE时，不推送持仓信息，且仅推送相关资产信息
+                """
+                self.log('捕获到期货ACCOUNT_UPDATE事件', data)
+                balance = data['a']['B']
+                for asset in balance:
+                    symbol = asset['a']
+                    wb = float(asset['wb'])  # 钱包余额
+                    await self.dc.update({'asset', 'future', symbol}, wb, timestamp)
+                # 如果事件原因不是FUNDING FEE，则更新持仓
+                if data['a']['m'] != 'FUNDING FEE':
+                    position = data['a']['P']
+                    for x in position:
+                        symbol = x['s']
+                        pa = float(x['pa'])  # 仓位
+                        await self.dc.update({'position', 'future', symbol}, pa, timestamp)
+                else:
+                    self.log('事件原因是FUNDING FEE，已忽略此事件')
+            # 追加保证金通知推送
+            elif data['e'] == 'MARGIN_CALL':
+                self.log('已忽略期货追加保证金通知推送', data)
+            # 订单/交易 更新推送
+            elif data['e'] == 'ORDER_TRADE_UPDATE':
+                self.log('已忽略期货ORDER_TRADE_UPDATE事件', data)
+                # data = data['o']
+                # if data['X'] == 'FILLED':
+                #     # 获取当前的仓位
+                #     symbol = data['s']
+                #     position_now = await self.dc.get({'position', 'future', symbol})
+                #     if position_now is None:
+                #         position_now = 0
+                #     # 获取本次交易的方向
+                #     amount = float(data['q'])
+                #     if data['S'] == 'BUY':
+                #         position_now += amount
+                #     elif data['S'] == 'SELL':
+                #         position_now -= amount
+                #     else:
+                #         self.log('未知的期货交易方向', data['S'])
+                #     await self.dc.update({'position', 'future', symbol}, position_now)
+                # else:
+                #     self.log('已忽略此事件')
+            # 杠杆倍数更新推送
+            elif data['e'] == 'ACCOUNT_CONFIG_UPDATE':
+                self.log('已忽略杠杆倍数更新推送', data)
+            else:
+                self.log('无法识别的期货账户ws消息', data)
 
-            await asyncio.sleep(1)
-
-    async def update_isolated(self, e):
+    async def _update_isolated(self, e):
         symbol = e['symbol']
 
         # 因为isolated是非推送式更新，所以推送前看看有没有变化，没有变化就不推送
@@ -196,51 +246,19 @@ class Script(script_manager.Script):
         if borrowed != await self.dc.get({'borrowed', 'isolated', 'quote', symbol}):
             asyncio.create_task(self.dc.update({'borrowed', 'isolated', 'quote', symbol}, borrowed))
 
-    async def future_account_update(self):
+    async def account_isolated_update(self):
         """
-        处理期货账户更新
+        处理逐仓账户更新
         """
-        # 连接期货账户ws
-        listen_key = await self.operator.create_listen_key('FUTURE')
-        ws = await self.operator.connect_websocket('FUTURE', listen_key)
-        asyncio.create_task(self.ping_future(listen_key))
+        # 逐仓更新起来十分麻烦，而且仓位更新不频繁，所以1s调用http接口刷新一次
         while True:
-            data = await ws.recv()
-            data = json.loads(data)
-            # 账户更新推送
-            timestamp = int(data['E'])
-            if data['e'] == 'ACCOUNT_UPDATE':
-                """
-                注：根据API说明，事件原因为FUNDING FEE时，不推送持仓信息，且仅推送相关资产信息
-                """
-                balance = data['a']['B']
-                for asset in balance:
-                    symbol = asset['a']
-                    wb = float(asset['wb'])  # 钱包余额
-                    await self.dc.update({'asset', 'future', symbol}, wb, timestamp)
-                # 如果事件原因不是FUNDING FEE，则更新持仓
-                if data['a']['m'] != 'FUNDING FEE':
-                    position = data['a']['P']
-                    for x in position:
-                        symbol = x['s']
-                        pa = float(x['pa'])  # 仓位
-                        await self.dc.update({'position', 'future', symbol}, pa, timestamp)
-            # 追加保证金通知推送
-            elif data['e'] == 'MARGIN_CALL':
-                pass
-            # 订单/交易 更新推送
-            elif data['e'] == 'ORDER_TRADE_UPDATE':
-                pass
-            # 杠杆倍数更新推送
-            elif data['e'] == 'ACCOUNT_CONFIG_UPDATE':
-                pass
-            else:
-                self.log('无法识别的期货账户ws消息', data)
+            # 获取逐仓的资产和借贷数量
+            res = await self.operator.request('api', '/sapi/v1/margin/isolated/account', 'GET', {}, auto_timestamp=True)
+            res = res['assets']
+            for e in res:
+                asyncio.create_task(self._update_isolated(e))
 
-    async def ping_future(self, key):
-        while True:
-            await asyncio.sleep(1800)
-            await self.operator.overtime_listen_key('FUTURE', key)
+            await asyncio.sleep(1)
 
     async def main_price_update(self):
         """
@@ -275,3 +293,21 @@ class Script(script_manager.Script):
                     asyncio.create_task(self.dc.update({'future', 'price', symbol}, price, timestamp))
                 else:
                     self.log('无法识别的期货价格ws消息', x)
+
+    async def ping_main(self, key):
+        """
+        每30分钟发送一个ping来延长ws有效时间
+        """
+        while True:
+            await asyncio.sleep(1800)
+            await self.operator.overtime_listen_key('MAIN', key)
+
+    async def ping_margin(self, key):
+        while True:
+            await asyncio.sleep(1800)
+            await self.operator.overtime_listen_key('MARGIN', key)
+
+    async def ping_future(self, key):
+        while True:
+            await asyncio.sleep(1800)
+            await self.operator.overtime_listen_key('FUTURE', key)

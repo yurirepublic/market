@@ -2,8 +2,6 @@
 此文件用于提供用于客户端的API
 """
 # 导入http框架
-import threading
-
 from flask import Flask, request
 from flask_cors import CORS
 import logging
@@ -19,16 +17,20 @@ import base64
 
 # 导入币安api、脚本管理器
 import binance_api
+import data_center
 import script_manager
 
 nest_asyncio.apply()  # 开启async嵌套
 
+# 初始化flask框架对象
 app = Flask(__name__)
 CORS(app, supports_credentials=True)  # 允许跨域
+
+# 设置flask框架log等级
 log = logging.getLogger('werkzeug')
 log.setLevel(logging.ERROR)
 
-# 创建公用loop
+# 创建公用协程loop
 loop = asyncio.get_event_loop()
 
 # 创建公用币安api对象
@@ -71,14 +73,12 @@ def root():
 
 
 async def _exec_function(func_name, args):
-    if func_name == 'running_script':
-        return await running_script(*args)
-    elif func_name == 'script_list':
+    if func_name == 'script_list':
         return await script_list(*args)
     elif func_name == 'script_log':
         return await script_log(*args)
     elif func_name == 'run_script':
-        return await running_script(*args)
+        return await run_script(*args)
     elif func_name == 'stop_script':
         return await stop_script(*args)
     elif func_name == 'transfer':
@@ -95,21 +95,12 @@ async def _exec_function(func_name, args):
         return await repay(*args)
     elif func_name == 'dev_sync':
         return await dev_sync(*args)
+    elif func_name == 'force_refresh_position':
+        return await force_refresh_balance(*args)
     else:
         return json.dumps({
             'msg': 'function name invalid.'
         })
-
-
-async def running_script():
-    """
-    获取运行中的脚本列表
-    """
-    # 开启调用脚本管理器的客户端进行操作
-    return {
-        'msg': 'success',
-        'data': sm.status()
-    }
 
 
 async def script_list():
@@ -353,6 +344,9 @@ async def repay(asset, is_isolated, symbol, amount):
 
 
 async def dev_sync(data):
+    """
+    用来将开发机的代码上传到服务器
+    """
     for e in data:
         name = e['name']
         base = e['data']
@@ -365,168 +359,69 @@ async def dev_sync(data):
     }
 
 
-#
-# async def analyze_premium():
-#     """
-#     分析并返回当前所有的套利交易对，还顺带返回孤立仓位
-#     """
-#     # 连接数据中心准备获取数据
-#
-#     # 获取当前所有现货资产
-#     main_asset = await operator.get_all_asset_amount('MAIN')
-#     # 去除掉现货资产的USDT
-#     if 'USDT' in main_asset.keys():
-#         del main_asset['USDT']
-#
-#     # 获取当前所有全仓资产
-#     margin_asset = await operator.get_all_asset_amount('MARGIN')
-#     margin_asset_usdt = 0
-#     # 去除掉全仓资产的USDT
-#     if 'USDT' in margin_asset:
-#         margin_asset_usdt = margin_asset['USDT']
-#         del margin_asset['USDT']
-#
-#     # 获取所有全仓借贷资产
-#     margin_borrowed = await operator.get_borrowed_asset_amount('MARGIN')
-#     margin_borrowed_usdt = 0
-#     # 去除掉全仓资产的USDT
-#     if 'USDT' in margin_borrowed:
-#         margin_borrowed_usdt = margin_borrowed['USDT']
-#         del margin_borrowed['USDT']
-#
-#     # 计算全仓风险率（借币市值 + 借U / 持币市值 + 持U）* 100
-#     margin_asset_value = 0  # 全仓资产市值
-#     margin_asset_borrowed = 0  # 全仓借贷资产市值
-#     for e in margin_asset.keys():
-#         price = await operator.get_latest_price(e + 'USDT', 'MAIN')
-#         margin_asset_value += price * margin_asset[e]
-#     for e in margin_borrowed.keys():
-#         price = await operator.get_latest_price(e + 'USDT', 'MAIN')
-#         margin_asset_borrowed += price * margin_borrowed[e]
-#     if margin_asset_value == 0:
-#         margin_risk = 0
-#     else:
-#         margin_risk = ((margin_asset_borrowed + margin_borrowed_usdt) / (margin_asset_value + margin_asset_usdt)) * 100
-#
-#     # 计算全仓触发风险警告所需的波动率
-#     if margin_asset_borrowed - 0.8 * margin_asset_value == 0:
-#         margin_warning = 99999
-#     else:
-#         margin_warning = ((0.8 * margin_asset_usdt - margin_borrowed_usdt
-#                            ) / (margin_asset_borrowed - 0.8 * margin_asset_value)) * 100
-#
-#     # 获取当前所有逐仓资产
-#     isolated_asset = await operator.get_all_asset_amount('ISOLATED')
-#     # 仅保留计价单位是USDT的逐仓，且将逐仓名字仅保留币名
-#     new_dict = {}
-#     for e in isolated_asset.keys():
-#         if isolated_asset[e]['quote_name'] == 'USDT':
-#             new_dict[isolated_asset[e]['base_name']] = isolated_asset[e]
-#     isolated_asset = new_dict
-#
-#     # 获取当前所有逐仓借贷资产
-#     isolated_borrowed = await operator.get_borrowed_asset_amount('ISOLATED')
-#     # 仅保留计价单位是USDT的逐仓，且仅将逐仓名字仅保留币名
-#     new_dict = {}
-#     for e in isolated_borrowed.keys():
-#         if isolated_borrowed[e]['quote_name'] == 'USDT':
-#             new_dict[isolated_borrowed[e]['base_name']] = isolated_borrowed[e]
-#     isolated_borrowed = new_dict
-#
-#     # 获取当前所有的期货仓位（不是资产）
-#     future_position = await operator.get_future_position()
-#     # 将期货符号的USDT去掉，而且仅保留USDT计价的期货
-#     new_dict = {}
-#     for e in future_position.keys():
-#         clear_symbol = e.replace('USDT', '')
-#         if clear_symbol != e:
-#             new_dict[clear_symbol] = float(future_position[e])
-#     future_position = new_dict
-#
-#     # 计算期货风险率 (期货总市值 / 期货余额) * 100
-#     future_position_value = 0
-#     future_free = await operator.get_asset_amount('USDT', 'FUTURE')
-#     for e in future_position.keys():
-#         price = await operator.get_latest_price(e + 'USDT', 'FUTURE')
-#         future_position_value += price * abs(future_position[e])
-#     if future_free == 0:
-#         future_free = 0.00000001  # 给期货一丁点数字避免除0错误
-#     future_risk = (future_position_value / future_free) * 100
-#
-#     # 计算期货风险警报所需市值波动率（500%风险率）
-#     if future_position_value != 0:
-#         future_warning = (future_position_value + (5 * future_free - future_position_value) / 6) / future_position_value
-#         future_warning *= 100
-#         future_warning -= 100
-#     else:
-#         future_warning = 99999
-#
-#     # 将所有拥有的资产名取个并集
-#     all_asset_key = set(main_asset.keys()) | set(margin_asset.keys()) | set(isolated_asset.keys()) | set(
-#         future_position.keys()) | set(margin_borrowed.keys()) | set(isolated_borrowed.keys())
-#
-#     # 以资产名为key，将资产信息写入字典
-#     usdt_asset = {}  # 先写USDT资产
-#     for key in all_asset_key:
-#         info = {
-#             'main': main_asset[key] if key in main_asset.keys() else 0,  # 现货持仓
-#             'margin': margin_asset[key] if key in margin_asset.keys() else 0,  # 全仓持仓
-#             'margin_borrowed': margin_borrowed[key] if key in margin_borrowed.keys() else 0,  # 全仓借入
-#             'isolated': isolated_asset[key]['base_asset'] if key in isolated_asset.keys() else 0,  # 逐仓持仓
-#             'isolated_borrowed': isolated_borrowed[key]['base_asset'] if key in isolated_borrowed.keys() else 0,
-#             'isolated_quote': isolated_asset[key]['quote_asset'] if key in isolated_asset.keys() else 0,
-#             'isolated_quote_borrowed': isolated_borrowed[key]['quote_asset'] if key in isolated_borrowed.keys() else 0,
-#             'future': future_position[key] if key in future_position.keys() else 0,  # 期货持仓
-#             'net': 0,  # 净持仓
-#             'hedging': 0,  # 双向持仓
-#         }
-#         # 计算净持仓
-#         info['net'] = info['main'] + info['margin'] + info['isolated'] + info['future'] - info['margin_borrowed'] - \
-#                       info['isolated_borrowed']
-#         # 计算双向持仓
-#         positive = info['main'] + info['margin'] + info['isolated']  # 正向持仓部分
-#         if info['future'] > 0:
-#             positive += info['future']
-#         negative = -info['margin_borrowed'] - info['isolated_borrowed']  # 反向持仓部分
-#         if info['future'] < 0:
-#             negative += info['future']
-#         # 因为反向持仓算出来是负数，所以变为正数
-#         negative = -negative
-#         # 取最小值为双向持仓量
-#         info['hedging'] = min(positive, negative)
-#
-#         # 计算逐仓风险率
-#         if info['isolated'] + info['isolated_quote'] == 0:
-#             info['isolated_risk'] = 0
-#         else:
-#             price = await operator.get_latest_price(key + 'USDT', 'MAIN')
-#
-#             risk = (info['isolated_borrowed'] * price + info['isolated_quote_borrowed'])
-#             risk /= info['isolated'] * price + info['isolated_quote']
-#             risk *= 100
-#             info['isolated_risk'] = binance_api.float_to_str_ceil(risk, 2)
-#
-#         usdt_asset[key] = info
-#
-#     # float转str
-#     for e in usdt_asset.keys():
-#         for x in usdt_asset[e].keys():
-#             usdt_asset[e][x] = binance_api.float_to_str_round(usdt_asset[e][x])
-#     margin_risk = binance_api.float_to_str_round(margin_risk, 2)
-#     future_risk = binance_api.float_to_str_round(future_risk, 2)
-#     future_warning = binance_api.float_to_str_round(future_warning, 2)
-#     margin_warning = binance_api.float_to_str_round(margin_warning)
-#
-#     return {
-#         'msg': 'success',
-#         'data': {
-#             'USDT': usdt_asset,
-#             'margin_risk': margin_risk,
-#             'future_risk': future_risk,
-#             'future_warning': future_warning,
-#             'margin_warning': margin_warning
-#         }
-#     }
+async def force_refresh_balance():
+    """
+    使用此API可以强制刷新仓位信息
+    不会从websocket接口接收信息，而是使用http接口请求信息
+    最终数据会更新到数据中心上
+    """
+    datacenter_client = await data_center.create_client()
+
+    run_gather = []
+
+    # 获取现货的资产数量
+    res = await operator.request('api', '/api/v3/account', 'GET', {}, auto_timestamp=True)
+    res = res['balances']
+    for e in res:
+        asset = e['asset']
+        free = float(e['free'])
+        run_gather.append(datacenter_client.update({'asset', 'main', asset}, free))
+
+    # 获取期货的资产和头寸信息
+    res = await operator.request('fapi', '/fapi/v2/account', 'GET', {}, auto_timestamp=True)
+    for e in res['assets']:
+        asset = e['asset']
+        free = float(e['maxWithdrawAmount'])
+        run_gather.append(datacenter_client.update({'asset', 'future', asset}, free))
+    for e in res['positions']:
+        symbol = e['symbol']
+        position = float(e['positionAmt'])
+        run_gather.append(datacenter_client.update({'position', 'future', symbol}, position))
+
+    # 获取全仓的资产和借贷数量
+    res = await operator.request('api', '/sapi/v1/margin/account', 'GET', {}, auto_timestamp=True)
+    res = res['userAssets']
+    for e in res:
+        asset = e['asset']
+        borrowed = float(e['borrowed'])
+        free = float(e['free'])
+        run_gather.append(datacenter_client.update({'asset', 'margin', asset}, free))
+        run_gather.append(datacenter_client.update({'borrowed', 'margin', asset}, borrowed))
+
+    # 获取逐仓的资产和借贷数量
+    res = await operator.request('api', '/sapi/v1/margin/isolated/account', 'GET', {}, auto_timestamp=True)
+    res = res['assets']
+    for e in res:
+        symbol = e['symbol']
+
+        free = float(e['baseAsset']['free'])
+        borrowed = float(e['baseAsset']['borrowed'])
+        run_gather.append(datacenter_client.update({'asset', 'isolated', 'base', symbol}, free))
+        run_gather.append(datacenter_client.update({'borrowed', 'isolated', 'base', symbol}, borrowed))
+
+        free = float(e['quoteAsset']['free'])
+        borrowed = float(e['quoteAsset']['borrowed'])
+        run_gather.append(datacenter_client.update({'asset', 'isolated', 'quote', symbol}, free))
+        run_gather.append(datacenter_client.update({'borrowed', 'isolated', 'quote', symbol}, borrowed))
+
+    for e in run_gather:
+        await e
+
+    await datacenter_client.close()
+
+    return {
+        'msg': 'success'
+    }
 
 
 def memory_summary():

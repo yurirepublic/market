@@ -563,7 +563,13 @@ class WebsocketCoreAdapter(object):
             # 循环等待websocket发送消息
             while True:
                 # 接收用户备注
-                msg = json.loads(await ws.recv())
+                data = await ws.recv()
+                try:
+                    msg = json.loads(data)
+                except json.decoder.JSONDecodeError:
+                    print('json解析错误', data)
+                    raise json.decoder.JSONDecodeError
+
                 try:
                     comment = msg['comment']
                 except KeyError:
@@ -630,25 +636,28 @@ class WebsocketClient(object):
         self.buf = {}
 
     async def init(self):
-        # 连接websocket
-        client_ip = config['data_center']['client_ip']
-        client_port = config['data_center']['client_port']
-        url = 'wss://{}:{}'.format(client_ip, client_port)
-        print('即将连接数据中心接口' + url)
-        self.ws = await websockets.connect(url)
-        await self.ws.send(config['password'])
-        print('成功连接数据中心接口')
+        async with self.async_lock:
+            # 连接websocket
+            client_ip = config['data_center']['client_ip']
+            client_port = config['data_center']['client_port']
+            url = 'wss://{}:{}'.format(client_ip, client_port)
+            print('即将连接数据中心接口' + url)
+            self.ws = await websockets.connect(url)
+            await self.ws.send(config['password'])
+            print('成功连接数据中心接口')
 
     async def close(self):
-        await self.ws.close()
+        async with self.async_lock:
+            await self.ws.close()
 
     async def update(self, tags: Set[str], value, timestamp: int = None):
-        await self.ws.send(json.dumps({
-            'mode': 'SET',
-            'tags': list(tags),
-            'value': value,
-            'timestamp': timestamp
-        }))
+        async with self.async_lock:
+            await self.ws.send(json.dumps({
+                'mode': 'SET',
+                'tags': list(tags),
+                'value': value,
+                'timestamp': timestamp
+            }))
 
     async def get(self, tags: Set[str], comment=''):
         async with self.async_lock:
