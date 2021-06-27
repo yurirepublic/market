@@ -97,6 +97,9 @@ class Script(script_manager.Script):
 
         position_future = await self.client.get_dict({'position', 'future'})
 
+        # 获取现货价格等着计算市值
+        price_cache = await self.client.get_dict({'price', 'main'})
+
         # 将期货和逐仓的USDT交易对符号去掉
         position_future = self.delete_usdt_symbol(position_future)
         isolated_free = self.delete_usdt_symbol(isolated_free)
@@ -196,8 +199,20 @@ class Script(script_manager.Script):
         # 获取价格计算双持市值
         for key, value in res.items():
             if value['hedging'] != 0:
-                price = await self.client.get({'price', 'main', key + 'USDT'})
+                price = price_cache[key + 'USDT']
                 value['value'] = price * abs(value['hedging'])
+
+        # 计算每个逐仓的贷款占比
+        for key, value in res.items():
+            if value['isolatedBorrowed'] != 0 or value['isolatedQuoteBorrowed'] != 0:
+                total_borrowed_value = value['isolatedBorrowed'] * price_cache[key + 'USDT']
+                total_borrowed_value += value['isolatedQuoteBorrowed']  # 借入的USDT，不需要乘价格
+
+                total_isolated_value = total_borrowed_value
+                total_isolated_value += value['isolated'] * price_cache[key + 'USDT']
+                total_isolated_value += value['isolatedQuote']  # 持有的USDT，不需要乘价格
+
+                value['isolatedRisk'] = total_borrowed_value / total_isolated_value
 
         # 过滤掉全是0（无意义）的项目
         new_res = {}
@@ -269,7 +284,7 @@ class Script(script_manager.Script):
 
         if 'USDT' in borrowed.keys():
             usdt_borrowed = borrowed['USDT']
-            del borrowed['USDT']    # 必须要删除，不然等下会把USDT纳入base资产
+            del borrowed['USDT']  # 必须要删除，不然等下会把USDT纳入base资产
         else:
             usdt_borrowed = 0
 
@@ -305,5 +320,3 @@ class Script(script_manager.Script):
 
         await self.client.update({'risk', 'margin', 'usage'}, margin_risk)
         # await self.client.update({'risk', 'margin', 'warning'}, margin_warning)
-
-
