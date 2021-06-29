@@ -1,6 +1,7 @@
 from typing import Tuple, Union, List, Dict
 import traceback
-from multiprocessing import Process, Manager, Lock
+import multiprocessing as multi
+# from multiprocessing import Process, Manager, Lock
 import os
 import time
 import asyncio
@@ -100,7 +101,7 @@ class ScriptListItem(object):
     用于服务器存储正在运行脚本列表的类型（这样写方便类型提示）
     """
 
-    def __init__(self, handle: Process, thread_id: int, manager_dict):
+    def __init__(self, handle: multi.Process, thread_id: int, manager_dict):
         self.handle = handle  # 脚本的进程对象
         self.thread_id = thread_id  # 生成的线程id
         self.manager_dict = manager_dict  # 多进程共享变量的管理器
@@ -114,7 +115,7 @@ class Core(object):
     def __init__(self, loop) -> None:
         self.running_scripts: List[ScriptListItem] = []  # 正在运行的脚本列表
         self._thread_id = 0  # 线程计数器，用于生成不重复的线程id，和threading的ident或者pid不是一回事
-        self._thread_id_lock = Lock()  # 线程计数器的多进程锁
+        self._thread_id_lock = multi.Lock()  # 线程计数器的多进程锁
         """
         注：脚本的启动实现方式多样化，最开始是threading，现在是Process，以后会什么样子不知道
             所以_thread_id变量的取名仅仅是作为工作的 线程/进程 编号，并不是thread就代表多线程3
@@ -193,8 +194,8 @@ class Core(object):
                     print('识别失败', file_name, _e)
 
             # 启动多进程
-            return_manager = Manager().dict()
-            handle = Process(target=_check_script, args=(e, return_manager))
+            return_manager = multi.Manager().dict()
+            handle = multi.Process(target=_check_script, args=(e, return_manager))
             handle.start()
             handle.join()
             # 如果有返回值则直接把返回值丢进结果
@@ -211,7 +212,7 @@ class Core(object):
         :param input_dict: 运行脚本的写入参数
         """
         # 生成共享字典对象
-        manager_dict = Manager().dict()
+        manager_dict = multi.Manager().dict()
 
         # 执行脚本
         def _x(_manager_dict, _input_dict, _script_path):
@@ -223,7 +224,7 @@ class Core(object):
             script.run_script(_manager_dict, _input_dict)
 
         # script: Script = script_import.Script()
-        handle = Process(
+        handle = multi.Process(
             target=_x, args=(manager_dict, input_dict, script_path), name=script_path)
         handle.start()
 
