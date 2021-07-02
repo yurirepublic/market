@@ -348,25 +348,17 @@ class WebsocketCoreAdapter(object):
         ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         ssl_context.load_cert_chain(config['api']['ssl_pem'], config['api']['ssl_key'])
 
-        # websocket接口部分
+        # websocket接口配置
         server_ip = config['data_center']['server_ip']
         server_port = config['data_center']['server_port']
 
-        self.adapter = await websockets.serve(self.recv, server_ip, server_port, ssl=ssl_context)
-        print('成功启动数据中心操作接口，运行在{}:{}'.format(server_ip, server_port))
-
-        # websocket订阅部分
-        subscribe_ip = config['data_center']['subscribe_server_ip']
-        subscribe_port = config['data_center']['subscribe_server_port']
-
-        self.subscribe_adapter = await websockets.serve(self.subscribe_recv, subscribe_ip, subscribe_port,
-                                                        ssl=ssl_context)
-        print('成功启动数据中心订阅接口，运行在{}:{}'.format(subscribe_ip, subscribe_port))
+        self.adapter = await websockets.serve(self.connect_handle, server_ip, server_port, ssl=ssl_context)
+        print('成功启动数据中心websocket接口，运行在wss://{}:{}'.format(server_ip, server_port))
 
         # 向数据中心核心挂一个全局更新回调
         self.core.subscribe_all(CallbackWrapper(self.subscribe_callback, set()))
 
-        # 启动配布协程
+        # 启动订阅配布协程
         self.loop.create_task(self.subscribe_sender())
 
     async def subscribe_callback(self, wrp: DataWrapper):
@@ -468,35 +460,32 @@ class WebsocketCoreAdapter(object):
                 # 对于重复删除直接无视。因为有可能被发现连接断开前，有多个协程开始拿着这个ws在运作
                 pass
 
-    async def assign_identification(self):
+    async def connect_handle(self, ws: websockets.WebSocketServerProtocol, path):
         """
-        分配线程识别码
+        处理传入的websocket连接
         """
-        async with self.identify_lock:
-            identification = self.connect_identification
-            self.connect_identification += 1
-            if self.connect_identification > 1000000:
-                self.connect_identification = 0
-        return identification
-
-    async def subscribe_recv(self, ws: websockets.WebSocketServerProtocol, path):
-        """
-        用来处理传入的订阅连接
-        """
-        # 直接将ws塞进去
-        identification = await self.assign_identification()
-        print('新增一个数据中心订阅，分配识别码{}'.format(identification))
+        # 给此链接分配识别码
+        # identification = await self.assign_identification()
+        identification = id(ws)  # 现在用python自带的对象id
         try:
-            # 检验连接的口令
-            pwd = await ws.recv()
-            if config['password'] != pwd:
-                print('{}口令验证错误，接收到 {}'.format(identification, pwd))
+            print('新传入websocket连接，分配识别码{}'.format(identification))
+            # 传入连接后首先发送的必是口令
+            msg = await ws.recv()
+            if config['password'] != msg:
+                print('{}口令验证错误，接收到 {}'.format(identification, msg))
                 await ws.close(1000, 'password error')
                 return
+            print('{}口令验证成功'.format(identification))
+            # 循环等待websocket发送消息
             while True:
-                msg = json.loads(await ws.recv())
-                print('数据中心订阅收到消息', msg)
                 # 接收用户备注
+                data = await ws.recv()
+                try:
+                    msg = json.loads(data)
+                except json.decoder.JSONDecodeError:
+                    print('json解析错误', data)
+                    raise json.decoder.JSONDecodeError
+
                 try:
                     comment = msg['comment']
                 except KeyError:
@@ -509,7 +498,32 @@ class WebsocketCoreAdapter(object):
                     init = False
 
                 # 判断用户的指令
-                if msg['mode'] == 'SUBSCRIBE_PRECISE':
+                if msg['mode'] == 'GET':
+                    tags = set(msg['tags'])
+                    res = self.core.get(tags)
+                    await ws.send(self.make_data_response(res, comment, tags=tags))
+
+                elif msg['mode'] == 'GET_DICT':
+                    tags = set(msg['tags'])
+                    res = self.core.get_dict(tags)
+                    await ws.send(self.make_data_response(res, comment, tags=tags))
+
+                elif msg['mode'] == 'GET_FUZZY':
+                    tags = set(msg['tags'])
+                    res = self.core.get_fuzzy(tags)
+                    await ws.send(self.make_data_response(res, comment, tags=tags))
+
+                elif msg['mode'] == 'SET':
+                    tags = set(msg['tags'])
+                    value = msg['value']
+                    timestamp = msg['timestamp']
+                    self.core.update(tags, value, timestamp)
+
+                elif msg['mode'] == 'GET_ALL':
+                    res = self.core.get_all()
+                    await ws.send(self.make_data_response(res, comment))
+
+                elif msg['mode'] == 'SUBSCRIBE_PRECISE':
                     tags = set(msg['tags'])
                     if init:
                         await ws.send(self.make_data_response(self.core.get(tags), comment, tags=tags))
@@ -539,68 +553,6 @@ class WebsocketCoreAdapter(object):
                     self.subscribe_all.add(wrapper)
 
                 else:
-                    print('订阅接口收到未知mode', msg['mode'])
-        except websockets.exceptions.ConnectionClosedOK:
-            print('{}连接正常关闭'.format(identification))
-        except websockets.exceptions.ConnectionClosed:
-            print('{}连接断开，且没有收到关闭代码'.format(identification))
-
-    async def recv(self, ws: websockets.WebSocketServerProtocol, path):
-        """
-        用此函数处理websocket数据
-        """
-        # 给此链接分配识别码，识别码会循环使用
-        identification = await self.assign_identification()
-        try:
-            print('新传入websocket连接，分配识别码{}'.format(identification))
-            # 传入连接后首先发送的必是口令
-            msg = await ws.recv()
-            if config['password'] != msg:
-                print('{}口令验证错误，接收到 {}'.format(identification, msg))
-                await ws.close(1000, 'password error')
-                return
-            print('{}口令验证成功'.format(identification))
-            # 循环等待websocket发送消息
-            while True:
-                # 接收用户备注
-                data = await ws.recv()
-                try:
-                    msg = json.loads(data)
-                except json.decoder.JSONDecodeError:
-                    print('json解析错误', data)
-                    raise json.decoder.JSONDecodeError
-
-                try:
-                    comment = msg['comment']
-                except KeyError:
-                    comment = ''
-
-                # 判断用户的指令
-                if msg['mode'] == 'GET':
-                    tags = set(msg['tags'])
-                    res = self.core.get(tags)
-                    await ws.send(self.make_data_response(res, comment, tags=tags))
-
-                elif msg['mode'] == 'GET_DICT':
-                    tags = set(msg['tags'])
-                    res = self.core.get_dict(tags)
-                    await ws.send(self.make_data_response(res, comment, tags=tags))
-
-                elif msg['mode'] == 'GET_FUZZY':
-                    tags = set(msg['tags'])
-                    res = self.core.get_fuzzy(tags)
-                    await ws.send(self.make_data_response(res, comment, tags=tags))
-
-                elif msg['mode'] == 'SET':
-                    tags = set(msg['tags'])
-                    value = msg['value']
-                    timestamp = msg['timestamp']
-                    self.core.update(tags, value, timestamp)
-
-                elif msg['mode'] == 'GET_ALL':
-                    res = self.core.get_all()
-                    await ws.send(self.make_data_response(res, comment))
-                else:
                     print('数据接口收到未知mode', msg['mode'])
 
         except websockets.exceptions.ConnectionClosedOK:
@@ -625,126 +577,66 @@ class WebsocketCoreAdapter(object):
 
 class WebsocketClient(object):
     """
-    Python版本的数据中心的操作接口客户端
+    数据中心的Websocket客户端
     """
 
     def __init__(self):
         self.ws: websockets.WebSocketClientProtocol = None
-
-        self.async_lock = asyncio.Lock()
-
-        self.buf = {}
+        self.buf = {}  # 用来暂存收到的下发消息
 
     async def init(self):
-        async with self.async_lock:
-            # 连接websocket
-            client_ip = config['data_center']['client_ip']
-            client_port = config['data_center']['client_port']
-            url = 'wss://{}:{}'.format(client_ip, client_port)
-            print('即将连接数据中心接口' + url)
-            self.ws = await websockets.connect(url)
-            await self.ws.send(config['password'])
-            print('成功连接数据中心接口')
-
-    async def close(self):
-        async with self.async_lock:
-            await self.ws.close()
-
-    async def update(self, tags: Set[str], value, timestamp: int = None):
-        async with self.async_lock:
-            await self.ws.send(json.dumps({
-                'mode': 'SET',
-                'tags': list(tags),
-                'value': value,
-                'timestamp': timestamp
-            }))
-
-    async def get(self, tags: Set[str], comment=''):
-        async with self.async_lock:
-            await self.ws.send(json.dumps({
-                'mode': 'GET',
-                'tags': list(tags),
-                'comment': comment
-            }))
-            res = json.loads(await self.ws.recv())
-            return res['data']
-
-    async def get_dict(self, tags: Set[str], comment=''):
-        async with self.async_lock:
-            await self.ws.send(json.dumps({
-                'mode': 'GET_DICT',
-                'tags': list(tags),
-                'comment': comment
-            }))
-            res = json.loads(await self.ws.recv())
-            return res['data']
-
-    async def get_fuzzy(self, tags: Set[str], comment=''):
-        async with self.async_lock:
-            await self.ws.send(json.dumps({
-                'mode': 'GET_FUZZY',
-                'tags': list(tags),
-                'comment': comment
-            }))
-            res = json.loads(await self.ws.recv())
-            return res['data']
-
-    async def get_all(self, comment=''):
-        async with self.async_lock:
-            await self.ws.send(json.dumps({
-                'mode': 'GET_ALL',
-                'comment': comment
-            }))
-            res = json.loads(await self.ws.recv())
-            return res['data']
-
-
-class WebsocketSubscribe(object):
-    """
-    Python版本的数据中心的订阅接口客户端
-    """
-
-    def __init__(self):
-        self.ws: websockets.WebSocketClientProtocol = None
-
-        self.buf = {}
-        self.order = 0
-        self.order_lock = asyncio.Lock()
-
-    async def init(self):
-        # 连接subscribe
-        ip = config['data_center']['subscribe_client_ip']
-        port = config['data_center']['subscribe_client_port']
-        url = 'wss://{}:{}'.format(ip, port)
-        print('即将连接订阅接口' + url)
+        """
+        初始化这个客户端，只能调用一次
+        """
+        # 连接websocket
+        client_ip = config['data_center']['client_ip']
+        client_port = config['data_center']['client_port']
+        url = 'wss://{}:{}'.format(client_ip, client_port)
+        print('即将连接数据中心websocket接口' + url)
         self.ws = await websockets.connect(url)
         await self.ws.send(config['password'])
-        print('成功连接订阅接口')
-        # 启动消息接收
-        asyncio.create_task(self._on_message())
+        print('成功连接数据中心websocket接口')
 
-    async def close(self):
-        await self.ws.close()
+        # 开始接收并转发数据
+        asyncio.create_task(self._on_message())
 
     async def _on_message(self):
         """
-        分流订阅消息
+        用来处理数据的接收和转发
         """
         while True:
             try:
                 msg = await self.ws.recv()
                 msg = json.loads(msg)
-                buf = self.buf[msg['comment']]
-                if buf['prepare'] == 'PRECISE':
-                    asyncio.create_task(self._prepare_precise(msg, buf['callback']))
-                elif buf['prepare'] == 'DICT':
-                    asyncio.create_task(self._prepare_dict(msg, buf['callback']))
-                elif buf['prepare'] == 'FUZZY':
-                    asyncio.create_task(self._prepare_fuzzy(msg, buf['callback']))
-                elif buf['prepare'] == 'ALL':
-                    asyncio.create_task(self._prepare_all(msg, buf['callback']))
+
+                comment = msg['comment']
+                item = self.buf[comment]
+
+                prepare_mode = item['prepare']
+                callback = item['callback']
+
+                # 对数据进行一些后处理，去掉通信协议里一些冗余的字段，封装成可以直接使用的数据结构
+                if prepare_mode == 'PRECISE':
+                    res = msg['data']
+                    asyncio.create_task(callback(res))
+                elif prepare_mode == 'DICT':
+                    res = msg['data']
+                    asyncio.create_task(callback(res))
+                elif prepare_mode == 'FUZZY':
+                    del msg['comment']
+                    asyncio.create_task(callback([msg]))
+                elif prepare_mode == 'ALL':
+                    del msg['comment']
+                    asyncio.create_task(callback([msg]))
+                elif prepare_mode == 'NOT_SUBSCRIBE':
+                    # 针对非订阅的操作，就没有回调可以使用，而是将结果放入future
+                    res = msg['data']
+                    asyncio.create_task(callback(res))
+                    # 删除掉buf里这个已经用掉的字典元素（非订阅不会复用回调，所以要删掉）
+                    del self.buf[comment]
                 else:
-                    print('无效的prepare识别码', buf['prepare'])
+                    raise Exception('无效的prepare识别码')
+
             except websockets.exceptions.ConnectionClosedOK:
                 print('客户端订阅连接正常关闭')
                 break
@@ -752,94 +644,148 @@ class WebsocketSubscribe(object):
                 print('客户端订阅连接断开，且没有收到关闭代码')
                 break
 
-    async def _get_order(self):
-        async with self.order_lock:
-            self.order += 1
-            if self.order > 1000000:
-                self.order = 0
-            return self.order
-
-    @staticmethod
-    async def _prepare_precise(msg, callback):
+    async def close(self):
         """
-        由于订阅数据的特殊性，comment这种多余的数据几乎不可能去掉，去掉就没法识别了
-        所以不可以在分流的地方处理
-        那么就写一个前置函数，让前置函数处理完数据格式之后，再调用用户的callback把东西发回去
-        所以调用流程是
-        _on_message -> _prepare -> callback
+        关闭Websocket连接
         """
-        res = msg['data']
-        asyncio.create_task(callback(res))
+        await self.ws.close()
 
-    @staticmethod
-    async def _prepare_dict(msg, callback):
-        res = msg['data']
-        asyncio.create_task(callback(res))
+    def generate_future(self):
+        """
+        用来生成一个类似js的Promise对象，在python中为future对象，其在set_result之前可以用于await等待，并可以后续设置数据接收结果\n
+        会自动将生成的future的id用作订阅comment
+        """
+        # 生成future用于接收异步结果
+        future = asyncio.get_running_loop().create_future()
 
-    @staticmethod
-    async def _prepare_fuzzy(msg, callback):
-        del msg['comment']
-        asyncio.create_task(callback([msg]))
+        # 此函数利用闭包特性设置上面的future结果
+        async def callback(result):
+            future.set_result(result)
 
-    @staticmethod
-    async def _prepare_all(msg, callback):
-        del msg['comment']
-        asyncio.create_task(callback([msg]))
+        # 将函数放入buf等待收到数据后调用
+        self.buf[id(future)] = {
+            'prepare': 'NOT_SUBSCRIBE',
+            'callback': callback
+        }
 
-    async def subscribe_precise(self, tags: Set[str], callback, init=False):
-        order = await self._get_order()
-        self.buf[order] = {
+        return future
+
+    async def update(self, tags: Union[Set[str], List[str]], value, timestamp: int = None):
+        await self.ws.send(json.dumps({
+            'mode': 'SET',
+            'tags': list(tags),
+            'value': value,
+            'timestamp': timestamp
+        }))
+
+    async def get_precise(self, tags: Union[Set[str], List[str]]):
+        future = self.generate_future()
+
+        await self.ws.send(json.dumps({
+            'mode': 'GET',
+            'tags': list(tags),
+            'comment': id(future)
+        }))
+
+        res = await future
+        return res
+
+    async def get_dict(self, tags: Union[Set[str], List[str]], comment=''):
+        future = self.generate_future()
+
+        await self.ws.send(json.dumps({
+            'mode': 'GET_DICT',
+            'tags': list(tags),
+            'comment': id(future)
+        }))
+
+        res = await future
+        return res
+
+    async def get_fuzzy(self, tags: Union[Set[str], List[str]], comment=''):
+        future = self.generate_future()
+
+        await self.ws.send(json.dumps({
+            'mode': 'GET_FUZZY',
+            'tags': list(tags),
+            'comment': id(future)
+        }))
+
+        res = await future
+        return res
+
+    async def get_all(self, comment=''):
+        future = self.generate_future()
+
+        await self.ws.send(json.dumps({
+            'mode': 'GET_ALL',
+            'comment': id(future)
+        }))
+
+        res = await future
+        return res
+
+    async def subscribe_precise(self, tags: Union[Set[str], List[str]], callback, init=False):
+        want_to_buf = {
             'prepare': 'PRECISE',
             'callback': callback
         }
+        comment = id(want_to_buf)
+        self.buf[comment] = want_to_buf
+
         want_send = {
             'mode': 'SUBSCRIBE_PRECISE',
             'tags': list(tags),
-            'comment': order
+            'comment': comment
         }
         if init:
             want_send['init'] = True
         await self.ws.send(json.dumps(want_send))
 
-    async def subscribe_dict(self, tags: Set[str], callback, init=False):
-        order = await self._get_order()
-        self.buf[order] = {
+    async def subscribe_dict(self, tags: Union[Set[str], List[str]], callback, init=False):
+        want_to_buf = {
             'prepare': 'DICT',
             'callback': callback
         }
+        comment = id(want_to_buf)
+        self.buf[comment] = want_to_buf
+
         want_send = {
             'mode': 'SUBSCRIBE_DICT',
             'tags': list(tags),
-            'comment': order
+            'comment': comment
         }
         if init:
             want_send['init'] = True
         await self.ws.send(json.dumps(want_send))
 
-    async def subscribe_fuzzy(self, tags: Set[str], callback, init=False):
-        order = await self._get_order()
-        self.buf[order] = {
+    async def subscribe_fuzzy(self, tags: Union[Set[str], List[str]], callback, init=False):
+        want_to_buf = {
             'prepare': 'FUZZY',
             'callback': callback
         }
+        comment = id(want_to_buf)
+        self.buf[comment] = want_to_buf
+
         want_send = {
             'mode': 'SUBSCRIBE_FUZZY',
             'tags': list(tags),
-            'comment': order
+            'comment': comment
         }
         if init:
             want_send['init'] = True
         await self.ws.send(json.dumps(want_send))
 
     async def subscribe_all(self, callback, init=False):
-        order = await self._get_order()
-        self.buf[order] = {
+        want_to_buf = {
             'prepare': 'ALL',
             'callback': callback
         }
+        comment = id(want_to_buf)
+
         want_send = {
             'mode': 'SUBSCRIBE_ALL',
-            'comment': order
+            'comment': comment
         }
         if init:
             want_send['init'] = True
@@ -864,20 +810,11 @@ async def create_adapter(core: Core):
 
 async def create_client():
     """
-    创建一个操作客户端
+    创建一个数据中心客户端
     """
     adapter = WebsocketClient()
     await adapter.init()
     return adapter
-
-
-async def create_subscribe():
-    """
-    创建一个订阅客户端
-    """
-    obj = WebsocketSubscribe()
-    await obj.init()
-    return obj
 
 
 async def _main():

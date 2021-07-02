@@ -16,8 +16,8 @@ import functools
 import base64
 
 # 导入币安api、脚本管理器
-import binance_api
-import data_center
+import binance
+import datacenter
 import script_manager
 
 nest_asyncio.apply()  # 开启async嵌套
@@ -34,7 +34,7 @@ log.setLevel(logging.ERROR)
 loop = asyncio.get_event_loop()
 
 # 创建公用币安api对象
-operator: binance_api.Operator = loop.run_until_complete(binance_api.create_operator())
+operator: binance.Operator = loop.run_until_complete(binance.create_operator())
 
 # 创建公用脚本管理器对象
 sm: script_manager.Core = script_manager.Core(loop)
@@ -243,7 +243,7 @@ async def isolated_transfer(asset: str, symbol: str, to: str, amount):
         'transFrom': _from,
         'transTo': to,
         'amount': amount,
-        'timestamp': binance_api.get_timestamp()
+        'timestamp': binance.get_timestamp()
     })
 
     return {
@@ -258,7 +258,7 @@ async def query_interest(asset):
     asset = asset.upper()
     info = await operator.request('api', '/sapi/v1/margin/interestRateHistory', 'GET', {
         'asset': asset,
-        'timestamp': binance_api.get_timestamp()
+        'timestamp': binance.get_timestamp()
     })
 
     res_data = []
@@ -291,14 +291,14 @@ async def loan(asset, is_isolated, symbol, amount):
             'isIsolated': is_isolated,
             'symbol': symbol,
             'amount': amount,
-            'timestamp': binance_api.get_timestamp()
+            'timestamp': binance.get_timestamp()
         })
     elif is_isolated == 'FALSE':
         await operator.request('api', '/sapi/v1/margin/loan', 'POST', {
             'asset': asset,
             'isIsolated': is_isolated,
             'amount': amount,
-            'timestamp': binance_api.get_timestamp()
+            'timestamp': binance.get_timestamp()
         })
     else:
         return {
@@ -324,14 +324,14 @@ async def repay(asset, is_isolated, symbol, amount):
             'isIsolated': is_isolated,
             'symbol': symbol,
             'amount': amount,
-            'timestamp': binance_api.get_timestamp()
+            'timestamp': binance.get_timestamp()
         })
     elif is_isolated == 'FALSE':
         await operator.request('api', '/sapi/v1/margin/repay', 'POST', {
             'asset': asset,
             'isIsolated': is_isolated,
             'amount': amount,
-            'timestamp': binance_api.get_timestamp()
+            'timestamp': binance.get_timestamp()
         })
     else:
         return {
@@ -365,7 +365,7 @@ async def force_refresh_balance():
     不会从websocket接口接收信息，而是使用http接口请求信息
     最终数据会更新到数据中心上
     """
-    datacenter_client = await data_center.create_client()
+    datacenter_client = await datacenter.create_client()
 
     run_gather = []
 

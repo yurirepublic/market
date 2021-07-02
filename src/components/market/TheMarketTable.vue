@@ -86,8 +86,7 @@ export default {
 
       showDetail: false,
 
-      ws: null,
-      subscribe: null   // 当前正在连接的websocket
+      ws: null   // 当前正在连接的websocket
     }
   },
   methods: {
@@ -95,7 +94,6 @@ export default {
   },
   mounted: async function() {
     this.ws = await this.connectDataCenter()
-    this.subscribe = await this.connectSubscribe()
 
     // 获取当前资金费率
     let fundingRate = await this.ws.getDict(['premium', 'fundingRate'])
@@ -188,7 +186,7 @@ export default {
     }
 
     // 订阅当前费率
-    await this.subscribe.dict(['premium', 'fundingRate'], msg => {
+    await this.ws.subscribeDict(['premium', 'fundingRate'], msg => {
       for (const symbol of Object.keys(msg)) {
         if (symbol in this.cache) {
           let index = this.cache[symbol]
@@ -198,7 +196,7 @@ export default {
     })
 
     // 订阅历史费率（平均费率）
-    await this.subscribe.dict(['premium', 'fundingRateHistory'], msg => {
+    await this.ws.subscribeDict(['premium', 'fundingRateHistory'], msg => {
       for (const symbol of Object.keys(msg)) {
         if (symbol in this.cache) {
           let index = this.cache[symbol]
@@ -213,7 +211,7 @@ export default {
     })
 
     // 订阅现货币价
-    await this.subscribe.dict(['price', 'main'], msg => {
+    await this.ws.subscribeDict(['price', 'main'], msg => {
       for (const symbol of Object.keys(msg)) {
         if (symbol in this.cache) {
           let index = this.cache[symbol]
@@ -224,7 +222,7 @@ export default {
     })
 
     // 订阅期货溢价
-    await this.subscribe.dict(['premium', 'rate'], msg => {
+    await this.ws.subscribeDict(['premium', 'rate'], msg => {
       for (const symbol of Object.keys(msg)) {
         if (symbol in this.cache) {
           let index = this.cache[symbol]

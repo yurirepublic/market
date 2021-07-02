@@ -87,10 +87,9 @@ export default {
 
   mounted: async function() {
     this.ws = await this.connectDataCenter()
-    this.sub = await this.connectSubscribe()
 
     // 订阅一下History
-    await this.sub.dict(['premium', 'fundingRateHistory'], msg => {
+    await this.ws.subscribeDict(['premium', 'fundingRateHistory'], msg => {
       for (const key of Object.keys(msg)) {
         if (this.cache[key] === undefined) {
           this.cache[key] = {}
@@ -99,7 +98,7 @@ export default {
       }
 
     }, true)
-    await this.sub.dict(['premium', 'fundingRateHistory', 'timestamp'], msg => {
+    await this.ws.subscribeDict(['premium', 'fundingRateHistory', 'timestamp'], msg => {
       for (const key of Object.keys(msg)) {
         if (this.cache[key] === undefined) {
           this.cache[key] = {}

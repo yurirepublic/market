@@ -79,6 +79,9 @@ server info port subscribe [nickname]
 脚本管理器
 json scriptManager status
 
+警报
+alarm common
+
 
 ```
 

@@ -189,24 +189,53 @@ let localConfig = {
   },
   set dataUrl(val) {
     localStorage.dataUrl = val
-  },
-  get subscribeUrl() {
-    return localStorage.subscribeUrl
-  },
-  set subscribeUrl(val) {
-    localStorage.subscribeUrl = val
   }
 }
 
 // 全局公用的数据中心websocket对象
-let globalDatacenterWebsocket = generateDataCenterWebsocket()
+let globalDatacenterWebsocket = generateDataCenterWebsocket()   // 初始化时就直接开始连接服务器
 
 async function generateDataCenterWebsocket() {
-  let nickname = '全局数据'
-  let buf = {}
-  let order = 0
+  let nickname = '全局数据'   // 原本设计是用于多个连接区分名字的，现在全部共用一个连接，似乎就没必要了
+  let buf = {}    // 接收响应的缓冲区
+  let order = 0   // 响应流水号，用于区分每个响应通道
+
   // 创建websocket
   let ws = new WebSocket(localConfig.dataUrl)
+
+  // 定义接收和关闭行为
+  ws.onmessage = msg => {
+    // 将消息提取出来，根据buf内的回调函数传递数据
+    msg = JSON.parse(msg.data)
+    let comment = msg['comment']
+    let item = buf[comment]
+
+    let prepare_mode = item['prepare']
+    let callback = item['callback']
+
+    if (prepare_mode === 'PRECISE') {
+      let res = msg['data']
+      callback(res)
+    } else if (prepare_mode === 'DICT') {
+      let res = msg['data']
+      callback(res)
+    } else if (prepare_mode === 'FUZZY') {
+      delete msg['comment']
+      callback(msg)
+    } else if (prepare_mode === 'ALL') {
+      delete msg['comment']
+      callback(msg)
+    } else if (prepare_mode === 'NOT_SUBSCRIBE') {
+      let res = msg['data']
+      callback(res)
+      // 非订阅需要释放掉buf占用
+      delete buf[comment]
+    }
+  }
+  ws.onclose = msg => {
+    console.warn(nickname, '数据连接被关闭', msg)
+  }
+
   // 等待websocket连接完毕
   await new Promise(resolve => {
     ws.onopen = async msg => {
@@ -215,34 +244,49 @@ async function generateDataCenterWebsocket() {
       console.log(nickname, '数据连接密钥发送成功')
       resolve()
     }
-    ws.onmessage = msg => {
-      // 将消息提取出来，根据buf内的回调函数传递数据
-      msg = JSON.parse(msg.data)
-      let comment = msg['comment']
-      let data = msg['data']
-      // 触发回调
-      buf[comment](data)
-      // 删除字典元素
-      delete buf[comment]
-    }
-    ws.onclose = msg => {
-      console.warn(nickname, '数据连接被关闭', msg)
-    }
   })
+
+  // 用于生成不重复使用的编号
   let getOrder = function() {
-    return order++
+    while (true) {
+      // 超过10000000(一千万)就归零避免数字溢出
+      if (order > 1000000) {
+        order = 0
+      }
+      // 已经使用过的就跳过重新生成
+      if (buf[order] !== undefined) {
+        order++
+        continue
+      }
+      // 返回生成的order
+      return order++
+    }
   }
-  let generateGetPromise = function(order) {
+
+  // 用于生成接收响应的promise，仅供get方式使用，不给订阅使用
+  let createResponsePromise = function(order) {
     return new Promise(resolve => {
-      buf[order] = function(data) {
-        resolve(data)
+      buf[order] = {
+        prepare: 'NOT_SUBSCRIBE',
+        callback: function(res) {
+          resolve(res)
+        }
       }
     })
   }
+
+  // 返回方法
   return {
-    getData: async function(tags) {
+    update: async function(tags, value) {
+      ws.send(JSON.stringify({
+        mode: 'SET',
+        tags: tags,
+        value: value
+      }))
+    },
+    getPrecise: async function(tags) {
       let order = getOrder()
-      let promise = generateGetPromise(order)
+      let promise = createResponsePromise(order)
       ws.send(JSON.stringify({
         mode: 'GET',
         tags: tags,
@@ -252,7 +296,7 @@ async function generateDataCenterWebsocket() {
     },
     getDict: async function(tags) {
       let order = getOrder()
-      let promise = generateGetPromise(order)
+      let promise = createResponsePromise(order)
       ws.send(JSON.stringify({
         mode: 'GET_DICT',
         tags: tags,
@@ -262,7 +306,7 @@ async function generateDataCenterWebsocket() {
     },
     getFuzzy: async function(tags) {
       let order = getOrder()
-      let promise = generateGetPromise(order)
+      let promise = createResponsePromise(order)
       ws.send(JSON.stringify({
         mode: 'GET_FUZZY',
         tags: tags,
@@ -272,18 +316,62 @@ async function generateDataCenterWebsocket() {
     },
     getAll: async function() {
       let order = getOrder()
-      let promise = generateGetPromise(order)
+      let promise = createResponsePromise(order)
       ws.send(JSON.stringify({
         mode: 'GET_ALL',
         comment: order
       }))
       return await promise
     },
-    setData: async function(tags, val) {
-      ws.send(JSON.stringify({
-        mode: 'SET',
+    subscribePrecise: async function(tags, callback, init = false) {
+      let order = getOrder()
+      buf[order] = {
+        prepare: 'PRECISE',
+        callback: callback
+      }
+      await ws.send(JSON.stringify({
+        mode: 'SUBSCRIBE_PRECISE',
         tags: tags,
-        value: val
+        comment: order,
+        init: init
+      }))
+    },
+    subscribeDict: async function(tags, callback, init = false) {
+      let order = getOrder()
+      buf[order] = {
+        prepare: 'DICT',
+        callback: callback
+      }
+      await ws.send(JSON.stringify({
+        mode: 'SUBSCRIBE_DICT',
+        tags: tags,
+        comment: order,
+        init: init
+      }))
+    },
+    subscribeFuzzy: async function(tags, callback, init = false) {
+      let order = getOrder()
+      buf[order] = {
+        prepare: 'FUZZY',
+        callback: callback
+      }
+      await ws.send(JSON.stringify({
+        mode: 'SUBSCRIBE_FUZZY',
+        tags: tags,
+        comment: order,
+        init: init
+      }))
+    },
+    subscribeAll: async function(callback, init = false) {
+      let order = getOrder()
+      buf[order] = {
+        prepare: 'ALL',
+        callback: callback
+      }
+      await ws.send(JSON.stringify({
+        mode: 'SUBSCRIBE_ALL',
+        comment: order,
+        init: init
       }))
     },
     close: async function(code = 1000) {
@@ -295,114 +383,6 @@ async function generateDataCenterWebsocket() {
 // 单例模式创建数据中心连接
 async function connectDataCenter() {
   return await globalDatacenterWebsocket
-}
-
-let globalSubscribeWebsocket = generateSubscribeWebsocket()   // 全局公用的订阅socket对象promise
-
-async function generateSubscribeWebsocket() {
-  let nickname = '全局订阅'
-  let subscribe = {}    // 用来订阅的字典，key是分配的comment，value是{prepare: 分流类型, callback: 回调函数}
-  let order = 0
-  let getOrder = function() {
-    return order++
-  }
-  // 创建websocket
-  let ws = new WebSocket(localConfig.subscribeUrl)
-  await new Promise(resolve => {
-    ws.onopen = async msg => {
-      console.log(nickname, '订阅连接成功打开', msg)
-      await ws.send(localConfig.password)
-      console.log(nickname, '订阅连接密钥发送成功')
-      resolve()
-    }
-    ws.onmessage = msg => {
-      msg = JSON.parse(msg.data)
-      let buf = subscribe[msg['comment']]
-      if (buf['prepare'] === 'PRECISE') {
-        let res = msg['data']
-        buf['callback'](res)
-      } else if (buf['prepare'] === 'DICT') {
-        let res = msg['data']
-        buf['callback'](res)
-      } else if (buf['prepare'] === 'FUZZY') {
-        delete msg['comment']
-        buf['callback'](msg)
-      } else if (buf['prepare'] === 'ALL') {
-        delete msg['comment']
-        buf['callback'](msg)
-      }
-
-    }
-    ws.onclose = msg => {
-      console.warn(nickname, '订阅连接被关闭', msg)
-    }
-  })
-
-
-  return {
-    precise: async function(tags, callback, init = false) {
-      let order = getOrder()
-      subscribe[order] = {
-        prepare: 'PRECISE',
-        callback: callback
-      }
-      await ws.send(JSON.stringify({
-        mode: 'SUBSCRIBE_PRECISE',
-        tags: tags,
-        comment: order,
-        init: init
-      }))
-    },
-    dict: async function(tags, callback, init = false) {
-      let order = getOrder()
-      subscribe[order] = {
-        prepare: 'DICT',
-        callback: callback
-      }
-      await ws.send(JSON.stringify({
-        mode: 'SUBSCRIBE_DICT',
-        tags: tags,
-        comment: order,
-        init: init
-      }))
-    },
-    fuzzy: async function(tags, callback, init = false) {
-      let order = getOrder()
-      subscribe[order] = {
-        prepare: 'FUZZY',
-        callback: callback
-      }
-      await ws.send(JSON.stringify({
-        mode: 'SUBSCRIBE_FUZZY',
-        tags: tags,
-        comment: order,
-        init: init
-      }))
-    },
-    all: async function(callback, init = false) {
-      let order = getOrder()
-      subscribe[order] = {
-        prepare: 'ALL',
-        callback: callback
-      }
-      await ws.send(JSON.stringify({
-        mode: 'SUBSCRIBE_ALL',
-        comment: order,
-        init: init
-      }))
-    },
-    // 如果需要完整接管数据接收，可以修改此回调
-    set onmessage(func) {
-      ws.onmessage = func
-    },
-    close: async function(code = 1000) {
-      ws.close(code)
-    }
-  }
-}
-
-async function connectSubscribe() {
-  return await globalSubscribeWebsocket
 }
 
 const average = arr => arr.reduce((acc, val) => acc + val, 0) / arr.length
@@ -435,7 +415,7 @@ export default {
     Vue.prototype.average = average
     Vue.prototype.localConfig = localConfig
     Vue.prototype.connectDataCenter = connectDataCenter
-    Vue.prototype.connectSubscribe = connectSubscribe
+    // Vue.prototype.connectSubscribe = connectSubscribe
     Vue.prototype.timestamp2str = timestamp2str
   }
 }

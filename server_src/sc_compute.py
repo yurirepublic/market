@@ -1,7 +1,7 @@
 """
 获取配对的现货与期货价格，并计算溢价
 """
-import data_center
+import datacenter
 import script_manager
 import asyncio
 import copy
@@ -25,26 +25,25 @@ class Script(script_manager.Script):
         loop.run_forever()
 
     async def _main(self):
-        self.subscribe = await data_center.create_subscribe()
-        self.client = await data_center.create_client()
+        self.client = await datacenter.create_client()
 
         # 订阅期货和现货价格
-        await self.subscribe.subscribe_dict({'price', 'main'}, self.calc_premium)
-        await self.subscribe.subscribe_dict({'price', 'future'}, self.calc_premium)
+        await self.client.subscribe_dict({'price', 'main'}, self.calc_premium)
+        await self.client.subscribe_dict({'price', 'future'}, self.calc_premium)
 
         # 订阅自己持仓情况
-        await self.subscribe.subscribe_dict({'asset', 'main'}, self.calc_position)
+        await self.client.subscribe_dict({'asset', 'main'}, self.calc_position)
 
-        await self.subscribe.subscribe_dict({'asset', 'margin'}, self.calc_position)
-        await self.subscribe.subscribe_dict({'borrowed', 'margin'}, self.calc_position)
+        await self.client.subscribe_dict({'asset', 'margin'}, self.calc_position)
+        await self.client.subscribe_dict({'borrowed', 'margin'}, self.calc_position)
 
-        await self.subscribe.subscribe_dict({'asset', 'isolated', 'base'}, self.calc_position)
-        await self.subscribe.subscribe_dict({'borrowed', 'isolated', 'base'}, self.calc_position)
+        await self.client.subscribe_dict({'asset', 'isolated', 'base'}, self.calc_position)
+        await self.client.subscribe_dict({'borrowed', 'isolated', 'base'}, self.calc_position)
 
-        await self.subscribe.subscribe_dict({'asset', 'isolated', 'quote'}, self.calc_position)
-        await self.subscribe.subscribe_dict({'borrowed', 'isolated', 'quote'}, self.calc_position)
+        await self.client.subscribe_dict({'asset', 'isolated', 'quote'}, self.calc_position)
+        await self.client.subscribe_dict({'borrowed', 'isolated', 'quote'}, self.calc_position)
 
-        await self.subscribe.subscribe_dict({'position', 'future'}, self.calc_position)
+        await self.client.subscribe_dict({'position', 'future'}, self.calc_position)
 
         # 启动风险率计算协程
         asyncio.create_task(self.calc_risk_interval())
@@ -244,7 +243,7 @@ class Script(script_manager.Script):
     async def calc_risk(self):
         # 获取期货的仓位和USDT余额
         position = await self.client.get_dict({'position', 'future'})
-        usdt = await self.client.get({'asset', 'future', 'USDT'})
+        usdt = await self.client.get_precise({'asset', 'future', 'USDT'})
         if usdt is None:
             usdt = 0
 

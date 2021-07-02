@@ -129,7 +129,7 @@ export default {
       showDetail: false,
 
       ws: null,
-      subscribe: null
+      ws: null
     }
 
   },
@@ -172,10 +172,9 @@ export default {
   },
   mounted: async function() {
     this.ws = await this.connectDataCenter()
-    this.subscribe = await this.connectSubscribe()
 
     // 订阅仓位数据
-    await this.subscribe.precise(['json', 'position'], msg => {
+    await this.ws.subscribePrecise(['json', 'position'], msg => {
       console.log('持仓信息更新')
       this.items = msg
       this.cache = {}
@@ -206,7 +205,7 @@ export default {
     // }, true)
 
     // 订阅资金费率
-    await this.subscribe.dict(['premium', 'fundingRate'], msg => {
+    await this.ws.subscribeDict(['premium', 'fundingRate'], msg => {
       for (const symbol of Object.keys(msg)) {
         // 确保要是USDT交易对的费率
         if (symbol.endsWith('USDT')) {
@@ -219,7 +218,7 @@ export default {
     }, true)
 
     // 订阅期货溢价
-    await this.subscribe.dict(['premium', 'rate'], msg => {
+    await this.ws.subscribeDict(['premium', 'rate'], msg => {
       for (const symbol of Object.keys(msg)) {
         // 确保要是USDT交易对的费率
         if (symbol.endsWith('USDT')) {
@@ -261,8 +260,8 @@ export default {
     // this.updateInterval = setInterval(async () => {
     //   // 逐条更新费率和溢价
     //   const updateHandle = async (item) => {
-    //     item['fundingRate'] = await this.ws.getData(['premium', 'fundingRate', item['symbol'] + 'USDT'])
-    //     item['premiumRate'] = await this.ws.getData(['premium', 'rate', item['symbol'] + 'USDT'])
+    //     item['fundingRate'] = await this.ws.getPrecise(['premium', 'fundingRate', item['symbol'] + 'USDT'])
+    //     item['premiumRate'] = await this.ws.getPrecise(['premium', 'rate', item['symbol'] + 'USDT'])
     //   }
     //   this.items.forEach(e => {
     //     updateHandle(e)

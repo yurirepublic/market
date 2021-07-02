@@ -106,7 +106,6 @@ export default {
       focusUrl: '', // 当前选中服务器的的url，包含ip和端口，可直接访问
 
       ws: null,
-      subscribe: null
     }
   },
   watch: {
@@ -116,7 +115,6 @@ export default {
   },
   mounted: async function() {
     this.ws = await this.connectDataCenter()
-    this.subscribe = await this.connectSubscribe()
 
     // 获取服务器和端口
     let ip = await this.ws.getDict(['server', 'info', 'ip'])
@@ -132,7 +130,7 @@ export default {
 
     // 根据当前已有的服务器，订阅脚本运行状态
     for (const nickname of this.radioOptions) {
-      await this.subscribe.precise(['json', 'scriptManager', 'status', nickname], msg => {
+      await this.ws.subscribePrecise(['json', 'scriptManager', 'status', nickname], msg => {
         this.$set(this.scriptStatusDict, nickname, JSON.parse(msg))
       }, true)
     }

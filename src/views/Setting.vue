@@ -23,12 +23,6 @@
           placeholder=''
           v-model='dataUrl'
         ></trade-input>
-        <trade-input
-          class='mt-1'
-          header='数据订阅接口'
-          placeholder=''
-          v-model='subscribeUrl'
-        ></trade-input>
         <button
           class='btn btn-primary mt-3 px-2'
           @click='Save'
@@ -52,14 +46,12 @@ export default {
       serverUrl: '',
       password: '',
       dataUrl: '',
-      subscribeUrl: ''
     }
   },
   mounted: async function() {
     this.serverUrl = this.localConfig.serverUrl
     this.password = this.localConfig.password
     this.dataUrl = this.localConfig.dataUrl
-    this.subscribeUrl = this.localConfig.subscribeUrl
   },
   methods: {
     Save: function() {
@@ -67,7 +59,6 @@ export default {
         this.localConfig.serverUrl = this.serverUrl
         this.localConfig.password = this.password
         this.localConfig.dataUrl = this.dataUrl
-        this.localConfig.subscribeUrl = this.subscribeUrl
         this.showToast.success('成功保存设置')
       } catch (e) {
         this.showToast.error('保存设置失败')

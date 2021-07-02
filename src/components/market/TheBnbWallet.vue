@@ -74,24 +74,25 @@ export default {
 
       showTransfer: false,   // 显示转账输入框
 
-      disabledTransferButton: false
+      disabledTransferButton: false,
+
+      ws: null,   // websocket连接对象
     }
   },
   mounted: async function() {
     this.ws = await this.connectDataCenter()
-    this.subWs = await this.connectSubscribe()
 
-    this.BNBPrice = await this.ws.getData(['price', 'main', 'BNBUSDT'])
-    await this.subWs.precise(['asset', 'main', 'BNB'], msg => {
+    this.BNBPrice = await this.ws.getPrecise(['price', 'main', 'BNBUSDT'])
+    await this.ws.subscribePrecise(['asset', 'main', 'BNB'], msg => {
       this.mainBNB = msg
     }, true)
-    await this.subWs.precise(['asset', 'future', 'BNB'], msg => {
+    await this.ws.subscribePrecise(['asset', 'future', 'BNB'], msg => {
       this.futureBNB = msg
     }, true)
-    await this.subWs.precise(['asset', 'margin', 'BNB'], msg => {
+    await this.ws.subscribePrecise(['asset', 'margin', 'BNB'], msg => {
       this.marginBNB = msg
     }, true)
-    await this.subWs.precise(['price', 'main', 'BNBUSDT'], msg => {
+    await this.ws.subscribePrecise(['price', 'main', 'BNBUSDT'], msg => {
       this.BNBPrice = msg
     }, true)
   },

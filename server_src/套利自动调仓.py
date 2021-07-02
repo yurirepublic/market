@@ -1,6 +1,6 @@
 import script_manager
-import binance_api
-import binance_api as bi
+import binance
+import binance as bi
 import time
 import script_manager
 import json
@@ -32,7 +32,7 @@ class Script(script_manager.Script):
         return info
 
     def main(self):
-        operator = binance_api.SmartOperator()  # 实例化一个币安api的操作者
+        operator = binance.SmartOperator()  # 实例化一个币安api的操作者
 
         # 从用户输入获取
         close_symbol = str(self.input_dict['close_symbol'])
@@ -80,7 +80,7 @@ class Script(script_manager.Script):
                 # 平仓币数，就等于 差多少钱/平仓减仓钱
                 coin = need / (main_price + future_price * margin_rate)
                 # 转为最低精度
-                coin = binance_api.float_to_str_floor(
+                coin = binance.float_to_str_floor(
                     coin, operator.get_symbol_precision(close_symbol))
                 self.log('需要平仓', coin, close_symbol)
 

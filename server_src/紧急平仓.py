@@ -1,4 +1,4 @@
-import binance_api
+import binance
 import time
 import script_manager
 import json
@@ -16,7 +16,7 @@ class Script(script_manager.Script):
         return info
 
     def main(self):
-        operator = binance_api.SmartOperator()  # 实例化一个币安api的操作者
+        operator = binance.SmartOperator()  # 实例化一个币安api的操作者
 
         while True:
             # 获取余额

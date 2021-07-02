@@ -169,9 +169,9 @@ export default {
       // 提前获取需要的信息
       this.banReason = ''
       this.isLoading = true
-      let mainPrice = this.ws.getData(['price', 'main', this.pairSymbol]) // 交易对单价
-      let futurePrice = this.ws.getData(['price', 'future', this.pairSymbol])
-      let fundingRate = this.ws.getData(['premium', 'fundingRate', this.pairSymbol])  // 资金费率
+      let mainPrice = this.ws.getPrecise(['price', 'main', this.pairSymbol]) // 交易对单价
+      let futurePrice = this.ws.getPrecise(['price', 'future', this.pairSymbol])
+      let fundingRate = this.ws.getPrecise(['premium', 'fundingRate', this.pairSymbol])  // 资金费率
 
       this.mainPrice = await mainPrice
       this.futurePrice = await futurePrice
@@ -189,8 +189,8 @@ export default {
         this.banReason = '无法获取该交易对资金费率'
         return
       }
-      let mainPrecision = this.ws.getData(['precision', 'quote', 'main', this.pairSymbol])
-      let futurePrecision = this.ws.getData(['precision', 'quote', 'future', this.pairSymbol])
+      let mainPrecision = this.ws.getPrecise(['precision', 'quote', 'main', this.pairSymbol])
+      let futurePrecision = this.ws.getPrecise(['precision', 'quote', 'future', this.pairSymbol])
       mainPrecision = await mainPrecision
       futurePrecision = await futurePrecision
       this.quotePrecision = Math.min(mainPrecision, futurePrecision)

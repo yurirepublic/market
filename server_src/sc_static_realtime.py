@@ -1,6 +1,6 @@
 import script_manager
-import binance_api
-import data_center
+import binance
+import datacenter
 import json
 import asyncio
 
@@ -23,15 +23,15 @@ class Script(script_manager.Script):
         loop.run_forever()
 
     async def _main(self):
-        self.operator = await binance_api.create_operator()
-        self.dc = await data_center.create_client()
+        self.binance = await binance.create_operator()
+        self.client = await datacenter.create_client()
 
         while True:
-            premium = await self.operator.request('fapi', '/fapi/v1/premiumIndex', 'GET', {})
+            premium = await self.binance.request('fapi', '/fapi/v1/premiumIndex', 'GET', {})
             for e in premium:
                 symbol = e['symbol']
                 rate = float(e['lastFundingRate'])
                 server_time = e['time']
-                asyncio.create_task(self.dc.update({'premium', 'fundingRate', symbol}, rate, server_time))
+                asyncio.create_task(self.client.update({'premium', 'fundingRate', symbol}, rate, server_time))
 
             await asyncio.sleep(60)

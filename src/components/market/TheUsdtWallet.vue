@@ -62,20 +62,18 @@ export default {
       showTransfer: false,
 
       ws: null,
-      subWs: null
     }
   },
   mounted: async function() {
     this.ws = await this.connectDataCenter()
-    this.subWs = await this.connectSubscribe()
     // 订阅资产变动
-    await this.subWs.precise(['asset', 'main', 'USDT'], msg => {
+    await this.ws.subscribePrecise(['asset', 'main', 'USDT'], msg => {
       this.mainFree = msg
     }, true)
-    await this.subWs.precise(['asset', 'future', 'USDT'], msg => {
+    await this.ws.subscribePrecise(['asset', 'future', 'USDT'], msg => {
       this.futureFree = msg
     }, true)
-    await this.subWs.precise(['asset', 'margin', 'USDT'], msg => {
+    await this.ws.subscribePrecise(['asset', 'margin', 'USDT'], msg => {
       this.marginFree = msg
     }, true)
   },

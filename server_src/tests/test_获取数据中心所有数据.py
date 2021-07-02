@@ -1,9 +1,9 @@
-import data_center
+import datacenter
 
 
 def main():
     print('使用websocket接口')
-    ws = data_center.WebsocketClient()
+    ws = datacenter.WebsocketClient()
     print('所有数据', ws.get_all())
     print('不存在的数据', ws.get(['FUCK', 'BULLSHIT']))
     print('模糊数据', ws.get(['main', 'asset']))

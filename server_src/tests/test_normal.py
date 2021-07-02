@@ -3,7 +3,7 @@ import traceback
 import time
 import script_manager
 import random
-import binance_api
+import binance
 import json
 
 

@@ -39,14 +39,12 @@ export default {
       average: 0,
 
       ws: null,
-      subscribe: null
     }
   },
   mounted: async function() {
     this.ws = await this.connectDataCenter()
-    this.subscribe = await this.connectSubscribe()
 
-    await this.subscribe.precise(['json', 'fundingFee'], async msg => {
+    await this.ws.subscribePrecise(['json', 'fundingFee'], async msg => {
       await this.fillData(msg)
     }, true)
 

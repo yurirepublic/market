@@ -2,7 +2,7 @@ import websocket
 import time
 import _thread
 import json
-import binance_api
+import binance
 
 
 def on_open(ws):
@@ -25,7 +25,7 @@ def on_close(ws):
 
 
 def main():
-    operator = binance_api.SmartOperator()
+    operator = binance.SmartOperator()
     listen_key = operator.create_listen_key('MAIN')
 
     websocket.enableTrace(True)

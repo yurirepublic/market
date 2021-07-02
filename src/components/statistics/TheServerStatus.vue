@@ -73,14 +73,12 @@ export default {
 
 
       ws: null,
-      subscribe: null,
 
       loading: true
     }
   },
   mounted: async function() {
     this.ws = await this.connectDataCenter()
-    this.subscribe = await this.connectSubscribe()
 
 
     // 获取有什么服务器
@@ -114,7 +112,7 @@ export default {
 
 
       // 订阅服务器计数器信息
-      await this.subscribe.dict(['server', 'status', 'usage', 'cpu', nickname], (msg) => {
+      await this.ws.subscribeDict(['server', 'status', 'usage', 'cpu', nickname], (msg) => {
         for (const key of Object.keys(msg)) {
           switch (key) {
             case 'percent':
@@ -136,7 +134,7 @@ export default {
 
       })
 
-      await this.subscribe.dict(['server', 'status', 'usage', 'ram', nickname], (msg) => {
+      await this.ws.subscribeDict(['server', 'status', 'usage', 'ram', nickname], (msg) => {
         for (const key of Object.keys(msg)) {
           switch (key) {
             case 'percent':
@@ -156,7 +154,7 @@ export default {
 
       })
 
-      await this.subscribe.dict(['server', 'status', 'usage', 'disk', nickname], (msg) => {
+      await this.ws.subscribeDict(['server', 'status', 'usage', 'disk', nickname], (msg) => {
         for (const key of Object.keys(msg)) {
           switch (key) {
             case 'percent':

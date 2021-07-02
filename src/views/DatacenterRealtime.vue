@@ -30,14 +30,12 @@ export default {
 
       loading: false,
 
-      ws: null,
-      subscribe: null
+      ws: null
     }
   },
 
   mounted: async function() {
     this.ws = await this.connectDataCenter()
-    this.subscribe = await this.connectSubscribe()
 
   },
   methods: {
