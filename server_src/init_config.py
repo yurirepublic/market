@@ -15,7 +15,7 @@ default_config = {
         "ssl_pem": "ssl.pem",
         "ssl_key": "ssl.key"
     },
-    "data_center": {
+    "datacenter": {
         "server_ip": "0.0.0.0",
         "server_port": 10001,
         "client_ip": "xxxxx",

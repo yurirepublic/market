@@ -349,8 +349,8 @@ class WebsocketCoreAdapter(object):
         ssl_context.load_cert_chain(config['api']['ssl_pem'], config['api']['ssl_key'])
 
         # websocket接口配置
-        server_ip = config['data_center']['server_ip']
-        server_port = config['data_center']['server_port']
+        server_ip = config['datacenter']['server_ip']
+        server_port = config['datacenter']['server_port']
 
         self.adapter = await websockets.serve(self.connect_handle, server_ip, server_port, ssl=ssl_context)
         print('成功启动数据中心websocket接口，运行在wss://{}:{}'.format(server_ip, server_port))
@@ -581,21 +581,26 @@ class WebsocketClient(object):
     """
 
     def __init__(self):
-        self.ws: websockets.WebSocketClientProtocol = None
+        self.ws = None
         self.buf = {}  # 用来暂存收到的下发消息
+
+        self.close_future = None        # 如果连接被关闭，且在recv的时候被捕获到，那么会结束这个future
 
     async def init(self):
         """
         初始化这个客户端，只能调用一次
         """
         # 连接websocket
-        client_ip = config['data_center']['client_ip']
-        client_port = config['data_center']['client_port']
+        client_ip = config['datacenter']['client_ip']
+        client_port = config['datacenter']['client_port']
         url = 'wss://{}:{}'.format(client_ip, client_port)
         print('即将连接数据中心websocket接口' + url)
         self.ws = await websockets.connect(url)
         await self.ws.send(config['password'])
         print('成功连接数据中心websocket接口')
+
+        # 初始化future
+        self.close_future = asyncio.get_running_loop().create_future()
 
         # 开始接收并转发数据
         asyncio.create_task(self._on_message())
@@ -639,9 +644,11 @@ class WebsocketClient(object):
 
             except websockets.exceptions.ConnectionClosedOK:
                 print('客户端订阅连接正常关闭')
+                self.close_future.set_result(None)
                 break
             except websockets.exceptions.ConnectionClosed:
                 print('客户端订阅连接断开，且没有收到关闭代码')
+                self.close_future.set_result(None)
                 break
 
     async def close(self):
