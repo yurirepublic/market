@@ -234,13 +234,19 @@ class Script(script_manager.Script):
 
     async def calc_risk_interval(self):
         """
-        计算风险率
+        每秒都计算期货风险率
         """
         while True:
             asyncio.create_task(self.calc_risk())
             await asyncio.sleep(1)
 
     async def calc_risk(self):
+        """
+        计算期货和全仓的风险情况并且更新到服务器上面
+        """
+        """
+        下面是期货部分
+        """
         # 获取期货的仓位和USDT余额
         position = await self.client.get_dict({'position', 'future'})
         usdt = await self.client.get_precise({'asset', 'future', 'USDT'})
@@ -263,13 +269,17 @@ class Script(script_manager.Script):
             risk = 0
         await self.client.update({'risk', 'future', 'usage'}, risk)
 
-        # 计算期货风险所需波动率（500%风险率）
-        try:
-            warning = (total + (5 * usdt - total) / 6) / total
-            warning -= 1
-        except ZeroDivisionError:
-            warning = 99999
-        await self.client.update({'risk', 'future', 'warning'}, warning)
+        # # 计算期货风险所需波动率（500%风险率）
+        # try:
+        #     warning = (total + (5 * usdt - total) / 6) / total
+        #     warning -= 1
+        # except ZeroDivisionError:
+        #     warning = 99999
+        # await self.client.update({'risk', 'future', 'warning'}, warning)
+
+        """
+        下面是全仓部分
+        """
 
         # 获取全仓的仓位和USDT余额
         margin = await self.client.get_dict({'asset', 'margin'})
@@ -318,4 +328,5 @@ class Script(script_manager.Script):
         #     margin_warning = ((0.8 * total - usdt_borrowed) / (total_borrowed - 0.8 * total))
 
         await self.client.update({'risk', 'margin', 'usage'}, margin_risk)
+
         # await self.client.update({'risk', 'margin', 'warning'}, margin_warning)

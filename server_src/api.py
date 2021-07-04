@@ -375,18 +375,18 @@ async def force_refresh_balance():
     for e in res:
         asset = e['asset']
         free = float(e['free'])
-        run_gather.append(datacenter_client.update({'asset', 'main', asset}, free))
+        run_gather.append(datacenter_client.compare_update({'asset', 'main', asset}, free))
 
     # 获取期货的资产和头寸信息
     res = await operator.request('fapi', '/fapi/v2/account', 'GET', {}, auto_timestamp=True)
     for e in res['assets']:
         asset = e['asset']
         free = float(e['maxWithdrawAmount'])
-        run_gather.append(datacenter_client.update({'asset', 'future', asset}, free))
+        run_gather.append(datacenter_client.compare_update({'asset', 'future', asset}, free))
     for e in res['positions']:
         symbol = e['symbol']
         position = float(e['positionAmt'])
-        run_gather.append(datacenter_client.update({'position', 'future', symbol}, position))
+        run_gather.append(datacenter_client.compare_update({'position', 'future', symbol}, position))
 
     # 获取全仓的资产和借贷数量
     res = await operator.request('api', '/sapi/v1/margin/account', 'GET', {}, auto_timestamp=True)
@@ -395,8 +395,8 @@ async def force_refresh_balance():
         asset = e['asset']
         borrowed = float(e['borrowed'])
         free = float(e['free'])
-        run_gather.append(datacenter_client.update({'asset', 'margin', asset}, free))
-        run_gather.append(datacenter_client.update({'borrowed', 'margin', asset}, borrowed))
+        run_gather.append(datacenter_client.compare_update({'asset', 'margin', asset}, free))
+        run_gather.append(datacenter_client.compare_update({'borrowed', 'margin', asset}, borrowed))
 
     # 获取逐仓的资产和借贷数量
     res = await operator.request('api', '/sapi/v1/margin/isolated/account', 'GET', {}, auto_timestamp=True)
@@ -406,13 +406,13 @@ async def force_refresh_balance():
 
         free = float(e['baseAsset']['free'])
         borrowed = float(e['baseAsset']['borrowed'])
-        run_gather.append(datacenter_client.update({'asset', 'isolated', 'base', symbol}, free))
-        run_gather.append(datacenter_client.update({'borrowed', 'isolated', 'base', symbol}, borrowed))
+        run_gather.append(datacenter_client.compare_update({'asset', 'isolated', 'base', symbol}, free))
+        run_gather.append(datacenter_client.compare_update({'borrowed', 'isolated', 'base', symbol}, borrowed))
 
         free = float(e['quoteAsset']['free'])
         borrowed = float(e['quoteAsset']['borrowed'])
-        run_gather.append(datacenter_client.update({'asset', 'isolated', 'quote', symbol}, free))
-        run_gather.append(datacenter_client.update({'borrowed', 'isolated', 'quote', symbol}, borrowed))
+        run_gather.append(datacenter_client.compare_update({'asset', 'isolated', 'quote', symbol}, free))
+        run_gather.append(datacenter_client.compare_update({'borrowed', 'isolated', 'quote', symbol}, borrowed))
 
     for e in run_gather:
         await e

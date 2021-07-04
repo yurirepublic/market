@@ -685,6 +685,15 @@ class WebsocketClient(object):
             'timestamp': timestamp
         }))
 
+    async def compare_update(self, tags: Union[Set[str], List[str]], value, timestamp: int = None):
+        """
+        此函数会先获取目前数据\n
+        如果要更新的数据与目前数据不同，才会发动更新
+        """
+        now_value = await self.get_precise(tags)
+        if now_value != value:
+            await self.update(tags, value)
+
     async def get_precise(self, tags: Union[Set[str], List[str]]):
         future = self.generate_future()
 

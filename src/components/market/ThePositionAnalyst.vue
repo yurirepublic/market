@@ -90,17 +90,10 @@
       </tbody>
     </table>
     <div class='d-flex justify-content-between'>
-      <span class=''>全仓风险 {{ toFixed(marginRisk, 2) }}%</span>
-      <!--      <span class='' v-if='marginWarning !== 99999'>0.8倍杠杆警告 {{ toFixed(marginWarning, 2) }}%</span>-->
-      <!--      <span class='' v-if='marginWarning === 99999'>0.8倍杠杆警告 安全</span>-->
-
+      <span class=''>全仓风险 {{ toFixed(marginRisk * 100, 2) }}%</span>
     </div>
     <div class='d-flex justify-content-between'>
       <span class=''>期货风险 {{ toFixed(futureRisk * 100, 2) }}%</span>
-      <!--      <span class='' v-if='futureWarning !== 99999'>-->
-      <!--        5倍杠杆警告 {{ futureWarning > 0 ? '+' : '' }}{{ toFixed(futureWarning * 100, 2) }}%-->
-      <!--      </span>-->
-      <!--      <span class='' v-if='futureWarning === 99999'>5倍杠杆警告 安全</span>-->
     </div>
 
   </div>
@@ -117,9 +110,7 @@ export default {
       cache: {},    // 依据symbol来索引的items
 
       marginRisk: '',
-      marginWarning: '',
       futureRisk: '',
-      futureWarning: '',
 
       updateInterval: null,
 
@@ -129,7 +120,6 @@ export default {
       showDetail: false,
 
       ws: null,
-      ws: null
     }
 
   },
@@ -184,26 +174,6 @@ export default {
     }, true)
 
 
-    // // 订阅现货资产
-    // await this.subscribe.dict(['asset', 'main'], msg => {
-    //   for (const asset of Object.keys(msg)) {
-    //     if (msg[asset] !== 0) {
-    //       this.setItem(asset, 'main', msg[asset])
-    //     }
-    //   }
-    // }, true)
-    //
-    // // 订阅期货资产
-    // await this.subscribe.dict(['position', 'future'], msg => {
-    //   for (const symbol of Object.keys(msg)) {
-    //     // 确保要是USDT的期货
-    //     if (symbol.endsWith('USDT') && msg[symbol] !== 0) {
-    //       let asset = symbol.substring(0, symbol.length - 4)
-    //       this.setItem(asset, 'future', msg[symbol])
-    //     }
-    //   }
-    // }, true)
-
     // 订阅资金费率
     await this.ws.subscribeDict(['premium', 'fundingRate'], msg => {
       for (const symbol of Object.keys(msg)) {
@@ -230,57 +200,10 @@ export default {
       }
     }, true)
 
-
-    // 获取及订阅资产变化
-    // const assetChangeHandle = async (data) => {
-    //   // 对交易对排序
-    //   data.sort((a, b) => {
-    //     if (a.value < b.value) {
-    //       return 1
-    //     } else if (a.value > b.value) {
-    //       return -1
-    //     } else {
-    //       if (Math.abs(a.net) < Math.abs(b.net)) {
-    //         return 1
-    //       } else if (Math.abs(a.net) > Math.abs(b.net)) {
-    //         return -1
-    //       } else {
-    //         return 0
-    //       }
-    //     }
-    //   })
-    //   this.items = data
-    // }
-    // await this.subscribe.precise(['json', 'position'], async msg => {
-    //   await assetChangeHandle(msg)
-    // }, true)
-
-
-    // // 定时刷新费率、溢价和风险率
-    // this.updateInterval = setInterval(async () => {
-    //   // 逐条更新费率和溢价
-    //   const updateHandle = async (item) => {
-    //     item['fundingRate'] = await this.ws.getPrecise(['premium', 'fundingRate', item['symbol'] + 'USDT'])
-    //     item['premiumRate'] = await this.ws.getPrecise(['premium', 'rate', item['symbol'] + 'USDT'])
-    //   }
-    //   this.items.forEach(e => {
-    //     updateHandle(e)
-    //   })
-    // }, 1000)
-    // 订阅风险率信息
-    // await this.subscribe.precise(['risk', 'future', 'usage'], async (msg) =>{
-    //   this.futureRisk = msg['data']
-    // })
-    // await this.subscribe.precise(['risk', 'future', 'warning'], async (msg) => {
-    //   this.futureWarning = msg['data']
-    // })
-    // await this.subscribe.precise(['risk', 'margin', 'usage'], async (msg) => {
-    //   this.marginRisk = msg['data']
-    // })
-    // await this.subscribe.precise(['risk', 'margin', 'warning'], async (msg) => {
-    //   this.marginWarning = msg['data']
-    // })
-
+    // 订阅期货风险
+    await this.ws.subscribePrecise(['risk', 'future', 'usage'], msg => {
+      this.futureRisk = msg
+    })
   },
   components: {
     NoBorderButton
