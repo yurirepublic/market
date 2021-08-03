@@ -27,6 +27,7 @@ base_url = 'binance.com'  # 基本网址，用于快速切换国内地址和国�
 only_trace_error = True  # 是否始终追踪错误请求，开启后只会打印出错误请求，不会影响追踪文件写入
 trace_to_file = True  # 是否将追踪请求写入到文件
 show_simple_trace = True  # 开启后只会在控制台显示精简请求，但是错误请求会永远显示完整版
+proxy_url = None  # 不为None则使用该地址转发代理
 
 
 class BinanceException(Exception):
@@ -112,7 +113,7 @@ def make_query_string(**kwargs) -> str:
     else:
         return ''
     for key in kwargs.keys():
-        res += key + '=' + kwargs[key] + '&'
+        res += key + '=' + str(kwargs[key]) + '&'
     res = res[:len(res) - 1]  # 删掉最后多余的&
     return res
 
@@ -161,19 +162,20 @@ class Operator(object):
                 # 如果启用了auto_timestamp，则忽略掉用户传入的timestamp，并且重新生成一个新的
                 if auto_timestamp:
                     data['timestamp'] = get_timestamp()
-                data = make_query_string(**data)
+                str_data = make_query_string(**data)
+
             elif isinstance(data, str):
-                pass
+                str_data = data
             else:
                 raise Exception('data格式错误，必须为dict，或者使用make_query_string转换后的str')
             signature = hmac.new(self.private_key.encode('ascii'),
-                                 data.encode('ascii'), digestmod=sha256).hexdigest()
+                                 str_data.encode('ascii'), digestmod=sha256).hexdigest()
             if send_signature:
                 url = 'https://{}.{}{}{}?{}&signature={}'.format(
-                    area_url, base_url, path_url, test_path, data, signature)
+                    area_url, base_url, path_url, test_path, str_data, signature)
             else:
                 url = 'https://{}.{}{}{}?{}'.format(
-                    area_url, base_url, path_url, test_path, data)
+                    area_url, base_url, path_url, test_path, str_data)
 
             if method == 'GET':
                 func = self.session.get
@@ -181,8 +183,18 @@ class Operator(object):
                 func = self.session.post
             else:
                 func = self.session.put
-            r: requests.Response = \
-                await asyncio.get_running_loop().run_in_executor(None, functools.partial(func, url, headers=headers))
+
+            if proxy_url is None:
+                proxies = None
+            else:
+                proxies = {
+                    'http': proxy_url,
+                    'https': proxy_url
+                }
+
+            r: requests.Response = await asyncio.get_running_loop(). \
+                run_in_executor(None, functools.partial(func, url, headers=headers, proxies=proxies))
+
             if not only_trace_error:
                 if show_simple_trace:
                     print('-----start-----')
