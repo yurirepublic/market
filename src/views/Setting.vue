@@ -59,9 +59,10 @@ export default {
         this.localConfig.serverUrl = this.serverUrl
         this.localConfig.password = this.password
         this.localConfig.dataUrl = this.dataUrl
-        this.showToast.success('成功保存设置')
+        this.showToast.success('成功保存设置，刷新页面生效')
       } catch (e) {
-        this.showToast.error('保存设置失败')
+        this.showToast.error('保存设置失败，错误内容如下')
+        this.showToast.error(e)
       }
     }
   },
