@@ -25,7 +25,7 @@ def main():
     print('本地文件列表')
     want_upload = []
     for name in os.listdir():
-        if os.path.isfile(name):
+        if os.path.isfile(name) and name not in exclude:
             print(name)
             with open(name, 'rb') as f:
                 data = base64.b64encode(f.read())

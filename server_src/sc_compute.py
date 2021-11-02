@@ -330,3 +330,8 @@ class Script(script_manager.Script):
         await self.client.update({'risk', 'margin', 'usage'}, margin_risk)
 
         # await self.client.update({'risk', 'margin', 'warning'}, margin_warning)
+
+        """
+        下面是逐仓部分
+        """
+

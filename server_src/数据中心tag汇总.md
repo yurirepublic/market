@@ -40,8 +40,7 @@ price future [symbol]
 
 风险率
 risk future usage       // 资金使用率
-risk future warning     // 五倍杠杆警告
-risk margin usage
+risk margin usage       // 借贷占比
 
 
 溢价
@@ -56,6 +55,25 @@ json fundingFee
 
 聚合仓位信息
 json position
+// 聚合仓位信息内容数据格式[item1, item2...]
+{
+    'main': 0,  # 现货余额
+    'margin': 0,  # 全仓余额
+    'marginBorrowed': 0,  # 全仓借入
+    'isolated': 0,  # 逐仓余额
+    'isolatedBorrowed': 0,  # 逐仓借入
+    'isolatedQuote': 0,  # 逐仓合约币（一般是USDT）余额
+    'isolatedQuoteBorrowed': 0,  # 逐仓合约币借入
+    'isolatedRisk': 0,  # 逐仓贷款占比
+    'future': 0,  # 期货余额
+    'net': 0,  # 净持仓
+    'hedging': 0,  # 双向持仓
+    
+    'value': 0,  # 双向持仓的单边市值
+    'fundingRate': 0,  # 期货费率
+    'premiumRate': 0,  # 期货溢价
+}
+
 
 服务器运行状况
 server status cpu usage percent [nickname]
@@ -78,6 +96,8 @@ server info port subscribe [nickname]
 
 脚本管理器
 json scriptManager status
+// 样例
+[{'thread_id': 0, 'name': 'sc_compute', 'status': '运行中'}, ...]
 
 警报
 alarm common

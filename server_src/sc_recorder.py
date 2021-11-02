@@ -1,5 +1,4 @@
 import script_manager
-import binance
 import datacenter
 import json
 import asyncio

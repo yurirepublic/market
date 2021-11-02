@@ -66,7 +66,7 @@
           <span v-if="item['isolatedQuoteBorrowed'] !== 0">{{ strip(-item['isolatedQuoteBorrowed']) }}</span>
         </td>
         <td class='text-monospace align-middle'>
-          <span v-if="item['isolatedRisk'] !== 0">{{ toFixed(item['isolatedRisk'], 2) }}%</span>
+          <span v-if="item['isolatedRisk'] !== 0">{{ toFixed(item['isolatedRisk'] * 100, 2) }}%</span>
         </td>
         <td class='text-monospace align-middle'>
           <span v-if="item['future'] !== 0">{{ strip(item['future']) }}</span>
