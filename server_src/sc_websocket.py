@@ -8,7 +8,7 @@ import asyncio
 class Script(script_manager.Script):
     """
     用来爬取现货websocket相关数据
-    TODO 还差逐仓的ws数据更新，但是逐仓需要每个账户都开一个ws，有点难搞
+    TODO 还差逐仓的ws数据更新，但是逐仓需要每个账户都开一个ws，有点难搞。考虑到逐仓账户信息权重很低，可以不更新
     """
 
     def info(self):
@@ -95,8 +95,18 @@ class Script(script_manager.Script):
         """
         while True:
             await asyncio.sleep(5)
-            usdt = await self.binance.get_asset_amount('USDT', 'FUTURE')
-            await self.client.update({'asset', 'future', 'USDT'}, usdt)
+            # 获取当前所有期货资产
+            res = await self.binance.request('fapi', '/fapi/v2/balance', 'GET', {
+                'timestamp': binance.get_timestamp()
+            })
+            # 遍历找到USDT
+            for e in res:
+                if e['asset'] == 'USDT':
+                    usdt = float(e['balance'])
+                    usdt_withdraw_able = float(e['maxWithdrawAmount'])
+                    await self.client.update({'asset', 'future', 'USDT'}, usdt)
+                    await self.client.update({'asset', 'future', 'USDT_WITHDRAW_ABLE'}, usdt_withdraw_able)
+                    break
 
     async def main_update(self, mode, data):
         """

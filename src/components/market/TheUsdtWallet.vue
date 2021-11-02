@@ -16,6 +16,9 @@
 
     <InfoItem header='可用现货' footer='USDT'>{{ mainFree }}</InfoItem>
     <InfoItem header='可用期货' footer='USDT'>{{ futureFree }}</InfoItem>
+    <span class='text-muted small align-self-end'>
+      可转出期货 {{ futureWithdrawAble }}
+    </span>
     <InfoItem header='可用全仓' footer='USDT'>{{ marginFree }}</InfoItem>
     <div v-if='showTransfer'>
       <div class='py-1 d-flex justify-content-between align-items-center'>
@@ -50,6 +53,7 @@ export default {
     return {
       mainFree: NaN,
       futureFree: NaN,
+      futureWithdrawAble: NaN,
       marginFree: NaN,
 
       disabledTransferButton: false,
@@ -73,6 +77,9 @@ export default {
     await this.ws.subscribePrecise(['asset', 'future', 'USDT'], msg => {
       this.futureFree = msg
     }, true)
+    await this.ws.subscribePrecise(['asset', 'future', 'USDT_WITHDRAW_ABLE'], msg => {
+      this.futureWithdrawAble = msg
+    })
     await this.ws.subscribePrecise(['asset', 'margin', 'USDT'], msg => {
       this.marginFree = msg
     }, true)
