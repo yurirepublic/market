@@ -291,15 +291,21 @@ class Script(script_manager.Script):
         """
         处理期货价格更新
         """
-        ws = await self.binance.connect_websocket('FUTURE', '!markPrice@arr')
+        # ws = await self.binance.connect_websocket('FUTURE', '!markPrice@arr')
+        ws = await self.binance.connect_websocket('FUTURE', '!miniTicker@arr')
         while True:
             data = await ws.recv()
             data = json.loads(data)
             for x in data:
-                if x['e'] == 'markPriceUpdate':
+                # if x['e'] == 'markPriceUpdate':
+                #     timestamp = int(x['E'])
+                #     symbol = x['s']
+                #     price = float(x['p'])  # 标记价格
+                #     asyncio.create_task(self.client.update({'future', 'price', symbol}, price, timestamp))
+                if x['e'] == '24hrMiniTicker':
                     timestamp = int(x['E'])
                     symbol = x['s']
-                    price = float(x['p'])  # 标记价格
+                    price = float(x['c'])  # 最新成交价格
                     asyncio.create_task(self.client.update({'future', 'price', symbol}, price, timestamp))
                 else:
                     self.log('无法识别的期货价格ws消息', x)
