@@ -56,26 +56,27 @@
           </span>
           <div class="d-flex flex-row justify-content-between mt-2">
             <span class="align-middle text-muted small">现货下单位置</span>
-            <div class="d-flex">
-              <no-border-button class="btn checkbox ml-2 checkbox-check" v-if="mainMode==='MAIN'"
-                                @click="ChangeMainMode('MAIN')">现货
-              </no-border-button>
-              <no-border-button class="btn checkbox ml-2 checkbox-nocheck" v-if="mainMode!=='MAIN'"
-                                @click="ChangeMainMode('MAIN')">现货
-              </no-border-button>
-              <no-border-button class="btn checkbox ml-2 checkbox-check" v-if="mainMode==='MARGIN'"
-                                @click="ChangeMainMode('MARGIN')">全仓
-              </no-border-button>
-              <no-border-button class="btn checkbox ml-2 checkbox-nocheck" v-if="mainMode!=='MARGIN'"
-                                @click="ChangeMainMode('MARGIN')">全仓
-              </no-border-button>
-              <no-border-button class="btn checkbox ml-2 checkbox-check" v-if="mainMode==='ISOLATED'"
-                                @click="ChangeMainMode('ISOLATED')">逐仓
-              </no-border-button>
-              <no-border-button class="btn checkbox ml-2 checkbox-nocheck" v-if="mainMode!=='ISOLATED'"
-                                @click="ChangeMainMode('ISOLATED')">逐仓
-              </no-border-button>
-            </div>
+            <my-radio @click="ChangeMainMode" :active="mainMode" :options="['现货', '全仓', '逐仓']"/>
+            <!--            <div class="d-flex">-->
+            <!--              <no-border-button class="btn checkbox ml-2 checkbox-check" v-if="mainMode==='MAIN'"-->
+            <!--                                @click="ChangeMainMode('MAIN')">现货-->
+            <!--              </no-border-button>-->
+            <!--              <no-border-button class="btn checkbox ml-2 checkbox-nocheck" v-if="mainMode!=='MAIN'"-->
+            <!--                                @click="ChangeMainMode('MAIN')">现货-->
+            <!--              </no-border-button>-->
+            <!--              <no-border-button class="btn checkbox ml-2 checkbox-check" v-if="mainMode==='MARGIN'"-->
+            <!--                                @click="ChangeMainMode('MARGIN')">全仓-->
+            <!--              </no-border-button>-->
+            <!--              <no-border-button class="btn checkbox ml-2 checkbox-nocheck" v-if="mainMode!=='MARGIN'"-->
+            <!--                                @click="ChangeMainMode('MARGIN')">全仓-->
+            <!--              </no-border-button>-->
+            <!--              <no-border-button class="btn checkbox ml-2 checkbox-check" v-if="mainMode==='ISOLATED'"-->
+            <!--                                @click="ChangeMainMode('ISOLATED')">逐仓-->
+            <!--              </no-border-button>-->
+            <!--              <no-border-button class="btn checkbox ml-2 checkbox-nocheck" v-if="mainMode!=='ISOLATED'"-->
+            <!--                                @click="ChangeMainMode('ISOLATED')">逐仓-->
+            <!--              </no-border-button>-->
+            <!--            </div>-->
           </div>
 
           <div class="d-flex flex-row justify-content-between mt-2" v-if="disabledTrade">
@@ -120,9 +121,17 @@
 import TradeInput from "@/components/TradeInput.vue"
 import InfoItem from "@/components/InfoItem.vue"
 import NoBorderButton from "@/components/NoBorderButton"
+import MyRadio from "@/components/MyRadio";
 
 export default {
   name: "ThePositionCreator",
+
+  components: {
+    TradeInput,
+    InfoItem,
+    NoBorderButton,
+    MyRadio
+  },
 
   props: {
     pairSymbol: ''    // 用于开仓的交易对
@@ -133,7 +142,8 @@ export default {
       // 填写的信息
       wantMoney: 0, // 想要开仓的总价值
       quantity: 0, // 开仓的币数
-      mainMode: 'MAIN',   // 现货下单模式，可能为MAIN、MARGIN、ISOLATED
+      mainMode: '现货',   // 现货下单模式，可能为现货、全仓、逐仓，对应翻译是MAIN、MARGIN、ISOLATED
+      translatedMode: 'MAIN',   // 翻译后的下单模式，用于发送给服务器
 
       // 获取的信息
       quotePrecision: NaN,
@@ -213,7 +223,7 @@ export default {
       // 发送开仓指令
       this.disabledTrade = true
       this.banReason = '正在下单'
-      this.apiRequest("trade_premium", [this.pairSymbol, this.quantity, 'OPEN', this.mainMode])
+      this.apiRequest("trade_premium", [this.pairSymbol, this.quantity, 'OPEN', this.translatedMode])
           .then((res) => {
             this.showToast.success("加仓成功")
           })
@@ -231,7 +241,7 @@ export default {
       // 发送指令
       this.disabledTrade = true
       this.banReason = '正在下单'
-      this.apiRequest("trade_premium", [this.pairSymbol, this.quantity, 'CLOSE', this.mainMode])
+      this.apiRequest("trade_premium", [this.pairSymbol, this.quantity, 'CLOSE', this.translatedMode])
           .then((res) => {
             this.showToast.success("减仓成功")
           })
@@ -325,13 +335,16 @@ export default {
     // 切换下单位置
     ChangeMainMode: function (mode) {
       this.mainMode = mode
+      if (mode === '现货') {
+        this.translatedMode = 'MAIN'
+      } else if (mode === '全仓') {
+        this.translatedMode = 'MARGIN'
+      } else if (mode === '逐仓') {
+        this.translatedMode = 'ISOLATED'
+      } else {
+        throw '意外的mainMode类型'
+      }
     },
-  },
-
-  components: {
-    TradeInput,
-    InfoItem,
-    NoBorderButton
   },
 }
 </script>

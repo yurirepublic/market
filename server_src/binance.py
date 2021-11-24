@@ -24,9 +24,9 @@ import functools
 """
 
 base_url = 'binance.com'  # 基本网址，用于快速切换国内地址和国际地址，国际地址是binance.com
-only_trace_error = True  # 是否始终追踪错误请求，开启后只会打印出错误请求，不会影响追踪文件写入
-trace_to_file = True  # 是否将追踪请求写入到文件
-show_simple_trace = True  # 开启后只会在控制台显示精简请求，但是错误请求会永远显示完整版
+only_print_error = True  # 是否仅仅打印错误请求，开启后只会打印出错误请求，但不会影响追踪文件写入
+trace_to_file = False  # 是否将追踪请求写入到文件
+print_simple_trace = True  # 开启后只会在控制台显示精简请求，但是错误请求会永远显示完整版
 proxy_url = None  # 不为None则使用该地址转发代理
 
 
@@ -195,8 +195,8 @@ class Operator(object):
             r: requests.Response = await asyncio.get_running_loop(). \
                 run_in_executor(None, functools.partial(func, url, headers=headers, proxies=proxies))
 
-            if not only_trace_error:
-                if show_simple_trace:
+            if not only_print_error:
+                if print_simple_trace:
                     print('-----start-----')
                     print('URL:', url)
                     print('STATUS CODE:', r.status_code)
@@ -218,7 +218,7 @@ class Operator(object):
                         '-----ended-----\n'
                     ])
             if r.status_code != 200:
-                if only_trace_error:
+                if only_print_error:
                     print('-----start-----')
                     print('URL:', url)
                     print('STATUS CODE:', r.status_code)

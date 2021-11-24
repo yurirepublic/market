@@ -8,7 +8,7 @@ import asyncio
 class Script(script_manager.Script):
     """
     用来爬取现货websocket相关数据
-    TODO 还差逐仓的ws数据更新，但是逐仓需要每个账户都开一个ws，有点难搞。考虑到逐仓账户信息权重很低，可以不更新
+    TODO 还差逐仓的ws数据更新，但是逐仓需要每个账户都开一个ws，有点难搞。考虑到逐仓账户信息权重很低，可以使用HTTP更新
     """
 
     def info(self):
@@ -241,7 +241,7 @@ class Script(script_manager.Script):
     async def _update_isolated(self, e):
         symbol = e['symbol']
 
-        # 因为isolated是非推送式更新，所以推送前看看有没有变化，没有变化就不推送
+        # 因为isolated是非推送式更新，所以推送前看看有没有变化，没有变化就不推送，不然老是给客户端发通知也不好
         free = float(e['baseAsset']['free'])
         borrowed = float(e['baseAsset']['borrowed'])
         if free != await self.client.get_precise({'asset', 'isolated', 'base', symbol}):
