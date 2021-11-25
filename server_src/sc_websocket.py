@@ -102,7 +102,7 @@ class Script(script_manager.Script):
             # 遍历找到USDT
             for e in res:
                 if e['asset'] == 'USDT':
-                    usdt = float(e['balance'])
+                    usdt = float(e['balance']) + float(e['crossUnPnl'])
                     usdt_withdraw_able = float(e['maxWithdrawAmount'])
                     await self.client.update({'asset', 'future', 'USDT'}, usdt)
                     await self.client.update({'asset', 'future', 'USDT_WITHDRAW_ABLE'}, usdt_withdraw_able)
