@@ -197,8 +197,14 @@ class Script(script_manager.Script):
                 balance = data['a']['B']
                 for asset in balance:
                     symbol = asset['a']
-                    wb = float(asset['wb'])  # 钱包余额
-                    await self.client.update({'asset', 'future', symbol}, wb, timestamp)
+                    # 对于特殊的USDT来说，需要获取原本USDT可用保证金，然后附加上USDT浮盈再放回。直接使用余额不准确。
+                    if symbol == 'USDT':
+                        bc = float(asset['bc'])
+                        available_usdt = await self.client.get_precise({'asset', 'future', 'USDT'})
+                        await self.client.update({'asset', 'future', 'usdt'}, available_usdt + bc)
+                    else:
+                        wb = float(asset['wb'])  # 钱包余额
+                        await self.client.update({'asset', 'future', symbol}, wb, timestamp)
                 # 如果事件原因不是FUNDING FEE，则更新持仓
                 if data['a']['m'] != 'FUNDING FEE':
                     position = data['a']['P']
