@@ -84,7 +84,7 @@
           <span v-if="item['fundingRate'] !== 0">{{ toFixed(item['fundingRate'] * 100, 2) }}%</span>
         </td>
         <td class='text-monospace align-middle' v-if='showDetail'>
-          <span v-if="item['fundingRate'] !== 0">{{ toFixed(item['premiumRate'] * 100, 2) }}%</span>
+          <span v-if="item['premiumRate'] !== 0">{{ toFixed(item['premiumRate'] * 100, 2) }}%</span>
         </td>
       </tr>
       </tbody>
