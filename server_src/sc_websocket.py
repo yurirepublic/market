@@ -102,7 +102,7 @@ class Script(script_manager.Script):
             # 遍历找到USDT
             for e in res:
                 if e['asset'] == 'USDT':
-                    usdt = float(e['balance'])
+                    usdt = float(e['balance']) + float(e['crossUnPnl'])
                     usdt_withdraw_able = float(e['maxWithdrawAmount'])
                     await self.client.update({'asset', 'future', 'USDT'}, usdt)
                     await self.client.update({'asset', 'future', 'USDT_WITHDRAW_ABLE'}, usdt_withdraw_able)
@@ -197,8 +197,14 @@ class Script(script_manager.Script):
                 balance = data['a']['B']
                 for asset in balance:
                     symbol = asset['a']
-                    wb = float(asset['wb'])  # 钱包余额
-                    await self.client.update({'asset', 'future', symbol}, wb, timestamp)
+                    # 对于特殊的USDT来说，需要获取原本USDT可用保证金，然后附加上USDT浮盈再放回。直接使用余额不准确。
+                    if symbol == 'USDT':
+                        bc = float(asset['bc'])
+                        available_usdt = await self.client.get_precise({'asset', 'future', 'USDT'})
+                        await self.client.update({'asset', 'future', 'usdt'}, available_usdt + bc)
+                    else:
+                        wb = float(asset['wb'])  # 钱包余额
+                        await self.client.update({'asset', 'future', symbol}, wb, timestamp)
                 # 如果事件原因不是FUNDING FEE，则更新持仓
                 if data['a']['m'] != 'FUNDING FEE':
                     position = data['a']['P']
@@ -291,15 +297,21 @@ class Script(script_manager.Script):
         """
         处理期货价格更新
         """
-        ws = await self.binance.connect_websocket('FUTURE', '!markPrice@arr')
+        # ws = await self.binance.connect_websocket('FUTURE', '!markPrice@arr')
+        ws = await self.binance.connect_websocket('FUTURE', '!miniTicker@arr')
         while True:
             data = await ws.recv()
             data = json.loads(data)
             for x in data:
-                if x['e'] == 'markPriceUpdate':
+                # if x['e'] == 'markPriceUpdate':
+                #     timestamp = int(x['E'])
+                #     symbol = x['s']
+                #     price = float(x['p'])  # 标记价格
+                #     asyncio.create_task(self.client.update({'future', 'price', symbol}, price, timestamp))
+                if x['e'] == '24hrMiniTicker':
                     timestamp = int(x['E'])
                     symbol = x['s']
-                    price = float(x['p'])  # 标记价格
+                    price = float(x['c'])  # 最新成交价格
                     asyncio.create_task(self.client.update({'future', 'price', symbol}, price, timestamp))
                 else:
                     self.log('无法识别的期货价格ws消息', x)
