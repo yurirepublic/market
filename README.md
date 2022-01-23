@@ -7,6 +7,8 @@
 1. 将目录切换到代码根目录
 1. 敲入命令```npm install```来安装所有依赖
 
+注：如果网络不好，可以先敲```npm install -g cnpm```，然后敲```cnpm install```来使用国内镜像安装依赖
+
 ### 启动调试
 ```
 npm run serve
@@ -23,10 +25,12 @@ npm run build
 - 一个域名
 - 对应域名的https证书
 
-域名可以在godaddy一年十块钱买到，证书可以在阿里云、腾讯云免费签发
+域名可以在godaddy一年十块钱买到，证书可以在阿里云、腾讯云或者Let's Encrype免费签发
 ### 部署过程
 1. 将```server_src```所有内容复制到服务器
-1. 运行```make_default_config.py```创建默认的配置文件 
+1. 将ssl证书的两个文件复制到代码目录
+1. 运行```make_default_config.py```创建默认的```config.json```配置文件
+1. 修改```config.json```里的内容，主要是域名和证书文件名
 1. 输入```screen```新建一个screen窗口
 1. 输入```python3 data_center.py```运行数据中心
 1. 按下Ctrl+A，弹起后再按下C，以此新建另一个screen子窗口   
