@@ -55,7 +55,6 @@ class Script(object):
         self.input_dict = input_dict
         self.manager_dict = manager_dict
         self.manager_dict['log'] = '-----开始记录脚本log-----\n'  # 脚本的log
-        self.manager_dict['except_exit'] = False  # 是否是因为未捕获的异常而退出
         try:
             self.main()
         except Exception:
@@ -213,6 +212,9 @@ class Core(object):
         """
         # 生成共享字典对象
         manager_dict = multi.Manager().dict()
+
+        # 在这里初始化不在run_script里初始化是因为有时候还没运行到run_script就被调用了status导致出错
+        manager_dict['except_exit'] = False  # 是否是因为未捕获的异常而退出
 
         # 执行脚本
         def _x(_manager_dict, _input_dict, _script_path):
